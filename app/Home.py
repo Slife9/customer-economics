@@ -20,7 +20,14 @@ st.title("💳 ProfitInsight Customer Economics System")
 st.caption("What is each customer worth, after every cost — and which of six "
           "levers actually fixes it.")
 
+DATAGEN_APP_URL = "https://customer-economics-g36dfysbdmfgwf2f8ygmms.streamlit.app/"
+
 with st.sidebar:
+    st.caption(f"Need a portfolio to test with? [Generate one here]({DATAGEN_APP_URL}) — "
+              f"pick a scenario, size, and data-quality issue rate, then come back "
+              f"and upload it below.")
+    st.divider()
+
     if st.button("🔄 Clear cache & reload", width="stretch",
                 help="The analysis result is cached by portfolio path. If "
                     "you've just pulled or edited code under engine/, click "
