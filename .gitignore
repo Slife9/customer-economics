@@ -1,0 +1,20 @@
+# Python virtual environment - regenerate with: pip install -r requirements.txt
+.venv/
+__pycache__/
+*.pyc
+
+# Generated data and analysis outputs - regenerate by running the pipeline,
+# never hand-edited, and far too large for a git repo (100s of MB of CSVs)
+generator/out/
+engine/out/
+
+# Archival reference data from the original pre-rebuild audit - not needed
+# to run or understand the current system
+initial_data/
+
+# Streamlit local secrets, if any get added later
+.streamlit/secrets.toml
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

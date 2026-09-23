@@ -1,0 +1,24 @@
+Layer,Area,Check,Passed,Severity,Details
+consistency,keys,account ids unique,True,critical,5000 accounts
+consistency,keys,cycle rows reference a known account,True,critical,referential integrity
+consistency,keys,transactions reference a known account,True,critical,referential integrity
+consistency,keys,one risk row per account-cycle,True,critical,risk 120000 vs cycles 120000
+consistency,keys,one capital row per account-cycle,True,critical,capital 120000 vs cycles 120000
+consistency,keys,one driver row per account-cycle,True,critical,drivers 120000 vs cycles 120000
+consistency,balances,balance never exceeds limit,True,critical,no over-limit balances
+consistency,balances,utilization matches balance over limit,True,critical,derived field agrees
+consistency,balances,promotional balance within total balance,True,critical,subset holds
+consistency,balances,no negative balances,True,critical,
+consistency,capital,zero CCF on cancellable undrawn lines,True,critical,12 CFR 217.33(b)(1)
+consistency,capital,regulatory EAD equals drawn balance,True,critical,no undrawn EAD
+consistency,capital,risk weight is 100% or 150% only,True,critical,217.32 / 217.32(k)
+consistency,capital,past due exposures carry 150%,True,critical,81 rows
+consistency,capital,economic and regulatory tracks both present,True,critical,never blended into one figure
+consistency,cecl,no IFRS 9 staging remains,True,critical,US GAAP basis
+consistency,cecl,lifetime ECL present and non-negative,True,critical,ASC 326
+consistency,cecl,lifetime PD at least 12-month PD,True,critical,
+consistency,interchange,every transaction carries an MCC,True,critical,
+consistency,interchange,rate card covers every category used,True,critical,
+consistency,rewards,redemption never exceeds points earned per account,True,critical,liability cannot go negative
+consistency,ground_truth,ground truth is held outside the published tables,True,critical,evaluation-only directory
+consistency,ground_truth,no latent or defect marker leaks into engine tables,True,critical,clean

@@ -1,0 +1,21 @@
+mcc,category,description
+5411,grocery,Grocery Stores and Supermarkets
+5541,fuel,Service Stations
+5812,restaurant,Eating Places and Restaurants
+5814,restaurant,Fast Food Restaurants
+3000,travel_air,Airlines
+3501,travel_lodging,Lodging - Hotels and Motels
+4111,travel_transit,Local Commuter Transport
+7011,travel_lodging,Lodging
+5999,retail,Miscellaneous Retail
+5311,retail,Department Stores
+5732,retail,Electronics Stores
+4899,utilities,Cable and Other Pay Television
+4900,utilities,Utilities - Electric Gas Water
+5912,pharmacy,Drug Stores and Pharmacies
+8011,healthcare,Doctors
+5960,online,Direct Marketing - Insurance
+5964,online,Direct Marketing - Catalog Merchant
+7372,business,Computer Software
+5044,business,Office and Commercial Equipment
+8931,business,Accounting and Bookkeeping Services

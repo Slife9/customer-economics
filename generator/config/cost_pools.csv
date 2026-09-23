@@ -1,0 +1,23 @@
+Activity,Allocation Tier,Driver Name,Volume Band From,Volume Band To,Band Fixed Cost USD Monthly,Marginal Unit Cost USD,Cost Behavior,Notes
+contact_center_call,Tier 2,Contact Center Calls,0,500,1800,2.10,stepped,Headcount step scaled for a 5-8k account demo book (real capacity cost divided across a fraction of a real issuer's volume). Avoided calls do not remove cash until a step is crossed
+contact_center_call,Tier 2,Contact Center Calls,500,1500,3400,2.10,stepped,Headcount step
+contact_center_call,Tier 2,Contact Center Calls,1500,3000,5800,2.10,stepped,Headcount step
+contact_center_call,Tier 2,Contact Center Calls,3000,9999999,9600,2.10,stepped,Headcount step
+collections_contact,Tier 2,Collections Contacts,0,200,900,3.40,stepped,Collections runs on headcount steps
+collections_contact,Tier 2,Collections Contacts,200,800,1900,3.40,stepped,Collections runs on headcount steps
+collections_contact,Tier 2,Collections Contacts,800,2000,3400,3.40,stepped,Collections runs on headcount steps
+collections_contact,Tier 2,Collections Contacts,2000,9999999,5600,3.40,stepped,Collections runs on headcount steps
+branch_visit,Tier 2,Branch Visits,0,300,2200,4.20,stepped,Branch servicing capacity step
+branch_visit,Tier 2,Branch Visits,300,9999999,3800,4.20,stepped,Branch servicing capacity step
+fraud_alert,Tier 2,Fraud Alerts,0,400,700,1.60,stepped,Fraud operations step
+fraud_alert,Tier 2,Fraud Alerts,400,9999999,1300,1.60,stepped,Fraud operations step
+dispute_case,Tier 2,Disputes Raised,0,150,800,14.50,stepped,Dispute handling step
+dispute_case,Tier 2,Disputes Raised,150,9999999,1500,14.50,stepped,Dispute handling step
+complaint_case,Tier 2,Complaints Handled,0,60,500,26.00,stepped,Complaint handling step
+complaint_case,Tier 2,Complaints Handled,60,9999999,950,26.00,stepped,Complaint handling step
+digital_session,Tier 2,Digital Sessions,0,9999999,1200,0.03,platform_fixed_plus_variable,Digital platform cost is largely fixed
+payment_processing,Tier 1,Payments Processed,0,9999999,0,0.28,variable,Genuinely variable per payment
+statement_paper,Tier 1,Paper Statements Produced,0,9999999,0,0.72,variable,Print and postage are genuinely variable
+statement_electronic,Tier 1,Electronic Statements Produced,0,9999999,0,0.03,variable,Genuinely variable
+card_issuance,Tier 1,Cards Issued,0,9999999,0,4.80,variable,Plastic and fulfilment are genuinely variable
+corporate_overhead,Tier 3,Accounts,0,9999999,14500,0.00,fixed,EXCLUDED from the decision metric so a cost base problem is not read as a customer problem. Scaled for a 5-8k account demo book same as the Tier 2 pools above

@@ -1,0 +1,101 @@
+Product Tier,Interchange Category,Interchange Rate Percent,Interchange Fixed Fee USD
+Secured Standard,supermarket,1.209,0.05
+Secured Standard,warehouse_club,1.141,0.05
+Secured Standard,fuel,1.141,0.05
+Secured Standard,restaurant,1.537,0.1
+Secured Standard,travel_air,1.74,0.1
+Secured Standard,travel_hotel,1.695,0.1
+Secured Standard,travel_other,1.638,0.1
+Secured Standard,transit,1.446,0.05
+Secured Standard,retail_general,1.503,0.1
+Secured Standard,apparel,1.503,0.1
+Secured Standard,electronics,1.503,0.1
+Secured Standard,online_retail,1.638,0.1
+Secured Standard,pharmacy,1.424,0.05
+Secured Standard,professional_services,1.593,0.1
+Secured Standard,telecom,0.949,0.2
+Secured Standard,streaming,1.345,0.05
+Secured Standard,utilities,0.746,0.2
+Secured Standard,insurance,1.141,0.05
+Secured Standard,healthcare,1.469,0.1
+Secured Standard,entertainment,1.537,0.1
+Secured Standard,education,1.141,0.1
+Secured Standard,charity,1.345,0.05
+Secured Standard,government,1.096,0.1
+Secured Standard,home_improvement,1.503,0.1
+Secured Standard,auto_service,1.503,0.1
+Standard,supermarket,1.379,0.05
+Standard,warehouse_club,1.299,0.05
+Standard,fuel,1.299,0.05
+Standard,restaurant,1.74,0.1
+Standard,travel_air,1.977,0.1
+Standard,travel_hotel,1.921,0.1
+Standard,travel_other,1.864,0.1
+Standard,transit,1.638,0.05
+Standard,retail_general,1.706,0.1
+Standard,apparel,1.706,0.1
+Standard,electronics,1.706,0.1
+Standard,online_retail,1.864,0.1
+Standard,pharmacy,1.616,0.05
+Standard,professional_services,1.808,0.1
+Standard,telecom,1.074,0.2
+Standard,streaming,1.525,0.05
+Standard,utilities,0.847,0.2
+Standard,insurance,1.299,0.05
+Standard,healthcare,1.672,0.1
+Standard,entertainment,1.751,0.1
+Standard,education,1.299,0.1
+Standard,charity,1.525,0.05
+Standard,government,1.243,0.1
+Standard,home_improvement,1.706,0.1
+Standard,auto_service,1.706,0.1
+World,supermarket,1.627,0.05
+World,warehouse_club,1.537,0.05
+World,fuel,1.537,0.05
+World,restaurant,2.057,0.1
+World,travel_air,2.339,0.1
+World,travel_hotel,2.271,0.1
+World,travel_other,2.203,0.1
+World,transit,1.932,0.05
+World,retail_general,2.011,0.1
+World,apparel,2.011,0.1
+World,electronics,2.011,0.1
+World,online_retail,2.203,0.1
+World,pharmacy,1.91,0.05
+World,professional_services,2.136,0.1
+World,telecom,1.266,0.2
+World,streaming,1.797,0.05
+World,utilities,1.006,0.2
+World,insurance,1.537,0.05
+World,healthcare,1.977,0.1
+World,entertainment,2.068,0.1
+World,education,1.537,0.1
+World,charity,1.797,0.05
+World,government,1.469,0.1
+World,home_improvement,2.011,0.1
+World,auto_service,2.011,0.1
+World Elite,supermarket,1.876,0.05
+World Elite,warehouse_club,1.763,0.05
+World Elite,fuel,1.763,0.05
+World Elite,restaurant,2.362,0.1
+World Elite,travel_air,2.689,0.1
+World Elite,travel_hotel,2.61,0.1
+World Elite,travel_other,2.531,0.1
+World Elite,transit,2.226,0.05
+World Elite,retail_general,2.316,0.1
+World Elite,apparel,2.316,0.1
+World Elite,electronics,2.316,0.1
+World Elite,online_retail,2.531,0.1
+World Elite,pharmacy,2.192,0.05
+World Elite,professional_services,2.463,0.1
+World Elite,telecom,1.458,0.2
+World Elite,streaming,2.079,0.05
+World Elite,utilities,1.153,0.2
+World Elite,insurance,1.763,0.05
+World Elite,healthcare,2.271,0.1
+World Elite,entertainment,2.384,0.1
+World Elite,education,1.763,0.1
+World Elite,charity,2.079,0.05
+World Elite,government,1.695,0.1
+World Elite,home_improvement,2.316,0.1
+World Elite,auto_service,2.316,0.1

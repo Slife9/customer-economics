@@ -1,0 +1,5 @@
+channel,cost_per_point_usd,weight_fast,weight_steady,weight_hoarder
+transfer_partner,0.0125,0.22,0.18,0.34
+travel_portal,0.0110,0.26,0.24,0.30
+merchandise,0.0065,0.20,0.22,0.14
+statement_credit,0.0100,0.32,0.36,0.22

@@ -1,0 +1,49 @@
+product,category,rate_pct
+Secured Standard,grocery,1.15
+Secured Standard,fuel,1.10
+Secured Standard,restaurant,1.45
+Secured Standard,travel_air,1.50
+Secured Standard,travel_lodging,1.50
+Secured Standard,travel_transit,1.40
+Secured Standard,retail,1.45
+Secured Standard,utilities,0.85
+Secured Standard,pharmacy,1.30
+Secured Standard,healthcare,1.35
+Secured Standard,online,1.60
+Secured Standard,business,1.55
+Standard,grocery,1.30
+Standard,fuel,1.25
+Standard,restaurant,1.65
+Standard,travel_air,1.70
+Standard,travel_lodging,1.70
+Standard,travel_transit,1.55
+Standard,retail,1.65
+Standard,utilities,0.95
+Standard,pharmacy,1.45
+Standard,healthcare,1.50
+Standard,online,1.80
+Standard,business,1.75
+World,grocery,1.65
+World,fuel,1.55
+World,restaurant,2.05
+World,travel_air,2.15
+World,travel_lodging,2.15
+World,travel_transit,1.95
+World,retail,2.05
+World,utilities,1.10
+World,pharmacy,1.80
+World,healthcare,1.85
+World,online,2.25
+World,business,2.20
+World Elite,grocery,1.90
+World Elite,fuel,1.75
+World Elite,restaurant,2.35
+World Elite,travel_air,2.50
+World Elite,travel_lodging,2.50
+World Elite,travel_transit,2.25
+World Elite,retail,2.35
+World Elite,utilities,1.20
+World Elite,pharmacy,2.05
+World Elite,healthcare,2.10
+World Elite,online,2.60
+World Elite,business,2.55

@@ -1,0 +1,83 @@
+MCC,Merchant Category Description,Interchange Category,Reward Category,Ticket Mean USD,Ticket CV,Long Tail
+5411,Grocery Stores and Supermarkets,supermarket,grocery,78.40,0.85,0
+5412,Warehouse Club Grocery,warehouse_club,grocery,142.60,0.78,0
+5499,Miscellaneous Food Stores,supermarket,grocery,34.20,0.92,0
+5541,Service Stations,fuel,gas,46.80,0.55,0
+5542,Automated Fuel Dispensers,fuel,gas,52.30,0.52,0
+5812,Eating Places and Restaurants,restaurant,dining,52.10,1.05,0
+5813,Bars and Taverns,restaurant,dining,61.40,1.12,0
+5814,Fast Food Restaurants,restaurant,dining,18.70,0.88,0
+3000,Airlines,travel_air,travel,412.00,1.15,0
+3501,Lodging and Hotels,travel_hotel,travel,286.50,1.08,0
+4111,Local Commuter Transport,transit,travel,14.20,0.95,0
+4121,Taxicabs and Rideshare,transit,travel,27.60,0.98,0
+4511,Airlines and Air Carriers,travel_air,travel,388.00,1.18,0
+4722,Travel Agencies,travel_other,travel,624.00,1.24,0
+7011,Hotels and Resorts,travel_hotel,travel,312.80,1.10,0
+7512,Automobile Rental,travel_other,travel,238.40,0.96,0
+5311,Department Stores,retail_general,retail,86.20,1.02,0
+5300,Wholesale Clubs,warehouse_club,retail,118.90,0.86,0
+5651,Family Clothing Stores,apparel,retail,74.50,1.08,0
+5732,Electronics Stores,electronics,retail,196.30,1.35,0
+5912,Drug Stores and Pharmacies,pharmacy,drugstore,41.70,0.96,0
+5942,Book Stores,retail_general,retail,32.80,0.94,0
+5999,Miscellaneous Retail,retail_general,retail,58.40,1.16,0
+5964,Direct Marketing Catalog,online_retail,online,67.20,1.22,0
+5968,Direct Marketing Subscription,online_retail,online,24.60,0.74,0
+5969,Direct Marketing Other,online_retail,online,52.90,1.28,0
+7399,Business Services,professional_services,business,184.60,1.42,0
+8999,Professional Services,professional_services,business,246.80,1.38,0
+7311,Advertising Services,professional_services,business,412.00,1.45,0
+5045,Computers and Software,electronics,business,328.00,1.32,0
+5943,Office Supply Stores,retail_general,business,88.40,1.14,0
+4814,Telecommunication Services,telecom,utilities,84.20,0.48,0
+4899,Cable and Streaming Services,streaming,utilities,32.60,0.42,0
+4900,Utilities Electric Gas Water,utilities,utilities,148.70,0.52,0
+6300,Insurance Sales and Premiums,insurance,insurance,242.00,0.68,0
+8011,Doctors and Physicians,healthcare,healthcare,168.40,1.12,0
+8021,Dentists and Orthodontists,healthcare,healthcare,224.60,1.08,0
+8062,Hospitals,healthcare,healthcare,486.00,1.42,0
+5122,Drugs and Pharmaceuticals,pharmacy,drugstore,96.20,1.04,0
+7832,Motion Picture Theaters,entertainment,entertainment,38.40,0.72,0
+7941,Sports Clubs and Promoters,entertainment,entertainment,72.60,1.06,0
+7997,Membership Clubs and Gyms,entertainment,entertainment,64.80,0.62,0
+5816,Digital Goods and Games,streaming,entertainment,28.40,0.94,0
+8220,Colleges and Universities,education,education,1240.00,1.28,0
+8211,Elementary and Secondary Schools,education,education,486.00,1.14,0
+8398,Charitable Organizations,charity,other,86.40,1.34,0
+9399,Government Services,government,other,124.60,1.18,0
+9311,Tax Payments,government,other,684.00,1.46,0
+5200,Home Supply Warehouse,home_improvement,home,142.80,1.18,0
+5211,Lumber and Building Materials,home_improvement,home,186.40,1.26,0
+5712,Furniture and Home Furnishings,home_improvement,home,268.00,1.32,0
+7538,Auto Service Shops,auto_service,auto,246.80,1.08,0
+5533,Automotive Parts and Accessories,auto_service,auto,78.20,1.12,0
+5947,Gift and Novelty Shops,retail_general,retail,42.60,1.08,1
+5977,Cosmetic Stores,retail_general,retail,54.20,0.98,1
+5992,Florists,retail_general,retail,68.40,0.86,1
+7230,Beauty and Barber Shops,professional_services,other,48.60,0.78,1
+7216,Dry Cleaners,professional_services,other,32.40,0.68,1
+7210,Laundry Services,professional_services,other,28.80,0.72,1
+5698,Wig and Toupee Stores,retail_general,retail,124.00,1.02,1
+5971,Art Dealers and Galleries,retail_general,retail,386.00,1.52,1
+5932,Antique Shops,retail_general,retail,164.20,1.44,1
+5945,Hobby Toy and Game Shops,retail_general,retail,46.80,1.06,1
+5941,Sporting Goods Stores,retail_general,retail,96.40,1.16,1
+5940,Bicycle Shops,retail_general,retail,142.60,1.22,1
+5995,Pet Shops and Supplies,retail_general,retail,62.40,1.04,1
+5192,Books and Periodicals,retail_general,retail,38.20,0.96,1
+5261,Nurseries and Garden Supply,home_improvement,home,74.60,1.12,1
+7623,Air Conditioning Repair,professional_services,home,286.00,1.18,1
+7629,Electrical Repair Shops,professional_services,home,168.40,1.24,1
+7641,Furniture Reupholstery,professional_services,home,342.00,1.16,1
+5931,Used Merchandise Stores,retail_general,retail,38.60,1.28,1
+7392,Consulting and Public Relations,professional_services,business,486.00,1.48,1
+7349,Cleaning and Maintenance,professional_services,business,128.40,1.06,1
+7278,Buying and Shopping Services,professional_services,other,92.60,1.32,1
+8049,Podiatrists and Chiropractors,healthcare,healthcare,142.00,0.98,1
+8043,Opticians and Eyewear,healthcare,healthcare,218.40,1.06,1
+8050,Nursing and Personal Care,healthcare,healthcare,624.00,1.34,1
+8351,Child Care Services,education,education,486.00,0.88,1
+5697,Tailors and Alterations,professional_services,other,64.20,0.92,1
+5722,Household Appliance Stores,electronics,home,342.00,1.14,1
+5733,Music Stores and Instruments,retail_general,retail,128.60,1.36,1

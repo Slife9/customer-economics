@@ -1,0 +1,19 @@
+{
+  "profile": "default",
+  "seed": 20260920,
+  "customers": 5000,
+  "cycles": 24,
+  "from": "2023-01",
+  "to": "2024-12",
+  "transactions": 1194621,
+  "account_cycles": 120000,
+  "planted_defects": 584,
+  "measured_breakage": {
+    "points_earned": 54526151.29000001,
+    "points_redeemed": 29579556.84,
+    "breakage_rate": 0.4575161433514777
+  },
+  "measured_blended_earn": 1.0319145907941536,
+  "measured_interchange_rate": 0.017167376674675414,
+  "note": "Breakage, blended earn and interchange rate are MEASURED outputs of generated behaviour, not input parameters."
+}

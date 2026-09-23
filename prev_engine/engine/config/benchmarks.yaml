@@ -1,0 +1,104 @@
+# Realism benchmarks for Layer 2 validation.
+#
+# IMPORTANT: every range below is INDICATIVE and carries source: UNVERIFIED.
+# Before this suite is relied on, each range must be checked against a current
+# published source and the citation written into the `source` field. Several of
+# these figures move year to year. A benchmark without a citation is an opinion.
+#
+# Ranges are deliberately wide. The job is to catch the implausible
+# (a flat interchange rate, every programme earning identically), not to
+# tune the generator until it hits a midpoint.
+
+interchange_rate_blended:
+  min: 0.014
+  max: 0.024
+  unit: fraction_of_spend
+  source: UNVERIFIED
+  note: US credit interchange; varies by tier and MCC. Debit caps do not apply.
+
+interchange_tier_spread:
+  min: 0.0035
+  max: 0.020
+  unit: fraction
+  source: UNVERIFIED
+  note: gap between highest and lowest tier blended rate. A flat book fails here.
+
+reward_blended_earn_rate:
+  min: 0.8
+  max: 2.2
+  unit: units_per_dollar
+  source: UNVERIFIED
+
+reward_programme_earn_spread:
+  min: 0.5
+  max: 4.0
+  unit: units_per_dollar
+  source: UNVERIFIED
+  note: gap between richest and leanest earning programme. Catches uniform earn.
+
+reward_breakage_rate:
+  min: 0.08
+  max: 0.28
+  unit: fraction
+  source: UNVERIFIED
+  note: measure on MATURED vintages only, never on the whole window.
+
+reward_cost_share_of_interchange:
+  min: 0.35
+  max: 1.30
+  unit: fraction
+  source: UNVERIFIED
+
+revolver_share:
+  min: 0.35
+  max: 0.60
+  unit: fraction_of_active_accounts
+  source: UNVERIFIED
+
+transactor_share:
+  min: 0.30
+  max: 0.58
+  unit: fraction_of_active_accounts
+  source: UNVERIFIED
+
+average_utilization:
+  min: 0.18
+  max: 0.38
+  unit: fraction
+  source: UNVERIFIED
+
+delinquency_30plus_rate:
+  min: 0.015
+  max: 0.070
+  unit: fraction_of_accounts_per_cycle
+  source: UNVERIFIED
+
+lifetime_ecl_share_of_balance:
+  min: 0.03
+  max: 0.14
+  unit: fraction
+  source: UNVERIFIED
+
+calls_per_account_per_year:
+  min: 0.8
+  max: 4.0
+  unit: count
+  source: UNVERIFIED
+
+digital_sessions_per_account_per_year:
+  min: 8.0
+  max: 90.0
+  unit: count
+  source: UNVERIFIED
+
+annual_fee_incidence:
+  min: 0.10
+  max: 0.45
+  unit: fraction_of_accounts
+  source: UNVERIFIED
+
+average_apr:
+  min: 0.17
+  max: 0.26
+  unit: fraction
+  source: UNVERIFIED

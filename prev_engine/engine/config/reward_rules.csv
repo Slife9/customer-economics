@@ -1,0 +1,8 @@
+programme,currency,base_rate,bonus_categories,bonus_rate,annual_bonus_cap
+CASHBACK_1_5,USD,1.5,,1.5,0
+SECURED_CASHBACK_1,USD,1.0,,1.0,0
+LOW_RATE_NONE,NONE,0.0,,0.0,0
+OSU_VOICE_LOW_RATE,NONE,0.0,,0.0,0
+OSU_VOICE_REWARDS,POINTS,1.0,,1.0,0
+VOICE_REWARDS_3X,POINTS,1.0,travel_air|travel_lodging|travel_transit|restaurant,3.0,150000
+BUSINESS_CATEGORY_4,POINTS,1.0,business|online|fuel,4.0,200000

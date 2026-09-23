@@ -1,0 +1,209 @@
+# Realism benchmarks for Layer 2 validation.
+#
+# Every entry carries a real citation retrieved during this build (September
+# 2026). confidence: estimated means no primary source reports the figure
+# directly and the range is an anchored derivation - stated honestly rather
+# than dressed up with a fabricated citation. Ranges are deliberately wide:
+# the job is to catch the implausible, not to tune the generator to a midpoint.
+
+interchange_rate_blended:
+  min: 0.019
+  max: 0.026
+  unit: fraction_of_purchase_volume
+  source: "Nilson Report, Mastercard and Visa Cards in the US - 2025, Issue 1293, 2025"
+  url: "https://nilsonreport.com/articles/mastercard-and-visa-cards-in-the-us-2025/"
+  confidence: sourced
+
+interchange_tier_spread:
+  min: 0.003
+  max: 0.017
+  unit: fraction_of_purchase_volume
+  source: "Visa/Mastercard published US interchange schedules, compiled by ClearlyPayments, Interchange Rates by Credit Card Tier, 2025"
+  url: "https://www.clearlypayments.com/blog/interchange-rates-by-credit-card-tier/"
+  confidence: sourced
+  note: "gap between highest and lowest product tier's blended rate. A flat book fails here."
+
+reward_blended_earn_rate:
+  min: 0.010
+  max: 0.020
+  unit: units_per_dollar
+  source: "CFPB Consumer Credit Card Market Report, 2025 (rewards figures)"
+  url: "https://files.consumerfinance.gov/f/documents/cfpb_consumer-credit-card-market-report_2025.pdf"
+  confidence: sourced
+  note: "blended across rewards and non-rewards products; individual rewards cards run 1.5-2%+."
+
+reward_cost_share_of_interchange:
+  min: 0.45
+  max: 0.75
+  unit: fraction
+  source: "Derived: CFPB 2025 reward-cost figures over Nilson-reported aggregate US credit interchange revenue"
+  url: "https://files.consumerfinance.gov/f/documents/cfpb_consumer-credit-card-market-report_2025.pdf"
+  confidence: estimated
+  note: "no single published ratio exists; directional only."
+
+reward_breakage_rate:
+  min: 0.10
+  max: 0.20
+  unit: fraction
+  source: "Industry commentary citing Bond Brand Loyalty program data; no primary US credit-card-specific report located"
+  url: "https://www.voucherify.io/glossary/loyalty-breakage"
+  confidence: estimated
+  note: "MEASURE ON MATURED VINTAGES ONLY. Breakage on the current issuance window understates true breakage (young points have not had time to redeem or expire); breakage on rolling unredeemed-outstanding overstates it."
+
+revolver_share:
+  min: 0.38
+  max: 0.42
+  unit: fraction_of_active_accounts
+  source: "American Bankers Association, Credit Card Market Monitor, 2024 (Argus Information Services)"
+  url: "https://www.aba.com/news-research/analysis-guides/credit-card-market-monitor"
+  confidence: sourced
+  note: "ABA reports revolver 40.3% / transactor 36.1% / dormant 23.6% of accounts - the three must sum to 1.0."
+
+transactor_share:
+  min: 0.34
+  max: 0.38
+  unit: fraction_of_active_accounts
+  source: "American Bankers Association, Credit Card Market Monitor, 2024"
+  url: "https://www.aba.com/news-research/analysis-guides/credit-card-market-monitor"
+  confidence: sourced
+
+dormant_share:
+  min: 0.15
+  max: 0.30
+  unit: fraction_of_accounts
+  source: "American Bankers Association, Credit Card Market Monitor, 2024"
+  url: "https://www.aba.com/news-research/analysis-guides/credit-card-market-monitor"
+  confidence: sourced
+  note: "the remainder after revolver and transactor share; must reconcile to 1.0 with the two above."
+
+average_utilization:
+  min: 0.25
+  max: 0.32
+  unit: fraction
+  source: "Experian, 2025 Consumer Credit Review / State of Credit Cards, 2025"
+  url: "https://www.experian.com/blogs/ask-experian/consumer-credit-review/"
+  confidence: sourced
+  note: "29.1% as of September 2025. Aggregate/average differs from the per-consumer median; revolvers run far higher than transactors."
+
+delinquency_30plus_rate:
+  min: 0.028
+  max: 0.031
+  unit: fraction_of_balances
+  source: "Federal Reserve Board, Charge-Off and Delinquency Rates on Loans and Leases, DRCCLACBS series, 2025"
+  url: "https://www.federalreserve.gov/releases/chargeoff/delallsa.htm"
+  confidence: sourced
+  note: "the Fed's 30+ definition already includes 90+/nonaccrual - do not add the 90+ rate on top of this one."
+
+delinquency_90plus_rate_balance_based:
+  min: 0.010
+  max: 0.018
+  unit: fraction_of_balances
+  source: "Federal Reserve Bank of Philadelphia, FR Y-14M Large Bank Credit Card Data, RCCCBBALDPD90P, Q3 2025"
+  url: "https://fred.stlouisfed.org/series/RCCCBBALDPD90P"
+  confidence: sourced
+  note: "balance-based (1.62% in Q3 2025), not account-based (0.78%) - balances concentrate in delinquent accounts."
+
+net_charge_off_rate:
+  min: 0.045
+  max: 0.060
+  unit: fraction_of_balances_annualized
+  source: "Federal Reserve Bank of Philadelphia, FR Y-14M Large Bank Credit Card Data, RCCCBNCOPCT, 2025"
+  url: "https://fred.stlouisfed.org/series/RCCCBNCOPCT"
+  confidence: sourced
+  note: "ranged 4.99%-6.02% across 2025 quarters for large-bank portfolios; use a trailing 4-quarter average."
+
+net_charge_off_worst_to_best_score_band_ratio:
+  min: 8.0
+  max: 40.0
+  unit: ratio
+  source: "Directionally anchored on Federal Reserve Bank of Kansas City, Subprime Credit Card Delinquencies Have Fallen, 2025, and CFPB 2025 Market Report risk-tier discussion"
+  url: "https://www.kansascityfed.org/research/economic-bulletin/subprime-credit-card-delinquencies-have-fallen/"
+  confidence: estimated
+  note: "no published exact matrix by FICO band was retrieved; this is an ordering device (deep-subprime vs. superprime multiple), not a precise curve."
+
+average_apr_accounts_assessed_interest:
+  min: 0.220
+  max: 0.235
+  unit: fraction
+  source: "Federal Reserve Board, G.19 Consumer Credit release, Terms of Credit Card Plans, 2023-2025"
+  url: "https://www.federalreserve.gov/releases/g19/current/"
+  confidence: sourced
+  note: "rate on accounts ASSESSED interest (narrower than CFPB's all-product average APR of ~25.2% in 2024, which includes non-revolving and promotional accounts)."
+
+annual_fee_incidence:
+  min: 0.095
+  max: 0.27
+  unit: fraction_of_accounts
+  source: "CFPB, 2023 Consumer Credit Card Market Report, October 2023"
+  url: "https://files.consumerfinance.gov/f/documents/cfpb_consumer-credit-card-market-report_2023.pdf"
+  confidence: sourced
+  note: "27% for large issuers vs 9.5% for small issuers/credit unions; incidence declined 2022-2024 even as the average fee rose."
+
+average_annual_fee_fee_paying_accounts:
+  min: 94.0
+  max: 157.0
+  unit: usd_per_year
+  source: "CFPB, 2023 Consumer Credit Card Market Report, October 2023"
+  url: "https://files.consumerfinance.gov/f/documents/cfpb_consumer-credit-card-market-report_2023.pdf"
+  confidence: sourced
+
+calls_per_account_per_year:
+  min: 0.3
+  max: 1.2
+  unit: count
+  source: "No public issuer-level metric located; generic contact-center planning assumption"
+  url: ""
+  confidence: estimated
+  note: "weakest-sourced benchmark in this file - flagged, not fabricated."
+
+digital_sessions_per_account_per_year:
+  min: 40.0
+  max: 150.0
+  unit: count
+  source: "No public issuer-level metric located; anchored loosely on general retail-banking mobile engagement commentary"
+  url: ""
+  confidence: estimated
+
+revenue_per_active_account_year:
+  min: 300.0
+  max: 700.0
+  unit: usd_per_year
+  source: "Derived: CFPB 2025 aggregate interest (~$160B) and fee (~$25-30B) totals over an estimated US active general-purpose account count"
+  url: "https://files.consumerfinance.gov/f/documents/cfpb_consumer-credit-card-market-report_2025.pdf"
+  confidence: estimated
+  note: "excludes interchange revenue, which would add materially to the total; this is a back-of-envelope figure, not a directly reported metric."
+
+net_pretax_profit_per_account_year:
+  min: 80.0
+  max: 250.0
+  unit: usd_per_year
+  source: "Derived from Federal Reserve Board, Profitability of Credit Card Operations of Depository Institutions, 2024/2025 (specialized card bank ROA 3.33%-3.87%)"
+  url: "https://www.federalreserve.gov/publications/files/ccprofit2025.pdf"
+  confidence: estimated
+
+average_deposit_balance_per_customer:
+  min: 20000.0
+  max: 35000.0
+  unit: usd
+  source: "Federal Reserve Board, 2022 Survey of Consumer Finances (mean checking balance $16,891, plus savings)"
+  url: "https://www.federalreserve.gov/publications/files/scf23.pdf"
+  confidence: sourced
+  note: "mean is pulled far above median (~$2,800) by high-balance households; distribution should be heavily right-skewed, not normal."
+
+voluntary_attrition_rate:
+  min: 0.05
+  max: 0.08
+  unit: fraction_of_accounts_per_year
+  source: "R.K. Hammer bank-card industry model, as reported in trade press (~2012-2013 vintage; current reports are paywalled)"
+  url: "https://rkhammer.com/reports/"
+  confidence: estimated
+  note: "flagged stale - directional anchor only."
+
+lifetime_ecl_share_of_balance:
+  min: 0.07
+  max: 0.12
+  unit: fraction
+  source: "Capital One Financial Corp, Form 10-K FY2025 (domestic credit card allowance coverage ratio 7.18%)"
+  url: "https://www.sec.gov/Archives/edgar/data/927628/000092762826000024/cof-20251231.htm"
+  confidence: sourced
+  note: "subprime-skewed issuers typically run higher (~9-12%); upper bound not independently re-verified this pass."

@@ -1,0 +1,8 @@
+Program Code,Program Name,Currency,Base Earn Rate,Bonus Reward Categories,Bonus Earn Rate,Annual Bonus Spend Cap USD,Nominal Point Value Cents,Points Expire After Months,Expire On Inactivity Months
+SECURED_CASHBACK_1,Secured Cash Back,cashback,1.00,,0.00,0,1.15,0,0
+CORE_LOW_RATE_NO_REWARDS,Core Low Rate,none,0.00,,0.00,0,0.00,0,0
+CORE_CASHBACK_1_5,Core Cash Back,cashback,1.50,,0.00,0,1.15,0,0
+EVERYDAY_3X_GROCERY_GAS,Everyday Rewards,points,1.00,grocery|gas,3.00,6000,1.15,22,12
+TRAVEL_REWARDS_3X,Travel Rewards,points,1.00,travel|dining,3.00,0,1.15,24,14
+PREMIUM_TRAVEL_5X,Premium Travel Rewards,points,1.00,travel,5.00,0,1.15,24,14
+BUSINESS_CATEGORY_4X,Business Rewards,points,1.00,business,4.00,20000,1.15,22,12

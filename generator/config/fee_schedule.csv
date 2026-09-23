@@ -1,0 +1,16 @@
+Fee Code,Fee Name,Product Tier,Fee Basis,Fee Amount USD,Fee Rate Percent,Minimum USD,Effective From,Effective To,Regulatory Reference,Notes
+ANNUAL_FEE,Annual Membership Fee,Secured Standard,per_year,0.00,0.00,0.00,2018-01,,,Secured product carries no annual fee
+ANNUAL_FEE,Annual Membership Fee,Standard,per_year,0.00,0.00,0.00,2018-01,,,Fee bearing variants set at account level
+ANNUAL_FEE,Annual Membership Fee,World,per_year,95.00,0.00,0.00,2018-01,,,Charged on the account anniversary cycle
+ANNUAL_FEE,Annual Membership Fee,World Elite,per_year,395.00,0.00,0.00,2018-01,,,Charged on the account anniversary cycle
+LATE_FEE_FIRST,Late Payment Fee First Violation,ALL,per_event,32.00,0.00,0.00,2022-01,,Reg Z 1026.52(b)(1)(ii)(A),Safe harbor capped at the minimum payment due
+LATE_FEE_SUBSEQUENT,Late Payment Fee Subsequent Violation,ALL,per_event,43.00,0.00,0.00,2022-01,,Reg Z 1026.52(b)(1)(ii)(B),Applies within six billing cycles of a prior violation
+RETURNED_PAYMENT_FEE,Returned Payment Fee,ALL,per_event,32.00,0.00,0.00,2022-01,,Reg Z 1026.52(b)(1)(ii)(A),Safe harbor capped at the minimum payment due
+CASH_ADVANCE_FEE,Cash Advance Fee,ALL,percent_of_amount,0.00,5.00,10.00,2018-01,2023-12,,Greater of the stated minimum or the percentage
+CASH_ADVANCE_FEE,Cash Advance Fee,ALL,percent_of_amount,0.00,5.00,12.00,2024-01,,,Minimum raised January 2024
+FOREIGN_TRANSACTION_FEE,Foreign Transaction Fee,Secured Standard,percent_of_amount,0.00,3.00,0.00,2018-01,,,Applied to transactions settled outside the United States
+FOREIGN_TRANSACTION_FEE,Foreign Transaction Fee,Standard,percent_of_amount,0.00,3.00,0.00,2018-01,,,Applied to transactions settled outside the United States
+FOREIGN_TRANSACTION_FEE,Foreign Transaction Fee,World,percent_of_amount,0.00,0.00,0.00,2018-01,,,Waived as a product benefit
+FOREIGN_TRANSACTION_FEE,Foreign Transaction Fee,World Elite,percent_of_amount,0.00,0.00,0.00,2018-01,,,Waived as a product benefit
+BALANCE_TRANSFER_FEE,Balance Transfer Fee,ALL,percent_of_amount,0.00,3.00,5.00,2018-01,,,Greater of the stated minimum or the percentage
+EXPEDITED_CARD_FEE,Expedited Card Replacement Fee,ALL,per_event,35.00,0.00,0.00,2018-01,,,Charged when a replacement card is expedited

@@ -1,0 +1,77 @@
+State,ZIP3,Population Weight,Metro Name
+CA,900,0.0310,Los Angeles
+CA,941,0.0155,San Francisco
+CA,921,0.0110,San Diego
+CA,958,0.0095,Sacramento
+TX,770,0.0235,Houston
+TX,752,0.0210,Dallas
+TX,787,0.0120,Austin
+TX,782,0.0105,San Antonio
+FL,331,0.0195,Miami
+FL,328,0.0115,Orlando
+FL,335,0.0105,Tampa
+FL,322,0.0075,Jacksonville
+NY,100,0.0260,New York
+NY,112,0.0150,Brooklyn
+NY,142,0.0060,Buffalo
+PA,191,0.0130,Philadelphia
+PA,152,0.0080,Pittsburgh
+IL,606,0.0205,Chicago
+IL,617,0.0045,Springfield
+OH,441,0.0080,Cleveland
+OH,432,0.0075,Columbus
+OH,452,0.0065,Cincinnati
+GA,303,0.0175,Atlanta
+GA,314,0.0040,Macon
+NC,282,0.0105,Charlotte
+NC,276,0.0085,Raleigh
+MI,482,0.0110,Detroit
+MI,495,0.0045,Grand Rapids
+NJ,070,0.0115,Newark
+NJ,085,0.0060,Trenton
+VA,232,0.0075,Richmond
+VA,201,0.0090,Arlington
+WA,981,0.0130,Seattle
+WA,992,0.0035,Spokane
+AZ,850,0.0135,Phoenix
+AZ,857,0.0045,Tucson
+MA,021,0.0125,Boston
+MA,016,0.0040,Worcester
+TN,371,0.0080,Nashville
+TN,381,0.0060,Memphis
+IN,462,0.0070,Indianapolis
+MO,631,0.0065,Saint Louis
+MO,641,0.0060,Kansas City
+MD,212,0.0085,Baltimore
+WI,532,0.0060,Milwaukee
+CO,802,0.0095,Denver
+MN,554,0.0085,Minneapolis
+SC,292,0.0055,Columbia
+AL,352,0.0050,Birmingham
+LA,701,0.0055,New Orleans
+KY,402,0.0050,Louisville
+OR,972,0.0065,Portland
+OK,731,0.0045,Oklahoma City
+CT,061,0.0055,Hartford
+UT,841,0.0050,Salt Lake City
+NV,891,0.0055,Las Vegas
+IA,503,0.0035,Des Moines
+KS,662,0.0030,Kansas City KS
+AR,722,0.0030,Little Rock
+MS,392,0.0025,Jackson
+NE,681,0.0025,Omaha
+NM,871,0.0025,Albuquerque
+WV,253,0.0020,Charleston
+ID,837,0.0025,Boise
+NH,031,0.0020,Manchester
+ME,041,0.0020,Portland ME
+RI,029,0.0015,Providence
+MT,591,0.0012,Billings
+DE,198,0.0012,Wilmington
+SD,571,0.0010,Sioux Falls
+ND,581,0.0010,Fargo
+AK,995,0.0010,Anchorage
+VT,054,0.0008,Burlington
+WY,820,0.0007,Cheyenne
+HI,968,0.0018,Honolulu
+DC,200,0.0022,Washington

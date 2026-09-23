@@ -1,0 +1,8 @@
+Redemption Channel,Cost Per Point Cents,Applies To Currency,Notes
+statement_credit,1.25,cashback|points,Face value redemption against the balance
+cash_back,1.25,cashback,Direct cash back to a linked account
+travel_portal,1.70,points,Issuer travel portal redeeming above face value
+transfer_partner,2.05,points,Transfer to an airline or hotel partner at highest real cost
+merchandise,0.95,points,Merchandise catalog at lowest real cost per point
+gift_card,1.10,points,Third party gift cards purchased at a discount
+charity_donation,1.25,points|cashback,Donation at face value
