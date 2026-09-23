@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "streamlit", "run", "app/Home.py", "--server.headless", "true"],
       "port": 8501
+    },
+    {
+      "name": "profitinsight-datagen",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "streamlit", "run", "datagen_app/Home.py", "--server.headless", "true", "--server.port", "8502"],
+      "port": 8502
     }
   ]
 }

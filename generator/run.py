@@ -105,11 +105,14 @@ def cycle_list(start="2023-01", n=36):
     return out
 
 
-def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: int | None):
+def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: int | None,
+          overrides: dict | None = None):
     prof = dict(PROFILES[profile_name])
     prof["name"] = profile_name
     if n_override:
         prof["n"] = n_override
+    if overrides:
+        prof.update(overrides)
     rng = np.random.default_rng(seed)
     cycles = cycle_list(n=n_cycles)
     n, n_cyc = prof["n"], len(cycles)
