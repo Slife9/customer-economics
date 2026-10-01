@@ -26,4 +26,7 @@ A ready-to-use demo portfolio is bundled — the app's home page has a one-click
 - `generator/` — synthetic portfolio data generator (demo data only; no real customer data)
 - `engine/` — the analysis pipeline: data contract validation, economic ledger, customer-level view, lever routing and sizing, governance checks
 - `app/` — the Streamlit application
+- `datagen_app/` — a second, standalone Streamlit app that generates a fresh synthetic test portfolio via a few sliders (scenario, size, horizon, data-quality issue rate), deployed separately so anyone can create new test data without touching the generator directly
 - `samples/` — a ready-to-use demo portfolio, bundled for trying the app immediately
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full technical reference — the engine's pipeline internals, every lever's logic, the bug-fix history, deployment details, and open items. `generator/README.md` and `app/README.md` cover those two pieces in their own depth.
