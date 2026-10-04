@@ -97,6 +97,21 @@ contract → ledger → customer_view → suppression → routing → levers →
    needs (`avg_utilization_12m`, `peak_utilization_12m`, `spend_to_limit_ratio`,
    `transactor_share_12m`, `inactive_share_12m`, `account_age_months`).
 
+   It also computes **customer acquisition cost (CAC) payback** as a
+   deliberately *separate* lifetime metric (`_compute_cac_payback()`):
+   `acquisition_cost_usd`, `cumulative_net_value_since_acquisition`,
+   `cac_payback_months`, and `cac_payback_status` (`Recovered` /
+   `Not yet recovered` / `Unknown - predates observation window` /
+   `Unknown - no acquisition cost data`). This is intentionally never blended
+   into `trailing_12m_net_economic_profit` or the CEV score — CAC is a
+   one-time cost, and folding it into a monthly flow metric would require
+   assuming an amortization schedule, which is a parameter, not a
+   measurement. It's also only ever reported for accounts whose open cycle is
+   a genuine in-window observation, not the floored open-date the generator
+   assigns to accounts that predate the data window (see
+   `generator/README.md`) — reporting a confident payback number for an
+   account of unknown true age would be a guess dressed as a measurement.
+
 4. **`core/suppression.py`** — removes hardship, accommodation-plan, and SCRA
    customers from ever being flagged or routed. Returns a `SuppressedPopulation`
    wrapper (not a plain DataFrame). **This is the key governance mechanism**:
