@@ -23,6 +23,123 @@ def _trailing_window(cycles: list[str], months: int = 12) -> list[str]:
     return sorted(cycles)[-months:]
 
 
+def _compute_cac_payback(ledger: dict, portfolio, cycle_position: dict,
+                         earliest_open: pd.DataFrame | None) -> pd.DataFrame:
+    """Lifetime payback view: has this customer's cumulative relationship
+    profit, since their card was actually acquired, exceeded what it cost to
+    acquire them - and if so, how many months did it take?
+
+    Deliberately kept separate from trailing_12m_net_economic_profit (CEV).
+    CAC is a one-time cost, not a monthly one; folding it into a trailing-
+    window flow metric would require ASSUMING an amortization schedule (how
+    many months to spread it over), which is a parameter, not a measurement.
+    This instead measures the customer's real cumulative history and reports
+    when it actually crossed the acquisition cost - or honestly says it
+    hasn't, or that the data can't support an answer.
+
+    A payback figure is only ever reported when the data can actually
+    support it:
+      - acquisition cost data must exist (Table23_Acquisition.csv with an
+        'Acquisition Cost USD' column) - this table is optional, so many
+        uploads won't have it
+      - the account's open cycle must be a GENUINE observation, not the
+        floor the generator applies to accounts that predate the data
+        window (see generator/README.md) - an account open since cycle 0 of
+        the window could be brand new or could be ten years old with its
+        true open date floored to the window start, and there is no way to
+        tell those apart from this data. Reporting a confident payback
+        number for that account would be a guess dressed as a measurement,
+        so it is reported as unknown instead.
+    """
+    out = portfolio["Table1_Customer.csv"][["Masked Customer Number"]].copy()
+    out["acquisition_cost_usd"] = np.nan
+    out["acquisition_channel"] = pd.NA
+    out["cumulative_net_value_since_acquisition"] = np.nan
+    out["cac_payback_months"] = np.nan
+    out["cac_payback_status"] = "Unknown - no acquisition cost data"
+
+    acquisition = portfolio.get("Table23_Acquisition.csv")
+    if acquisition is None or "Acquisition Cost USD" not in acquisition.columns:
+        return out
+
+    accounts = portfolio["Table2_Card_Account.csv"]
+    acct_to_cust = accounts.set_index("Masked Account Number")["Masked Customer Number"]
+    acq = acquisition.copy()
+    acq["Masked Customer Number"] = acq["Masked Account Number"].map(acct_to_cust)
+    cac_by_cust = acq.groupby("Masked Customer Number").agg(
+        acquisition_cost_usd=("Acquisition Cost USD", "sum"),
+        acquisition_channel=("Acquisition Channel", "first")).reset_index()
+
+    out = out.drop(columns=["acquisition_cost_usd", "acquisition_channel"]).merge(
+        cac_by_cust, on="Masked Customer Number", how="left")
+    has_cac = out["acquisition_cost_usd"].notna()
+    out.loc[has_cac, "cac_payback_status"] = "Not yet recovered"
+
+    if earliest_open is None:
+        out.loc[has_cac, "cac_payback_status"] = "Unknown - predates observation window"
+        return out
+
+    # earliest_open is a Series indexed by Masked Customer Number (the
+    # groupby key), not a DataFrame - see its construction above.
+    open_position = earliest_open.map(cycle_position)
+    genuine_open = open_position[open_position > 0]  # strictly after window start
+
+    relevant = set(genuine_open.index) & set(out.loc[has_cac, "Masked Customer Number"])
+    ambiguous = set(out.loc[has_cac, "Masked Customer Number"]) - relevant
+    out.loc[out["Masked Customer Number"].isin(ambiguous), "cac_payback_status"] = \
+        "Unknown - predates observation window"
+    if not relevant:
+        return out
+
+    # Full (unwindowed) relationship history, customer x cycle - the same
+    # three ledgers trailing_12m_net_economic_profit uses, just not clipped
+    # to the trailing window.
+    card_full = ledger["card"].groupby(
+        ["Masked Customer Number", "Cycle Month"], as_index=False)["net_economic_profit"].sum()
+    hist = card_full.merge(ledger["deposit_by_customer"],
+                           on=["Masked Customer Number", "Cycle Month"], how="outer")
+    hist = hist.merge(ledger["loan_by_customer"],
+                      on=["Masked Customer Number", "Cycle Month"], how="outer")
+    for c in ["net_economic_profit", "deposit_net", "loan_net"]:
+        if c not in hist.columns:
+            hist[c] = 0.0
+    hist = hist.fillna({"net_economic_profit": 0.0, "deposit_net": 0.0, "loan_net": 0.0})
+    hist["relationship_net"] = (hist["net_economic_profit"] + hist["deposit_net"]
+                                + hist["loan_net"])
+    hist["_pos"] = hist["Cycle Month"].map(cycle_position)
+    hist = hist[hist["Masked Customer Number"].isin(relevant)]
+
+    cac_map = out.set_index("Masked Customer Number")["acquisition_cost_usd"]
+
+    def _payback(group: pd.DataFrame) -> pd.Series:
+        cust = group.name
+        open_pos = genuine_open[cust]
+        cac_amt = float(cac_map[cust])
+        g = group[group["_pos"] >= open_pos].sort_values("_pos")
+        if not len(g):
+            return pd.Series({"cumulative_net_value_since_acquisition": np.nan,
+                              "cac_payback_months": np.nan,
+                              "cac_payback_status": "Not yet recovered"})
+        cum = g["relationship_net"].cumsum()
+        hit = cum[cum >= cac_amt]
+        if len(hit):
+            months = float(g["_pos"].loc[hit.index[0]] - open_pos + 1)
+            status = "Recovered"
+        else:
+            months = np.nan
+            status = "Not yet recovered"
+        return pd.Series({"cumulative_net_value_since_acquisition": float(cum.iloc[-1]) - cac_amt,
+                          "cac_payback_months": months, "cac_payback_status": status})
+
+    if len(hist):
+        res = hist.groupby("Masked Customer Number").apply(_payback)
+        out = out.set_index("Masked Customer Number")
+        out.update(res)
+        out = out.reset_index()
+
+    return out
+
+
 def build(ledger: dict, portfolio, trailing_months: int = 12) -> pd.DataFrame:
     portfolio_customers = portfolio["Table1_Customer.csv"]
     accounts = portfolio["Table2_Card_Account.csv"]
@@ -111,6 +228,9 @@ def build(ledger: dict, portfolio, trailing_months: int = 12) -> pd.DataFrame:
     cv = cv.merge(annual_fee_total, on="Masked Customer Number", how="left")
     if earliest_open is not None:
         cv = cv.merge(earliest_open, on="Masked Customer Number", how="left")
+
+    cac = _compute_cac_payback(ledger, portfolio, cycle_position, earliest_open)
+    cv = cv.merge(cac, on="Masked Customer Number", how="left")
 
     for c in ["card_net", "card_revenue", "reward_expense", "funding_cost",
              "credit_cost", "cost_to_serve", "cost_to_serve_marginal",

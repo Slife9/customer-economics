@@ -180,6 +180,28 @@ if picked:
     p3.metric("Segment / Score", f"{row['Segment']} / {row['Credit Score Band']}")
     p4.metric("Products held", int(row["products_held"]))
 
+    cac_status = row.get("cac_payback_status", "Unknown - no acquisition cost data")
+    if cac_status == "Recovered":
+        st.success(
+            f"**Acquisition cost recovered** — ${row['acquisition_cost_usd']:,.0f} spent "
+            f"via {row['acquisition_channel']}, paid back in "
+            f"{row['cac_payback_months']:.0f} months. Lifetime value since acquisition, "
+            f"net of that cost: ${row['cumulative_net_value_since_acquisition']:,.0f}.")
+    elif cac_status == "Not yet recovered":
+        st.warning(
+            f"**Acquisition cost not yet recovered** — ${row['acquisition_cost_usd']:,.0f} "
+            f"spent via {row['acquisition_channel']}; cumulative relationship profit since "
+            f"acquisition is still ${row['cumulative_net_value_since_acquisition']:,.0f} short "
+            f"of break-even. Not a forecast of whether it ever will be.")
+    elif cac_status == "Unknown - predates observation window":
+        st.caption(
+            "Acquisition cost on file "
+            f"(${row['acquisition_cost_usd']:,.0f} via {row['acquisition_channel']}), but this "
+            "account's true open date predates the data window, so when it was actually "
+            "acquired — and therefore whether it has paid back — can't be measured here.")
+    else:
+        st.caption("No acquisition cost data in this upload — payback can't be assessed.")
+
     fig = go.Figure(go.Waterfall(
         orientation="v", measure=["relative", "relative", "relative", "total"],
         x=["Card", "Deposit", "Loan", "Total (trailing 12mo)"],
