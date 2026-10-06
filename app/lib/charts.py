@@ -126,6 +126,65 @@ def fairness_chart(fairness_df: pd.DataFrame, title: str) -> go.Figure:
     return fig
 
 
+CAC_STATUS_COLORS = {
+    "Recovered": COLORS["net_pos"], "Not yet recovered": COLORS["amber"],
+    "Unknown - predates observation window": COLORS["neutral"],
+    "Unknown - no acquisition cost data": "#cbd5e1",
+}
+CAC_STATUS_ORDER = ["Recovered", "Not yet recovered",
+                   "Unknown - predates observation window",
+                   "Unknown - no acquisition cost data"]
+
+
+def cac_payback_status_chart(customer_view: pd.DataFrame) -> go.Figure:
+    counts = customer_view["cac_payback_status"].value_counts().reindex(
+        CAC_STATUS_ORDER).fillna(0)
+    colors = [CAC_STATUS_COLORS[s] for s in counts.index]
+    fig = go.Figure(go.Bar(
+        x=counts.index, y=counts.to_numpy(), marker_color=colors,
+        text=counts.to_numpy().astype(int), textposition="outside"))
+    fig.update_layout(title="Customers by CAC Payback Status",
+                      yaxis_title="Customers", height=420, margin=dict(t=60, b=100))
+    fig.update_xaxes(tickangle=-20)
+    return fig
+
+
+def cac_payback_months_histogram(customer_view: pd.DataFrame) -> go.Figure:
+    recovered = customer_view.loc[customer_view["cac_payback_status"] == "Recovered",
+                                  "cac_payback_months"].dropna()
+    fig = go.Figure(go.Histogram(x=recovered, marker_color=COLORS["revenue"],
+                                 xbins=dict(size=1)))
+    fig.update_layout(title="Months to Recover Acquisition Cost (recovered customers only)",
+                      xaxis_title="Months since acquisition", yaxis_title="Customers",
+                      height=380, margin=dict(t=60, b=20))
+    return fig
+
+
+def cac_by_channel_table(customer_view: pd.DataFrame) -> pd.DataFrame:
+    """Per-channel CAC and payback - the measured channel-quality signal
+    that complements L6's net-value-after-CAC ranking (concept: L6 asks
+    which channel produces more value net of cost; this asks what share of
+    a channel's own cohort has actually earned that cost back)."""
+    df = customer_view[customer_view["acquisition_cost_usd"].notna()].copy()
+    if not len(df):
+        return pd.DataFrame()
+    measurable = df[df["cac_payback_status"].isin(["Recovered", "Not yet recovered"])]
+    by_channel = df.groupby("acquisition_channel", observed=True).agg(
+        customers=("Masked Customer Number", "nunique"),
+        avg_acquisition_cost=("acquisition_cost_usd", "mean"),
+    )
+    if len(measurable):
+        rec_share = (measurable.groupby("acquisition_channel", observed=True)
+                    ["cac_payback_status"].apply(lambda s: (s == "Recovered").mean()))
+        avg_months = (measurable[measurable["cac_payback_status"] == "Recovered"]
+                     .groupby("acquisition_channel", observed=True)["cac_payback_months"].mean())
+        measurable_n = measurable.groupby("acquisition_channel", observed=True).size()
+        by_channel["measurable_customers"] = measurable_n
+        by_channel["recovered_share_of_measurable"] = rec_share
+        by_channel["avg_months_to_recover"] = avg_months
+    return by_channel.reset_index().sort_values("avg_acquisition_cost")
+
+
 def leakage_bar(leakage_df: pd.DataFrame) -> go.Figure:
     df = leakage_df.copy()
     df["value"] = df["priced_value_usd"].fillna(0.0)
