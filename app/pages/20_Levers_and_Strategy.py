@@ -312,38 +312,60 @@ if picked:
                                   yaxis_title="USD/month", margin=dict(t=50, b=20))
                 st.plotly_chart(fig, width="stretch")
 
-                st.markdown("**Average per month, by line item:**")
+                st.markdown("**Average per month, by individual line item:**")
                 avg_row = monthly.drop(columns=["Cycle Month"]).mean()
-                a1, a2, a3, a4 = st.columns(4)
-                a1.metric("Interest + interchange + fees", f"${avg_row['total_revenue']:,.2f}")
-                a2.metric("Rewards + funding + credit + servicing + capital",
-                         f"-${avg_row['total_cost']:,.2f}")
-                a3.metric("...of which risk cost of holding money (credit + capital)",
-                         f"-${avg_row['credit_cost'] + avg_row['capital_cost']:,.2f}")
-                a4.metric("Net economic profit / month", f"${avg_row['net_economic_profit']:,.2f}")
 
-                st.markdown("**Cost to serve, split — this is what usually explains a "
-                          "'dormant card still costs us money' finding:**")
-                b1, b2 = st.columns(2)
-                b1.metric("Caused by THIS customer's own activity",
-                         f"${avg_row['cost_to_serve_marginal']:,.2f}/mo",
-                         help="Calls, digital sessions, disputes this specific "
-                             "account generated, at the true per-unit variable "
-                             "cost. Zero for a genuinely unused card.")
-                b2.metric("Allocated share of shared servicing overhead",
-                         f"${avg_row['cost_to_serve_fixed_allocated']:,.2f}/mo",
-                         help="An even split of the call center/digital "
-                             "platform's fixed capacity cost across every "
-                             "active account, whether or not they use it. "
-                             "Real, but not caused by this customer, and not "
-                             "something a per-customer action can change - "
-                             "closing this account would not remove it, only "
-                             "reallocate it across the accounts that remain.")
+                line_items = [
+                    ("Interest revenue", avg_row["interest_revenue"], "Revenue"),
+                    ("Interchange revenue", avg_row["interchange_revenue"], "Revenue"),
+                    ("Fee revenue", avg_row["fee_revenue"], "Revenue"),
+                    ("Reward expense", -avg_row["reward_expense"], "Cost"),
+                    ("Funding cost", -avg_row["funding_cost"], "Cost"),
+                    ("Credit cost", -avg_row["credit_cost"], "Cost"),
+                    ("Cost to serve — caused by this customer",
+                     -avg_row["cost_to_serve_marginal"], "Cost"),
+                    ("Cost to serve — shared overhead allocation",
+                     -avg_row["cost_to_serve_fixed_allocated"], "Cost"),
+                    ("Capital cost", -avg_row["capital_cost"], "Cost"),
+                ]
+                items_df = pd.DataFrame(line_items, columns=["Line item", "Avg $/month", "Kind"])
+
+                fig = go.Figure(go.Bar(
+                    y=items_df["Line item"], x=items_df["Avg $/month"], orientation="h",
+                    marker_color=["#2563eb" if k == "Revenue" else "#ef4444"
+                                 for k in items_df["Kind"]],
+                    text=[f"${v:,.2f}" for v in items_df["Avg $/month"]],
+                    textposition="outside"))
+                fig.update_layout(
+                    title="What makes up the average month, line by line",
+                    xaxis_title="USD/month", height=420,
+                    margin=dict(t=50, b=20, l=10),
+                    yaxis=dict(autorange="reversed"))
+                st.plotly_chart(fig, width="stretch")
+
+                st.dataframe(
+                    items_df.style.format({"Avg $/month": "${:,.2f}"}),
+                    width="stretch", height=320, hide_index=True)
+
+                n1, n2, n3 = st.columns(3)
+                n1.metric("Total revenue / month", f"${avg_row['total_revenue']:,.2f}")
+                n2.metric("Total cost / month", f"-${avg_row['total_cost']:,.2f}")
+                n3.metric("Net economic profit / month", f"${avg_row['net_economic_profit']:,.2f}")
+
+                st.caption("**Cost to serve is split into two rows above** — this is what "
+                          "usually explains a 'dormant card still costs us money' finding. "
+                          "*Caused by this customer* is calls, digital sessions, and "
+                          "disputes this specific account generated, at the true per-unit "
+                          "variable cost — zero for a genuinely unused card. *Shared overhead "
+                          "allocation* is an even split of the call center/digital platform's "
+                          "fixed capacity cost across every active account, whether or not "
+                          "they use it — real, but not caused by this customer, and not "
+                          "something a per-customer action can change.")
                 if avg_row["cost_to_serve_marginal"] < 0.01:
                     st.caption("This customer generated essentially no service "
                               "requests of their own - the cost to serve shown "
-                              "elsewhere is almost entirely the shared-overhead "
-                              "allocation above, not anything they did.")
+                              "above is almost entirely the shared-overhead "
+                              "allocation, not anything they did.")
 
                 st.markdown("**Full monthly breakdown:**")
                 st.dataframe(monthly.style.format({c: "${:,.2f}" for c in monthly.columns
