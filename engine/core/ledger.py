@@ -349,3 +349,4 @@ def _reconcile(L: pd.DataFrame, tx: pd.DataFrame, redemption: pd.DataFrame,
             f"Reconciliation failure: ledger has {len(L)} rows, "
             f"Table4_Account_Cycle has {len(cyc)} rows. One ledger row per "
             f"account-cycle is required (validation section 10).")
+
