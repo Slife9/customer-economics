@@ -389,22 +389,32 @@ if picked:
                 # used, then sliced to just this customer's own account-cycles
                 # - so it reconciles exactly with the combined figures above.
                 n_months = len(monthly)
-                drv_all = portfolio["Table12_Cost_Drivers.csv"]
-                pools_all = portfolio["Table11_Cost_Pools.csv"]
-                by_activity = ENGINE_LEDGER.cost_to_serve_by_activity(drv_all, pools_all)
-                cust_drv_mask = drv_all["Masked Account Number"].isin(cust_accts)
-
                 activity_rows = []
-                for activity, (marg, fixed) in by_activity.items():
-                    m_sum = float(marg.loc[cust_drv_mask].sum())
-                    f_sum = float(fixed.loc[cust_drv_mask].sum())
-                    if n_months and (abs(m_sum) >= 0.005 or abs(f_sum) >= 0.005):
-                        activity_rows.append({
-                            "Activity": ACTIVITY_LABELS.get(activity, activity),
-                            "Caused by this customer": -m_sum / n_months,
-                            "Shared overhead allocation": -f_sum / n_months,
-                            "Total": -(m_sum + f_sum) / n_months,
-                        })
+                # Defensive: a deployment that hasn't yet picked up this
+                # engine function (Streamlit Cloud can lag a redeploy behind
+                # a push - see ARCHITECTURE.md) must degrade to the combined
+                # figures above, never hard-crash the whole page.
+                if hasattr(ENGINE_LEDGER, "cost_to_serve_by_activity"):
+                    drv_all = portfolio["Table12_Cost_Drivers.csv"]
+                    pools_all = portfolio["Table11_Cost_Pools.csv"]
+                    by_activity = ENGINE_LEDGER.cost_to_serve_by_activity(drv_all, pools_all)
+                    cust_drv_mask = drv_all["Masked Account Number"].isin(cust_accts)
+
+                    for activity, (marg, fixed) in by_activity.items():
+                        m_sum = float(marg.loc[cust_drv_mask].sum())
+                        f_sum = float(fixed.loc[cust_drv_mask].sum())
+                        if n_months and (abs(m_sum) >= 0.005 or abs(f_sum) >= 0.005):
+                            activity_rows.append({
+                                "Activity": ACTIVITY_LABELS.get(activity, activity),
+                                "Caused by this customer": -m_sum / n_months,
+                                "Shared overhead allocation": -f_sum / n_months,
+                                "Total": -(m_sum + f_sum) / n_months,
+                            })
+                else:
+                    st.caption("Per-activity detail needs a newer engine build than this "
+                              "deployment is currently running - showing the combined "
+                              "figures above only. This resolves itself on the next "
+                              "successful redeploy, no action needed here.")
 
                 st.markdown("**Cost to serve, by activity — what actually drove it:**")
                 if activity_rows:
@@ -415,7 +425,7 @@ if picked:
                                                    "Shared overhead allocation", "Total"]}),
                         width="stretch", height=min(320, 46 + 36 * len(activity_df)),
                         hide_index=True)
-                else:
+                elif hasattr(ENGINE_LEDGER, "cost_to_serve_by_activity"):
                     st.caption("No activity volume recorded for this customer in any "
                               "servicing category.")
 
@@ -433,8 +443,14 @@ if picked:
                     ("Funding cost", avg_row["funding_cost"]),
                     ("Credit cost", avg_row["credit_cost"]),
                 ]
-                for r in activity_rows:
-                    out_rows.append((f"Cost to serve — {r['Activity']}", -r["Total"]))
+                if activity_rows:
+                    for r in activity_rows:
+                        out_rows.append((f"Cost to serve — {r['Activity']}", -r["Total"]))
+                else:
+                    # Degraded mode (see the hasattr guard above) or genuinely
+                    # zero activity either way - fall back to the combined
+                    # figure so the ledger still reconciles to the correct total.
+                    out_rows.append(("Cost to serve", avg_row["cost_to_serve"]))
                 out_rows.append(("Capital cost", avg_row["capital_cost"]))
 
                 total_in = sum(v for _, v in in_rows)
