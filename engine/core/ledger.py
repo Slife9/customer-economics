@@ -107,31 +107,31 @@ ACTIVITY_DRIVER_COLUMN = {
 }
 
 
-def _cost_to_serve(drv: pd.DataFrame, pools: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
-    """Per (account, cycle) Tier 1 + Tier 2 cost to serve, split into two
-    series that get reported separately - collapsing them into one number
-    is what made a completely unused card look like it was "costing money to
-    serve."
+def cost_to_serve_by_activity(drv: pd.DataFrame, pools: pd.DataFrame
+                              ) -> dict[str, tuple[pd.Series, pd.Series]]:
+    """Per (account, cycle) Tier 1 + Tier 2 cost to serve, kept separate BY
+    ACTIVITY (contact-center calls, paper statements, digital sessions, and
+    so on) - each itself split into the same two components _cost_to_serve()
+    below sums together:
 
-    MARGINAL: the share this specific account actually caused - its own call,
-    session, and dispute volume, multiplied by the true per-unit variable
-    cost. This is zero for an account with zero activity, correctly.
+    MARGINAL: the share this specific account actually caused for that one
+    activity - its own call, session, or dispute volume, at the true
+    per-unit variable cost. Zero for an account with zero activity of that
+    kind, correctly.
 
-    FIXED (allocated): an even split of the servicing platform's shared
-    capacity cost (the call center exists, the digital platform exists,
-    whether or not this one account uses it) across every active account
-    that cycle. This is standard activity-based costing - a real bank's
-    aggregate P&L legitimately includes it - but it is NOT something a
-    lever aimed at one customer can change, because closing or fixing this
-    one account does not shrink the shared platform; the same fixed cost
-    just gets reallocated across the accounts that remain. Routing (which
-    cost dominates THIS customer's own situation) uses marginal only, for
-    exactly that reason.
+    FIXED (allocated): an even split of THAT activity's shared capacity cost
+    (the call center exists, the digital platform exists, whether or not
+    this one account uses it) across every active account that cycle. Real,
+    but not something a lever aimed at one customer can change - closing
+    this one account does not shrink the shared platform, the same fixed
+    cost just gets reallocated across the accounts that remain.
+
+    This is the finer-grained version a customer-level drill-down needs to
+    show WHICH activity actually drove the cost, not just how much.
     """
     pools = pools[pools["Allocation Tier"] != "Tier 3"]
-    marginal = pd.Series(0.0, index=drv.index)
-    fixed_alloc = pd.Series(0.0, index=drv.index)
     n_active_by_cycle = drv.groupby("Cycle Month").size()
+    by_activity: dict[str, tuple[pd.Series, pd.Series]] = {}
 
     for activity, col in ACTIVITY_DRIVER_COLUMN.items():
         if col not in drv.columns:
@@ -139,14 +139,36 @@ def _cost_to_serve(drv: pd.DataFrame, pools: pd.DataFrame) -> tuple[pd.Series, p
         bands = pools[pools["Activity"] == activity]
         if not len(bands):
             continue
+        marginal = pd.Series(0.0, index=drv.index)
+        fixed_alloc = pd.Series(0.0, index=drv.index)
         total_by_cycle = drv.groupby("Cycle Month")[col].sum()
         for cm, total_vol in total_by_cycle.items():
             fixed, marginal_rate = _stepped_cost_lookup(float(total_vol), bands)
             n_active = int(n_active_by_cycle.get(cm, 1))
             mask = drv["Cycle Month"] == cm
-            fixed_share = fixed / max(n_active, 1)
-            fixed_alloc.loc[mask] += fixed_share
+            fixed_alloc.loc[mask] += fixed / max(n_active, 1)
             marginal.loc[mask] += drv.loc[mask, col].astype(float) * marginal_rate
+        by_activity[activity] = (marginal, fixed_alloc)
+    return by_activity
+
+
+def _cost_to_serve(drv: pd.DataFrame, pools: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    """Per (account, cycle) Tier 1 + Tier 2 cost to serve, split into two
+    series that get reported separately - collapsing them into one number
+    is what made a completely unused card look like it was "costing money to
+    serve." Summed across every activity in cost_to_serve_by_activity() -
+    see that function for the per-activity detail this collapses, and for
+    what MARGINAL vs FIXED actually mean.
+
+    Routing (which cost dominates THIS customer's own situation) uses the
+    combined marginal series only, for the reason documented there.
+    """
+    by_activity = cost_to_serve_by_activity(drv, pools)
+    marginal = pd.Series(0.0, index=drv.index)
+    fixed_alloc = pd.Series(0.0, index=drv.index)
+    for m, f in by_activity.values():
+        marginal = marginal.add(m, fill_value=0.0)
+        fixed_alloc = fixed_alloc.add(f, fill_value=0.0)
     return marginal, fixed_alloc
 
 

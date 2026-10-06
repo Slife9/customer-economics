@@ -8,6 +8,21 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from app.lib import charts as C
+from engine.core import ledger as ENGINE_LEDGER
+
+ACTIVITY_LABELS = {
+    "contact_center_call": "Contact center calls",
+    "collections_contact": "Collections contacts",
+    "branch_visit": "Branch visits",
+    "fraud_alert": "Fraud alerts",
+    "dispute_case": "Disputes raised",
+    "complaint_case": "Complaints handled",
+    "digital_session": "Digital sessions",
+    "payment_processing": "Payments processed",
+    "statement_paper": "Paper statements",
+    "statement_electronic": "Electronic statements",
+    "card_issuance": "Card issuance",
+}
 
 st.set_page_config(page_title="Levers & Strategy", page_icon="🎯", layout="wide")
 st.title("🎯 Levers & Strategy")
@@ -366,6 +381,82 @@ if picked:
                               "requests of their own - the cost to serve shown "
                               "above is almost entirely the shared-overhead "
                               "allocation, not anything they did.")
+
+                # ---- Cost to serve, broken out by the actual activity that
+                # caused it (calls, paper statements, and so on), not just
+                # the marginal/fixed split. Recomputed from the same portfolio-
+                # wide driver volumes and cost-pool bands the ledger itself
+                # used, then sliced to just this customer's own account-cycles
+                # - so it reconciles exactly with the combined figures above.
+                n_months = len(monthly)
+                drv_all = portfolio["Table12_Cost_Drivers.csv"]
+                pools_all = portfolio["Table11_Cost_Pools.csv"]
+                by_activity = ENGINE_LEDGER.cost_to_serve_by_activity(drv_all, pools_all)
+                cust_drv_mask = drv_all["Masked Account Number"].isin(cust_accts)
+
+                activity_rows = []
+                for activity, (marg, fixed) in by_activity.items():
+                    m_sum = float(marg.loc[cust_drv_mask].sum())
+                    f_sum = float(fixed.loc[cust_drv_mask].sum())
+                    if n_months and (abs(m_sum) >= 0.005 or abs(f_sum) >= 0.005):
+                        activity_rows.append({
+                            "Activity": ACTIVITY_LABELS.get(activity, activity),
+                            "Caused by this customer": -m_sum / n_months,
+                            "Shared overhead allocation": -f_sum / n_months,
+                            "Total": -(m_sum + f_sum) / n_months,
+                        })
+
+                st.markdown("**Cost to serve, by activity — what actually drove it:**")
+                if activity_rows:
+                    activity_df = pd.DataFrame(activity_rows).sort_values("Total")
+                    st.dataframe(
+                        activity_df.style.format({c: "${:,.2f}" for c in
+                                                  ["Caused by this customer",
+                                                   "Shared overhead allocation", "Total"]}),
+                        width="stretch", height=min(320, 46 + 36 * len(activity_df)),
+                        hide_index=True)
+                else:
+                    st.caption("No activity volume recorded for this customer in any "
+                              "servicing category.")
+
+                # ---- Ledger view: classic in/out, two columns, both sides
+                # positive, net at the bottom - the same average-per-month
+                # figures as above, just read the way a ledger reads.
+                st.markdown("**Ledger view:**")
+                in_rows = [
+                    ("Interest revenue", avg_row["interest_revenue"]),
+                    ("Interchange revenue", avg_row["interchange_revenue"]),
+                    ("Fee revenue", avg_row["fee_revenue"]),
+                ]
+                out_rows = [
+                    ("Reward expense", avg_row["reward_expense"]),
+                    ("Funding cost", avg_row["funding_cost"]),
+                    ("Credit cost", avg_row["credit_cost"]),
+                ]
+                for r in activity_rows:
+                    out_rows.append((f"Cost to serve — {r['Activity']}", -r["Total"]))
+                out_rows.append(("Capital cost", avg_row["capital_cost"]))
+
+                total_in = sum(v for _, v in in_rows)
+                total_out = sum(v for _, v in out_rows)
+
+                def _ledger_md(rows: list[tuple[str, float]], total: float, total_label: str) -> str:
+                    lines = ["| Item | $/month |", "| --- | ---: |"]
+                    lines += [f"| {name} | ${val:,.2f} |" for name, val in rows]
+                    lines.append(f"| **{total_label}** | **${total:,.2f}** |")
+                    return "\n".join(lines)
+
+                led_col1, led_col2 = st.columns(2)
+                with led_col1:
+                    st.markdown("📥 **IN — Revenue**")
+                    st.markdown(_ledger_md(in_rows, total_in, "TOTAL IN"))
+                with led_col2:
+                    st.markdown("📤 **OUT — Cost**")
+                    st.markdown(_ledger_md(out_rows, total_out, "TOTAL OUT"))
+
+                st.metric("NET (IN − OUT) / month", f"${total_in - total_out:,.2f}")
+                st.caption("Reconciles exactly to the Net economic profit / month figure "
+                          "above — same numbers, read as a ledger instead of a chart.")
 
                 st.markdown("**Full monthly breakdown:**")
                 st.dataframe(monthly.style.format({c: "${:,.2f}" for c in monthly.columns
