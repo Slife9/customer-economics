@@ -89,6 +89,16 @@ contract → ledger → customer_view → suppression → routing → levers →
    `capital_cost` (0% CCF on undrawn cancellable card lines per 12 CFR
    217.33(b)(1), so an unused line correctly costs $0 in capital).
 
+   `cost_to_serve_by_activity(drv, pools)` exposes the same computation
+   broken out BY ACTIVITY (contact-center calls, paper statements, digital
+   sessions, etc. — each still split into marginal/fixed) instead of summed
+   into one pair of columns; `_cost_to_serve()` is now a thin wrapper that
+   sums this function's output, so the per-activity detail and the ledger's
+   combined columns can never silently diverge. The app's customer drill-down
+   (`app/pages/20_Levers_and_Strategy.py`) uses this directly to show which
+   specific activity drove a customer's servicing cost, and to render a
+   two-column ledger (in/out) view of the same average-per-month figures.
+
 3. **`core/customer_view.py`** — rolls the ledger up across every product a
    customer holds (card + deposit + loan), computes trailing-12-month
    aggregates, CEV (Customer Economic Value) score and band (percentile rank
