@@ -42,7 +42,14 @@ negative control gate's "zero planted defects" assertion.
   (population, priced value or an explicit "None, by design" with unpriced
   context, gates, sample worklist), and a customer drill-down showing every
   lever action recommended for one customer plus their full relationship
-  waterfall.
+  waterfall and acquisition-cost payback status.
+- **Acquisition Cost** — a lifetime view, deliberately separate from CEV:
+  whether what it cost to acquire each customer has actually been earned back
+  yet, and how long that took. Portfolio summary, payback-status and
+  months-to-recover charts, a per-channel breakdown (complements L6), and a
+  filterable customer-level table. Needs `Table23_Acquisition.csv` with an
+  `Acquisition Cost USD` column to populate; degrades to an explanatory
+  message without it.
 - **Governance & Fairness** — the negative-control gate chart and table, the
   four-fifths test on both score and treatment, and the suppression breakdown.
 - **Downloads** — the five outputs (score file, worklist, leakage register,
