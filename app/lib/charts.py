@@ -199,3 +199,4 @@ def leakage_bar(leakage_df: pd.DataFrame) -> go.Figure:
     fig.update_layout(title="Value by Lever (solid = priced, hatched = unpriced context only)",
                       yaxis_title="USD / year", height=420, margin=dict(t=60, b=20))
     return fig
+
