@@ -122,6 +122,25 @@ contract → ledger → customer_view → suppression → routing → levers →
    `generator/README.md`) — reporting a confident payback number for an
    account of unknown true age would be a guess dressed as a measurement.
 
+   It also computes **liquidity cost** as another deliberately *separate*
+   diagnostic (`_compute_liquidity_cost()`): `lcr_outflow_rate`,
+   `lcr_classification`, `required_hqla`, and `annual_liquidity_cost`. This is
+   the opportunity cost of holding the High-Quality Liquid Assets the US
+   Liquidity Coverage Ratio Final Rule (12 CFR 249) requires against each
+   customer's unused card commitment (a real, currently-in-force rule,
+   unrelated to the 0% CCF capital treatment in §5's L2 row — LCR and capital
+   are two separate regimes with two separate outflow assumptions). Policy
+   inputs (outflow rate by segment, HQLA yield, lending yield) live in
+   `engine/config/liquidity_policy.json`, not in code, because they're a
+   finance-team-owned assumption, not a measurement. Segments in
+   `individual_assessment_segments` (currently Private Banking) get a null
+   `lcr_outflow_rate` and a classification flag instead of a number whenever
+   their card limit alone exceeds `concentration_threshold_usd` — a necessary
+   but not sufficient check, since this engine only sees the card line, not
+   the customer's full relationship exposure. Like CAC payback, this is
+   intentionally never blended into `trailing_12m_net_economic_profit` or
+   `total_cost`.
+
 4. **`core/suppression.py`** — removes hardship, accommodation-plan, and SCRA
    customers from ever being flagged or routed. Returns a `SuppressedPopulation`
    wrapper (not a plain DataFrame). **This is the key governance mechanism**:

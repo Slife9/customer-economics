@@ -24,7 +24,9 @@ def score_file(customer_view: pd.DataFrame, suppressed_customers: pd.DataFrame,
                         "relationship_covers_card_loss",
                         "acquisition_cost_usd", "acquisition_channel",
                         "cumulative_net_value_since_acquisition",
-                        "cac_payback_months", "cac_payback_status"]].copy()
+                        "cac_payback_months", "cac_payback_status",
+                        "lcr_outflow_rate", "lcr_classification",
+                        "required_hqla", "annual_liquidity_cost"]].copy()
     sf["Cycle Month"] = cycle_month
     sf["suppressed"] = False
 
@@ -43,6 +45,10 @@ def score_file(customer_view: pd.DataFrame, suppressed_customers: pd.DataFrame,
         supp["cumulative_net_value_since_acquisition"] = pd.NA
         supp["cac_payback_months"] = pd.NA
         supp["cac_payback_status"] = pd.NA
+        supp["lcr_outflow_rate"] = pd.NA
+        supp["lcr_classification"] = pd.NA
+        supp["required_hqla"] = pd.NA
+        supp["annual_liquidity_cost"] = pd.NA
         supp["Cycle Month"] = cycle_month
         supp["suppressed"] = True
         sf = pd.concat([sf.drop(columns=[]), supp.drop(columns=["suppression_reason"])],

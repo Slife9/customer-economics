@@ -10,8 +10,13 @@ economic profit, banded into five named tiers. Bands are a communication
 device, not the substance - the score is the number that matters.
 """
 from __future__ import annotations
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
+_LIQUIDITY_POLICY_PATH = Path(__file__).resolve().parents[1] / "config" / "liquidity_policy.json"
 
 BAND_LABELS = ["Detractor", "Underperforming", "Core", "Valued", "Premier"]
 NEUTRAL_BAND_USD = 25.0  # within +/- this, a customer is "Neutral" rather
@@ -140,6 +145,62 @@ def _compute_cac_payback(ledger: dict, portfolio, cycle_position: dict,
     return out
 
 
+def _compute_liquidity_cost(cv: pd.DataFrame) -> pd.DataFrame:
+    """The Liquidity Coverage Ratio (LCR) cost of undrawn exposure - a real,
+    currently-in-force US rule (12 CFR 249), completely separate from
+    capital. A card the bank can cancel at any time correctly costs $0 in
+    regulatory CAPITAL (0% CCF, 12 CFR 217.33(b)(1)) - but regulators
+    separately assume a share of all unused retail card commitments gets
+    drawn in a 30-day stress window, and the bank must hold High Quality
+    Liquid Assets ready for that, today, not under some future proposal.
+    See engine/config/liquidity_policy.json for the rates and their source.
+
+    Deliberately kept OUT of net_economic_profit and total_cost, for the
+    same reason capital_cost_economic_diagnostic_only is kept separate:
+    this is a policy assumption (an outflow rate, a yield gap), not a
+    number read from generated data. Blending an assumed cost into the one
+    figure the whole system measures everything against would be exactly
+    the kind of "measured becomes assumed, silently" drift this project
+    refuses to do elsewhere - report it, don't bury it in the headline.
+
+    The Segment-based classification is a card-level proxy, not the true
+    multi-product exposure check Basel's regulatory-retail test requires -
+    see the concentration_threshold_note in the policy file. A customer
+    flagged for individual assessment gets None here, never a guessed rate.
+    """
+    policy = json.loads(_LIQUIDITY_POLICY_PATH.read_text(encoding="utf-8"))
+    rate_by_segment = policy["lcr_outflow_rate_by_segment"]
+    default_rate = policy["default_outflow_rate"]
+    review_segments = set(policy["individual_assessment_segments"])
+    threshold = policy["concentration_threshold_usd"]
+    yield_gap = policy["lending_yield_annual"] - policy["hqla_yield_annual"]
+
+    out = cv[["Masked Customer Number", "Segment", "avg_undrawn_12m", "current_limit"]].copy()
+    segment = out["Segment"].astype(str)
+
+    in_review_list = out["Segment"].isin(review_segments)
+    exceeds_threshold = in_review_list & (out["current_limit"] > threshold)
+    base_rate = out["Segment"].map(rate_by_segment).fillna(default_rate)
+    has_segment_rate = out["Segment"].isin(rate_by_segment.keys())
+
+    out["lcr_outflow_rate"] = base_rate.where(~exceeds_threshold, np.nan)
+    out["lcr_classification"] = np.select(
+        [exceeds_threshold, in_review_list, has_segment_rate],
+        [segment + f" - exceeds the ${threshold:,.0f} concentration threshold on "
+                  f"card limit alone; needs individual assessment against the "
+                  f"customer's full relationship exposure",
+         segment + " - under the concentration threshold (card-limit check only, "
+                  "not the full relationship), retail rate applied",
+         segment + " - regulatory retail"],
+        default=segment + " - no segment-specific rate on file, default retail rate applied")
+
+    out["required_hqla"] = out["avg_undrawn_12m"] * out["lcr_outflow_rate"]
+    out["annual_liquidity_cost"] = out["required_hqla"] * yield_gap
+
+    return out[["Masked Customer Number", "lcr_outflow_rate", "lcr_classification",
+               "required_hqla", "annual_liquidity_cost"]]
+
+
 def build(ledger: dict, portfolio, trailing_months: int = 12) -> pd.DataFrame:
     portfolio_customers = portfolio["Table1_Customer.csv"]
     accounts = portfolio["Table2_Card_Account.csv"]
@@ -161,9 +222,15 @@ def build(ledger: dict, portfolio, trailing_months: int = 12) -> pd.DataFrame:
     loan = ledger["loan_by_customer"]
 
     window = _trailing_window(sorted(card["Cycle Month"].unique()), trailing_months)
-    card_w = card[card["Cycle Month"].isin(window)]
+    card_w = card[card["Cycle Month"].isin(window)].copy()
     dep_w = dep[dep["Cycle Month"].isin(window)] if len(dep) else dep
     loan_w = loan[loan["Cycle Month"].isin(window)] if len(loan) else loan
+
+    # Undrawn exposure - what the Liquidity Coverage Ratio's stress outflow
+    # assumption applies to. Computed here, not read from any table: no
+    # generator table provides it, it is this account's own limit minus
+    # balance, same grain as everything else in card_w.
+    card_w["_undrawn"] = (card_w["Credit Limit"] - card_w["Ending Balance"]).clip(lower=0)
 
     card_by_cust = card_w.groupby("Masked Customer Number").agg(
         product_tier=("Product Tier", "last"),
@@ -190,6 +257,7 @@ def build(ledger: dict, portfolio, trailing_months: int = 12) -> pd.DataFrame:
         # relative to the limit, are what separate the two.
         avg_utilization_12m=("Utilization", "mean"),
         peak_utilization_12m=("Utilization", "max"),
+        avg_undrawn_12m=("_undrawn", "mean"),
         trailing_12m_spend=("Purchases Authorized", "sum"),
         months_transactor_12m=("Account Type", lambda s: (s == "Transactor").sum()),
         months_revolver_12m=("Account Type", lambda s: (s == "Revolver").sum()),
@@ -232,13 +300,16 @@ def build(ledger: dict, portfolio, trailing_months: int = 12) -> pd.DataFrame:
     cac = _compute_cac_payback(ledger, portfolio, cycle_position, earliest_open)
     cv = cv.merge(cac, on="Masked Customer Number", how="left")
 
+    liquidity = _compute_liquidity_cost(cv)
+    cv = cv.merge(liquidity, on="Masked Customer Number", how="left")
+
     for c in ["card_net", "card_revenue", "reward_expense", "funding_cost",
              "credit_cost", "cost_to_serve", "cost_to_serve_marginal",
              "cost_to_serve_fixed_allocated", "capital_cost", "n_card_accounts",
              "deposit_net_12m", "loan_net_12m", "annual_fee_total",
              "trailing_12m_spend", "avg_utilization_12m", "peak_utilization_12m",
-             "months_transactor_12m", "months_revolver_12m", "months_inactive_12m",
-             "months_observed_12m"]:
+             "avg_undrawn_12m", "months_transactor_12m", "months_revolver_12m",
+             "months_inactive_12m", "months_observed_12m"]:
         if c in cv.columns:
             cv[c] = cv[c].fillna(0.0)
     cv = cv.rename(columns={"product_tier": "Product Tier"})

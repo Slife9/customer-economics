@@ -1,0 +1,18 @@
+{
+  "_comment": "US LCR Final Rule (12 CFR 249) outflow rates for unused commitments, by counterparty type - not an assumption, a cited current rule. Regulatory retail (individual consumers, below the Basel concentration threshold) gets the lowest rate. Business/SME lines default to the higher, non-retail rate unless a policy owner confirms they pass the regulatory-retail SME test.",
+  "lcr_outflow_rate_by_segment": {
+    "Mass Market": 0.05,
+    "Retail": 0.05,
+    "Mass Affluent": 0.05,
+    "Premier": 0.05,
+    "Student": 0.05,
+    "Small Business": 0.10
+  },
+  "default_outflow_rate": 0.05,
+  "individual_assessment_segments": ["Private Banking"],
+  "concentration_threshold_usd": 1000000,
+  "concentration_threshold_note": "Basel's regulatory-retail test excludes any single counterparty whose aggregate exposure to the bank exceeds this threshold. This engine only has the card credit limit to check against it, not the customer's full relationship exposure - treat a PASS here as necessary, not sufficient.",
+  "hqla_yield_annual": 0.045,
+  "lending_yield_annual": 0.085,
+  "yield_source_note": "Illustrative, not measured. HQLA yield proxies a short-term Treasury rate; lending yield proxies the bank's blended portfolio yield. Both are policy inputs a finance team should replace with real curves before this number reaches a decision."
+}

@@ -50,6 +50,12 @@ negative control gate's "zero planted defects" assertion.
   filterable customer-level table. Needs `Table23_Acquisition.csv` with an
   `Acquisition Cost USD` column to populate; degrades to an explanatory
   message without it.
+- **Liquidity** — another diagnostic kept separate from CEV: the opportunity
+  cost of holding the HQLA the US LCR rule (12 CFR 249) requires against each
+  customer's unused credit line. Portfolio summary (undrawn exposure, required
+  HQLA, annual cost, count needing individual assessment), a by-segment chart
+  and table, and a filterable customer-level table. Policy inputs (outflow
+  rate by segment, yield gap) live in `engine/config/liquidity_policy.json`.
 - **Governance & Fairness** — the negative-control gate chart and table, the
   four-fifths test on both score and treatment, and the suppression breakdown.
 - **Downloads** — the five outputs (score file, worklist, leakage register,

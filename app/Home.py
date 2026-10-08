@@ -181,5 +181,6 @@ st.divider()
 st.markdown("**Next:** open **Portfolio Economics** for the full cost breakdown, "
            "**Levers & Strategy** for the business case per lever and a "
            "customer-level drill-down, **Acquisition Cost** for whether what we "
-           "spent to get each customer has paid back, or **Governance** for the fairness and "
+           "spent to get each customer has paid back, **Liquidity** for the regulatory "
+           "liquidity cost on unused credit lines, or **Governance** for the fairness and "
            "negative-control results.")
