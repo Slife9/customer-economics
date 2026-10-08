@@ -106,24 +106,39 @@ class L2Lines(Lever):
                            * dec["behavioral_ccf"]).sum())
         econ_capital_relief = float((limit_cut * dec["behavioral_ccf"] * 0.08).sum())
 
+        # Liquidity cost avoided (LCR, 12 CFR 249 - a real, separate-from-
+        # capital rule; see engine/core/customer_view.py's
+        # _compute_liquidity_cost). Derived from each customer's OWN already-
+        # computed rate ($ liquidity cost per $ of undrawn exposure), not a
+        # re-read policy constant, so this can never drift from the Liquidity
+        # page's own numbers. Customers under individual assessment (no rate
+        # on file) or with no undrawn history contribute $0, not a guess.
+        has_liq_rate = (dec["avg_undrawn_12m"] > 0) & dec["annual_liquidity_cost"].notna()
+        cost_per_undrawn_dollar = (dec["annual_liquidity_cost"] / dec["avg_undrawn_12m"]).where(
+            has_liq_rate, 0.0)
+        liquidity_cost_avoided = float((limit_cut * cost_per_undrawn_dollar).sum())
+
         peer_util = population.groupby("Credit Score Band")["peak_utilization_12m"].transform("median")
         headroom_gain = (peer_util - inc["peak_utilization_12m"]).clip(lower=0) * inc["current_limit"]
         incremental_interest = float((headroom_gain * inc["latest_charged_apr"] / 100.0).sum())
 
-        priced = el_avoided + incremental_interest
+        priced = el_avoided + incremental_interest + liquidity_cost_avoided
         current_engage_revenue = float(engage["card_revenue"].sum())
         return SizeResult(
             priced_value_usd=round(priced, 2),
             basis="expected-loss avoided from EAD reduction (same PD/LGD the "
                  "bank already uses, target limit sized off PEAK utilization "
                  "and actual trailing spend - never a single snapshot) plus "
-                 "peer-benchmarked incremental interest on genuinely "
-                 "stretched good-standing accounts",
+                 "liquidity cost avoided (LCR outflow rate x yield gap on the "
+                 "limit cut, 12 CFR 249) plus peer-benchmarked incremental "
+                 "interest on genuinely stretched good-standing accounts",
             caveat=f"regulatory capital relief from decreases is $0 by design "
                    f"(0% CCF on cancellable undrawn lines, 12 CFR 217.33(b)(1)). "
                    f"Economic capital relief (diagnostic only): "
-                   f"${econ_capital_relief:,.0f}. {len(engage)} customers are "
-                   f"flagged for engagement rather than a limit change - "
+                   f"${econ_capital_relief:,.0f}. Liquidity cost avoided "
+                   f"(included in priced value, separate regime from capital): "
+                   f"${liquidity_cost_avoided:,.0f}/yr. {len(engage)} customers "
+                   f"are flagged for engagement rather than a limit change - "
                    f"their current combined card revenue of "
                    f"${current_engage_revenue:,.0f}/yr is reported as context, "
                    f"not a forecast of what a campaign would recover (that "
