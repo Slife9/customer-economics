@@ -390,7 +390,7 @@ currently **public**.
 | App | Entry point | Live URL | Purpose |
 |---|---|---|---|
 | Customer Economics System | `app/Home.py` | https://customer-economics-exut3amfwi9uesfmpqvm4j.streamlit.app/ | Upload a portfolio zip, see the full analysis |
-| Portfolio Generator | `datagen_app/Home.py` | https://customer-economics-g36dfysbdmfgwf2f8ygmms.streamlit.app/ | Generate a fresh synthetic test portfolio via sliders (scenario, size 500–10,000, horizon 12–36mo, defect-rate multiplier 0–2x), download the zip |
+| Portfolio Generator | `datagen_app/Home.py` | https://customer-economics-g36dfysbdmfgwf2f8ygmms.streamlit.app/ | Generate a fresh synthetic test portfolio via sliders (scenario, size 500–500,000, horizon 12–36mo, defect-rate multiplier 0–2x), download the zip. A live estimate (time + output size) and a warning above 50,000 customers steer large runs to a local `python -m generator.run` invocation instead of the hosted free-tier app. |
 
 `datagen_app/Home.py` is a thin UI wrapper: it calls
 `generator.run.build(profile_name, out_dir, seed, n_months, n_customers,
@@ -421,10 +421,19 @@ In roughly most-to-least valuable order:
   there's no tracking of a lever's realized impact after action is taken.
 - **Multi-card-per-customer cardinality** — the generator and engine currently
   assume a 1:1 customer:card relationship.
-- **Scale testing at 10,000–50,000 customers** — works comfortably at demo
-  scale (5,000); untested at real-bank scale, and `datagen_app`'s slider caps
-  at 10,000 partly for Streamlit Cloud's free-tier compute budget, not because
-  the engine is known to break above it.
+- **Scale beyond ~100,000 customers is untested.** Measured on one machine:
+  50,000 customers × 36 months took 152s and produced 2.8 GB of CSV (the
+  transaction table alone is 1.6 GB); 100,000 × 12 months took 154s. Both
+  components scale roughly linearly with customers and with months, so
+  500,000 × 36 months extrapolates to roughly 25 minutes and ~28 GB — never
+  actually run end to end. `datagen_app`'s slider now goes to 500,000 (with
+  a live time/size estimate and a warning above 50,000 pointing at local
+  generation instead of the hosted free-tier app, since that app's ~1 GB RAM
+  budget is the real ceiling, not anything in the generator's logic), but
+  nothing above 100,000 has been verified to actually complete, and the
+  per-defect-type `.iterrows()` loops in `generator/synth/defects.py` are
+  the most likely place a bigger population would turn out to scale worse
+  than linear.
 - **A real BISG fairness proxy** — the current fairness test uses geography
   alone (no race/ethnicity is collected, per Reg B/ECOA, and no synthetic
   surname field exists to support actual BISG). Adding a synthetic name field

@@ -6,8 +6,8 @@ touching config files or the command line, then hands them straight to
 that analysis app.
 """
 from __future__ import annotations
-import io
 import random
+import shutil
 import sys
 import tempfile
 import zipfile
@@ -17,6 +17,13 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from generator.run import build, PROFILES, DEMO_DEFECT_PREVALENCE  # noqa: E402
+
+# A persistent scratch dir (not tempfile.TemporaryDirectory's auto-cleanup)
+# so the zip can be written straight to disk and re-opened for each download
+# click, instead of holding the whole thing as an extra in-memory bytes copy
+# in session_state for the rest of the session - the difference that matters
+# once a portfolio's zip runs into the GB range.
+SCRATCH = Path(tempfile.gettempdir()) / "profitinsight_datagen"
 
 ANALYSIS_APP_URL = "https://customer-economics-exut3amfwi9uesfmpqvm4j.streamlit.app/"
 
@@ -122,13 +129,39 @@ with st.expander("How this is built from the balanced baseline"):
 st.header("2 · Set the size and shape")
 col1, col2 = st.columns(2)
 with col1:
-    n_customers = st.slider("Number of customers", min_value=500, max_value=10_000,
+    n_customers = st.slider("Number of customers", min_value=500, max_value=500_000,
                             value=3_000, step=500)
 with col2:
     n_months = st.slider("Time horizon (months)", min_value=12, max_value=36,
                          value=36, step=6,
                          help="At least 12 months are needed for the analysis app's "
                               "trailing-12-month figures to be meaningful.")
+
+# Measured, not guessed: calibrated against two benchmark runs on this
+# machine (50,000 customers x 12mo = 80.3s, x 36mo = 152.3s; 100,000 x 12mo
+# = 154.1s), extrapolated linearly - real runtime varies by machine.
+_EST_SEC_PER_CUSTOMER = 44.3 / 50_000
+_EST_SEC_PER_CUSTOMER_MONTH = 3.0 / 50_000
+_EST_GB_PER_CUSTOMER_MONTH = 2.8 / (50_000 * 36)
+_LOCAL_RUN_THRESHOLD = 50_000
+
+est_seconds = n_customers * (_EST_SEC_PER_CUSTOMER + _EST_SEC_PER_CUSTOMER_MONTH * n_months)
+est_gb = n_customers * n_months * _EST_GB_PER_CUSTOMER_MONTH
+st.caption(f"Estimated: ~{est_seconds/60:.1f} min to generate, ~{est_gb:.2f} GB of output "
+          f"(rough extrapolation from measured benchmarks, not a guarantee).")
+
+if n_customers > _LOCAL_RUN_THRESHOLD:
+    st.warning(
+        f"**Above {_LOCAL_RUN_THRESHOLD:,} customers, generate this locally instead of on "
+        f"the hosted app.** This page runs on Streamlit Community Cloud's free tier "
+        f"(~1 GB RAM) - generation holds every table as an in-memory DataFrame before "
+        f"writing it out, and a run this size is likely to exceed available RAM and "
+        f"crash the page before finishing, regardless of how the download itself is "
+        f"packaged. Locally, "
+        f"run: `python -m generator.run --profile {profile_name} --n {n_customers} "
+        f"--cycles {n_months} --out ./out/{profile_name}` (see `generator/README.md`), "
+        f"or run this same `datagen_app` on your own machine with "
+        f"`streamlit run datagen_app/Home.py`.")
 
 st.header("3 · Set the data-quality issue rate")
 defect_multiplier = st.slider(
@@ -157,20 +190,21 @@ if st.button("Generate portfolio", type="primary"):
             k: min(v * defect_multiplier, 0.90) for k, v in DEMO_DEFECT_PREVALENCE.items()
         }
 
-    with st.spinner("Generating your portfolio - this can take a minute or two for larger sizes..."):
-        with tempfile.TemporaryDirectory() as tmp:
-            out_dir = Path(tmp) / "portfolio"
-            meta = build(profile_name, out_dir, st.session_state["gen_seed"],
-                        n_months, n_customers, overrides or None)
+    with st.spinner(f"Generating your portfolio - estimated ~{est_seconds/60:.1f} min..."):
+        shutil.rmtree(SCRATCH, ignore_errors=True)
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        out_dir = SCRATCH / "portfolio"
+        meta = build(profile_name, out_dir, st.session_state["gen_seed"],
+                    n_months, n_customers, overrides or None)
 
-            buf = io.BytesIO()
-            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-                for f in sorted(out_dir.iterdir()):
-                    if f.is_file():
-                        zf.write(f, arcname=f.name)
-            buf.seek(0)
-            st.session_state["last_zip"] = buf.getvalue()
-            st.session_state["last_meta"] = meta
+        zip_path = SCRATCH / "portfolio.zip"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for f in sorted(out_dir.iterdir()):
+                if f.is_file():
+                    zf.write(f, arcname=f.name)
+        st.session_state["last_zip_path"] = str(zip_path)
+        st.session_state["last_zip_name"] = f"portfolio_{profile_name}_{st.session_state['gen_seed']}.zip"
+        st.session_state["last_meta"] = meta
 
 if "last_meta" in st.session_state:
     meta = st.session_state["last_meta"]
@@ -182,13 +216,20 @@ if "last_meta" in st.session_state:
     m2.metric("Account-months", f"{meta['account_cycles']:,}")
     m3.metric("Planted data-quality issues", f"{meta['planted_defects']:,}")
 
-    st.download_button(
-        "⬇️ Download portfolio (zip)",
-        data=st.session_state["last_zip"],
-        file_name=f"portfolio_{profile_name}_{st.session_state['gen_seed']}.zip",
-        mime="application/zip",
-        type="primary",
-    )
+    zip_path = Path(st.session_state["last_zip_path"])
+    if zip_path.exists():
+        zip_mb = zip_path.stat().st_size / (1024 * 1024)
+        with open(zip_path, "rb") as f:
+            st.download_button(
+                f"⬇️ Download portfolio (zip, {zip_mb:,.0f} MB)",
+                data=f,
+                file_name=st.session_state["last_zip_name"],
+                mime="application/zip",
+                type="primary",
+            )
+    else:
+        st.warning("The generated portfolio is no longer on disk (scratch space was cleared) - "
+                  "click **Generate portfolio** again.")
     st.caption(f"Then open the [analysis app]({ANALYSIS_APP_URL}) and upload this zip on its home page "
               f"to see the full customer economics, lever recommendations, and governance checks.")
 
