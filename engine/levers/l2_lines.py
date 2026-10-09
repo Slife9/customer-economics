@@ -124,6 +124,7 @@ class L2Lines(Lever):
 
         priced = el_avoided + incremental_interest + liquidity_cost_avoided
         current_engage_revenue = float(engage["card_revenue"].sum())
+        engage_liquidity_cost = float(engage["annual_liquidity_cost"].fillna(0.0).sum())
         return SizeResult(
             priced_value_usd=round(priced, 2),
             basis="expected-loss avoided from EAD reduction (same PD/LGD the "
@@ -142,7 +143,11 @@ class L2Lines(Lever):
                    f"their current combined card revenue of "
                    f"${current_engage_revenue:,.0f}/yr is reported as context, "
                    f"not a forecast of what a campaign would recover (that "
-                   f"requires a champion/challenger test, per section 7).",
+                   f"requires a champion/challenger test, per section 7). That "
+                   f"same cohort is also carrying ${engage_liquidity_cost:,.0f}/yr "
+                   f"in liquidity cost on capacity it isn't using - reactivating "
+                   f"it doesn't just recover revenue, it cuts that drag too, "
+                   f"also contingent on the same pilot (not priced).",
             unpriced_context_usd=econ_capital_relief)
 
     def worklist(self, population: pd.DataFrame) -> pd.DataFrame:
