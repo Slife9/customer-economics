@@ -141,6 +141,71 @@ contract → ledger → customer_view → suppression → routing → levers →
    intentionally never blended into `trailing_12m_net_economic_profit` or
    `total_cost`.
 
+3a. **`core/leverage_capital.py`** — a third deliberately *separate* diagnostic,
+   computed in `run.py` right after `customer_view.build()` returns (not
+   inside `build()` itself) and merged into `cv` before suppression: the
+   opportunity cost of holding capital against unused card commitments under
+   the **leverage ratio** regime, as distinct from both the 0% risk-based CCF
+   (§5's L2 row) and the liquidity cost above — three separate rulebooks,
+   three separate numbers, never summed. Columns: `leverage_regime`,
+   `commitment_type`, `leverage_exposure`, `leverage_capital_held`,
+   `leverage_capital_cost`, `leverage_status`, `rule_ids`,
+   `shadow_leverage_capital_cost`.
+
+   The key fact this module exists to capture: risk-based capital gives
+   unconditionally cancellable card lines a 0% credit conversion factor
+   (CCF), but the **Supplementary Leverage Ratio (SLR)** — which only applies
+   to large banks (Category I/II/III) — does **not** allow that carve-out. It
+   charges a flat 10% CCF instead, so an SLR bank holds real capital against
+   idle card capacity even though its risk-based capital requirement says the
+   same exposure costs nothing. A smaller bank under the basic Tier 1
+   leverage ratio counts on-balance-sheet assets only, so unused lines cost
+   it nothing under either rulebook.
+
+   Which regime applies (`slr_mode`) is an explicit policy fact chosen on the
+   Home page sidebar (two illustrative case files,
+   `engine/config/leverage_capital_policy.case_a_slr_category_iii.json` and
+   `...case_b_tier1_regional.json`) — **never inferred from asset size in
+   code**. The choice is part of the pipeline's cache key
+   (`app/lib/pipeline_runner.py`), so switching it always recomputes rather
+   than silently serving a stale result. `leverage_capital.validate_policy()`
+   enforces hard errors (non-bool `slr_mode`, a CBLR bank with `slr_mode:
+   true`, any rate outside [0, 1], an unclassified commitment-bearing product
+   in SLR mode) and returns informational warnings for everything else
+   (category/mode mismatches, an unverified policy, a CCF that overrides the
+   regulatory default). Every citation is tracked in
+   `governance/REGULATORY_RULEBOOK.md`, with verification status in
+   `governance/regulatory_verification_log.md` (currently all `OPEN` — these
+   are illustrative policy profiles, not verified against the primary source
+   or any real bank's figures).
+
+   `build_pipeline()` also writes a lightweight run-audit dict
+   (`result["leverage_audit"]`): the active policy file's SHA-256, every rule
+   ID applied, validation warnings, and totals — there is no pre-existing
+   model-registry pattern in this codebase to extend, so this is a plain
+   record attached to the run result rather than a persisted registry.
+
+   Surfaced on its own page (`app/pages/24_Leverage_Capital.py`, separate
+   from the Liquidity page even though both charge something against the
+   same `avg_undrawn_12m` base) and wired into **L2's DECREASE/INCREASE
+   sizing symmetrically** (`engine/levers/l2_lines.py`): a decrease frees
+   leverage capital, an increase consumes it, both derived from each
+   customer's own already-computed `leverage_capital_cost` per dollar of
+   undrawn exposure — never a re-read policy constant. Both are $0 under the
+   Tier 1 regime by construction, so L2's numbers only move when SLR mode is
+   on. Verified against the spec's own worked examples in
+   `audit/audit_leverage_capital.py` (there is no pytest suite in this repo;
+   this follows the existing print-and-assert diagnostic-script convention
+   under `audit/`).
+
+   **Deliberately scoped down from the full spec this was built against**
+   (see `STATUS.md` for the complete list): no literal side-by-side
+   dual-toggle re-run of the fairness gate (the DECREASE population is
+   provably identical under either toggle, since `slr_mode` only changes the
+   dollar value attached to it, never who's selected — documented instead of
+   re-run), and no interactive CCF/target-ratio/cost-of-capital sensitivity
+   grid.
+
 4. **`core/suppression.py`** — removes hardship, accommodation-plan, and SCRA
    customers from ever being flagged or routed. Returns a `SuppressedPopulation`
    wrapper (not a plain DataFrame). **This is the key governance mechanism**:
@@ -183,7 +248,7 @@ worklist export, leakage register, governance pack JSON.
 | Code | Name | Population | Sizing | Gates |
 |---|---|---|---|---|
 | L1 | Rewards & Promo Economics | Profitable, $0-fee, $100+/yr reward-value customers (opportunity) + routed losses | `None` — fee take-up is untested behavior. Reports the unpriced reward-cost ceiling. | Reg Z: 45-day notice, right to reject |
-| L2 | Line Management by Value | Four-way split on 12mo behavior: DECREASE (idle) / ENGAGE (dormant) / GROW_ENGAGEMENT (transactor, protected) / INCREASE (stretched, good standing) | Priced: EL avoided (same PD/LGD as reserving) + liquidity cost avoided (LCR outflow rate × yield gap on the limit cut, 12 CFR 249 — each customer's own already-computed rate, never a re-derived constant) + peer-benchmarked incremental interest. Regulatory capital relief from decreases is **always $0 by design** (0% CCF). Economic capital relief reported separately, never blended in. | Reg B adverse-action notice on decreases |
+| L2 | Line Management by Value | Four-way split on 12mo behavior: DECREASE (idle) / ENGAGE (dormant) / GROW_ENGAGEMENT (transactor, protected) / INCREASE (stretched, good standing) | Priced: EL avoided (same PD/LGD as reserving) + liquidity cost avoided (LCR outflow rate × yield gap on the limit cut, 12 CFR 249) + leverage capital freed/consumed (SLR regime only, 12 CFR 217.10 — $0 under Tier 1) + peer-benchmarked incremental interest, all derived from each customer's own already-computed rates, never re-derived constants. Regulatory capital relief from decreases is **always $0 by design** (0% CCF). Economic capital relief reported separately, never blended in. | Reg B adverse-action notice on decreases |
 | L3 | Value-Based Pricing | Priced ≥2pts below own credit-score-band peer median | `None` — repricing response is untested behavior. Reports the zero-elasticity ceiling. | CARD Act (no first-year increase, prospective only, 45-day notice), fair-lending review, champion/challenger test |
 | L4 | Cost-to-Serve Migration | 3+ avoidable calls OR 6+ paper statements in trailing window | Priced: marginal unit cost × avoided volume, + fixed capacity cost **only** where avoided volume crosses a real capacity-band boundary | None — no customer contact, deploy now |
 | L5 | Retention Targeting | Valued/Premier CEV band + (closure-request contact OR spend decline OR priced ≥2pts above peer) | `None` — retention uplift is untested behavior. Reports value-at-risk (today's trailing-12m profit), not recoverable value. | Held-out champion/challenger pilot |

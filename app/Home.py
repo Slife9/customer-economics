@@ -51,6 +51,21 @@ with st.sidebar:
     st.caption("Enables the negative-control gate on the Governance page — "
               "proof the findings track their cause, not the generator.")
 
+    st.header("3 · Leverage regime")
+    LEVERAGE_POLICY_OPTIONS = {
+        "Case B — Tier 1 leverage (unused lines not charged)": "case_b_tier1_regional",
+        "Case A — SLR, Category III (unused lines charged)": "case_a_slr_category_iii",
+    }
+    leverage_choice_label = st.selectbox(
+        "Which leverage rule applies to this bank?",
+        list(LEVERAGE_POLICY_OPTIONS.keys()), index=0,
+        help="Only large banks (Category I/II/III) face the Supplementary "
+            "Leverage Ratio, which charges capital on unused card lines "
+            "despite their 0% risk-based CCF. Smaller banks use the basic "
+            "Tier 1 leverage ratio, which doesn't. This is a policy fact "
+            "about the bank, never inferred - see the Leverage page.")
+    leverage_policy_name = LEVERAGE_POLICY_OPTIONS[leverage_choice_label]
+
     run_clicked = st.button("Run analysis", type="primary", width="stretch",
                             disabled=demo_zip is None)
 
@@ -66,14 +81,15 @@ with st.sidebar:
 if sample_clicked:
     with st.spinner("Loading the bundled sample portfolio…"):
         result, root = PR.run_pipeline_for_sample(
-            sample_dir / "demo_portfolio.zip", "demo")
+            sample_dir / "demo_portfolio.zip", "demo", leverage_policy_name)
         st.session_state["result"] = result
         st.session_state["result_root"] = str(root)
         st.session_state["demo_label"] = "samples/demo_portfolio.zip"
     ctrl_path = sample_dir / "negative_control_portfolio.zip"
     if ctrl_path.exists():
         with st.spinner("Loading the bundled negative control…"):
-            control_result, control_root = PR.run_pipeline_for_sample(ctrl_path, "control")
+            control_result, control_root = PR.run_pipeline_for_sample(
+                ctrl_path, "control", leverage_policy_name)
             st.session_state["control_result"] = control_result
             st.session_state["control_label"] = "samples/negative_control_portfolio.zip"
             st.session_state["gate_report"] = PR.run_negative_control_gate(
@@ -82,7 +98,7 @@ if sample_clicked:
 if run_clicked and demo_zip is not None:
     with st.spinner("Validating data contract, building the ledger, routing levers…"):
         try:
-            result, root = PR.run_pipeline_for_upload(demo_zip, "demo")
+            result, root = PR.run_pipeline_for_upload(demo_zip, "demo", leverage_policy_name)
             st.session_state["result"] = result
             st.session_state["result_root"] = str(root)
             st.session_state["demo_label"] = demo_zip.name
@@ -93,7 +109,8 @@ if run_clicked and demo_zip is not None:
     if control_zip is not None:
         with st.spinner("Building the negative control for comparison…"):
             try:
-                control_result, control_root = PR.run_pipeline_for_upload(control_zip, "control")
+                control_result, control_root = PR.run_pipeline_for_upload(
+                    control_zip, "control", leverage_policy_name)
                 st.session_state["control_result"] = control_result
                 st.session_state["control_label"] = control_zip.name
                 st.session_state["gate_report"] = PR.run_negative_control_gate(
@@ -183,5 +200,6 @@ st.markdown("**Next:** open **Portfolio Economics** for the full cost breakdown,
            "**Levers & Strategy** for the business case per lever and a "
            "customer-level drill-down, **Acquisition Cost** for whether what we "
            "spent to get each customer has paid back, **Liquidity** for the regulatory "
-           "liquidity cost on unused credit lines, or **Governance** for the fairness and "
-           "negative-control results.")
+           "liquidity cost on unused credit lines, **Leverage** for the separate "
+           "leverage-ratio capital cost (Case A/B toggle, sidebar), or **Governance** "
+           "for the fairness and negative-control results.")

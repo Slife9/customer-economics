@@ -1,0 +1,37 @@
+{
+  "_comment": "Case A: large SLR card issuer (Category III-style, e.g. a bank with >$250B in assets). Illustrative profile, not a real bank's figures. See governance/REGULATORY_RULEBOOK.md for every rule ID cited below.",
+  "policy_version": "2.0.0",
+  "case_label": "Case A: Large SLR card issuer (Category III)",
+  "as_of_date": "2026-01-01",
+  "slr_mode": true,
+  "bank_category": "III",
+  "bank_category_source": "illustrative case study, not a real bank's FR Y-9C/Y-15 filing",
+
+  "tier1_leverage_minimum": 0.04,
+  "tier1_leverage_well_capitalised": 0.05,
+  "slr_minimum": 0.03,
+  "eslr_buffer": 0.00,
+  "management_buffer": 0.01,
+
+  "slr_ccf_by_commitment_type": {
+    "UNCONDITIONALLY_CANCELLABLE": 0.10,
+    "NON_UCC_ORIGINAL_MATURITY_LE_1Y": 0.20,
+    "NON_UCC_ORIGINAL_MATURITY_GT_1Y": 0.50
+  },
+  "risk_based_ccf_ucc": 0.00,
+
+  "product_commitment_type": {
+    "credit_card": "UNCONDITIONALLY_CANCELLABLE"
+  },
+  "products_without_commitments": ["mortgage_term", "auto_loan", "personal_loan_term", "deposit"],
+
+  "cost_of_capital_annual": 0.12,
+  "capital_benefit_rate_annual": 0.00,
+
+  "show_shadow_value_when_inactive": false,
+
+  "inputs_verified": false,
+  "verified_by": "",
+  "verified_on": "",
+  "provenance": "assumption"
+}

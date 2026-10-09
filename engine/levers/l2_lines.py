@@ -118,27 +118,57 @@ class L2Lines(Lever):
             has_liq_rate, 0.0)
         liquidity_cost_avoided = float((limit_cut * cost_per_undrawn_dollar).sum())
 
+        # Leverage capital freed on a decrease / consumed on an increase
+        # (REGULATORY_RULEBOOK.md M-02: crediting cuts without charging
+        # increases would bias recommendations toward cuts). Both derived
+        # from each customer's OWN already-computed leverage_capital_cost
+        # per dollar of undrawn exposure - never a re-read policy constant -
+        # so this can never drift from the Leverage Diagnostic page's own
+        # numbers. Always $0 under the Tier 1 regime (R-01): unused lines
+        # aren't charged there, so there is nothing to free or consume.
+        has_lev_rate = (dec["avg_undrawn_12m"] > 0) & dec["leverage_capital_cost"].notna()
+        lev_cost_per_undrawn_dollar_dec = (
+            dec["leverage_capital_cost"] / dec["avg_undrawn_12m"]).where(has_lev_rate, 0.0)
+        leverage_capital_freed = float((limit_cut * lev_cost_per_undrawn_dollar_dec).sum())
+
         peer_util = population.groupby("Credit Score Band")["peak_utilization_12m"].transform("median")
         headroom_gain = (peer_util - inc["peak_utilization_12m"]).clip(lower=0) * inc["current_limit"]
         incremental_interest = float((headroom_gain * inc["latest_charged_apr"] / 100.0).sum())
 
-        priced = el_avoided + incremental_interest + liquidity_cost_avoided
+        has_lev_rate_inc = (inc["avg_undrawn_12m"] > 0) & inc["leverage_capital_cost"].notna()
+        lev_cost_per_undrawn_dollar_inc = (
+            inc["leverage_capital_cost"] / inc["avg_undrawn_12m"]).where(has_lev_rate_inc, 0.0)
+        leverage_capital_consumed = float((headroom_gain * lev_cost_per_undrawn_dollar_inc).sum())
+
+        priced = (el_avoided + incremental_interest + liquidity_cost_avoided
+                 + leverage_capital_freed - leverage_capital_consumed)
         current_engage_revenue = float(engage["card_revenue"].sum())
         engage_liquidity_cost = float(engage["annual_liquidity_cost"].fillna(0.0).sum())
+        leverage_regime = population["leverage_regime"].iloc[0] if len(population) else "TIER1"
+        leverage_note = (
+            f"Leverage capital freed by decreases: ${leverage_capital_freed:,.0f}/yr; "
+            f"consumed by increases: ${leverage_capital_consumed:,.0f}/yr (both included "
+            f"in priced value, SLR regime, 12 CFR 217.10, R-04/R-06). See the Leverage "
+            f"Diagnostic page." if leverage_regime == "SLR" else
+            f"Leverage capital: not charged. This bank is assessed under the Tier 1 "
+            f"leverage regime, which counts on-balance-sheet assets only (R-01) - "
+            f"decreases free $0 and increases consume $0.")
         return SizeResult(
             priced_value_usd=round(priced, 2),
             basis="expected-loss avoided from EAD reduction (same PD/LGD the "
                  "bank already uses, target limit sized off PEAK utilization "
                  "and actual trailing spend - never a single snapshot) plus "
                  "liquidity cost avoided (LCR outflow rate x yield gap on the "
-                 "limit cut, 12 CFR 249) plus peer-benchmarked incremental "
-                 "interest on genuinely stretched good-standing accounts",
+                 "limit cut, 12 CFR 249) plus leverage capital freed/consumed "
+                 "(SLR regime only, 12 CFR 217.10) plus peer-benchmarked "
+                 "incremental interest on genuinely stretched good-standing accounts",
             caveat=f"regulatory capital relief from decreases is $0 by design "
                    f"(0% CCF on cancellable undrawn lines, 12 CFR 217.33(b)(1)). "
                    f"Economic capital relief (diagnostic only): "
                    f"${econ_capital_relief:,.0f}. Liquidity cost avoided "
                    f"(included in priced value, separate regime from capital): "
-                   f"${liquidity_cost_avoided:,.0f}/yr. {len(engage)} customers "
+                   f"${liquidity_cost_avoided:,.0f}/yr. {leverage_note} "
+                   f"{len(engage)} customers "
                    f"are flagged for engagement rather than a limit change - "
                    f"their current combined card revenue of "
                    f"${current_engage_revenue:,.0f}/yr is reported as context, "

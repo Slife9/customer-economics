@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
 
 from engine.core.contract import load_portfolio, DataContractViolation  # noqa: E402
 from engine.run import build_pipeline, portfolio_defect_count, MECHANISM_VARIED_IN_CONTROL  # noqa: E402
+from engine.core import leverage_capital as LEV  # noqa: E402
 from engine.governance import negative_control as NEGCTL  # noqa: E402
 from engine.core import outputs as OUT  # noqa: E402
 
@@ -59,14 +60,18 @@ def _find_portfolio_root(extracted_dir: Path) -> Path:
 
 
 @st.cache_resource(show_spinner=False)
-def _cached_pipeline(portfolio_root_str: str, _cache_key: str):
+def _cached_pipeline(portfolio_root_str: str, _cache_key: str, leverage_policy_name: str):
     portfolio_root = Path(portfolio_root_str)
-    return build_pipeline(portfolio_root)
+    return build_pipeline(portfolio_root, leverage_policy_name)
 
 
-def run_pipeline_for_upload(uploaded_file, label: str) -> tuple[dict, Path]:
+def run_pipeline_for_upload(uploaded_file, label: str,
+                           leverage_policy_name: str = LEV.DEFAULT_POLICY_NAME) -> tuple[dict, Path]:
     root = _extract_zip(uploaded_file, label)
-    result = _cached_pipeline(str(root), str(root))
+    # leverage_policy_name is part of the cache key - switching the regime
+    # toggle must force a recompute, not silently serve a result built under
+    # the other regime.
+    result = _cached_pipeline(str(root), f"{root}|{leverage_policy_name}", leverage_policy_name)
     return result, root
 
 
@@ -83,8 +88,9 @@ class _LocalFileAsUpload:
         return self._path.read_bytes()
 
 
-def run_pipeline_for_sample(path: Path, label: str) -> tuple[dict, Path]:
-    return run_pipeline_for_upload(_LocalFileAsUpload(path), label)
+def run_pipeline_for_sample(path: Path, label: str,
+                           leverage_policy_name: str = LEV.DEFAULT_POLICY_NAME) -> tuple[dict, Path]:
+    return run_pipeline_for_upload(_LocalFileAsUpload(path), label, leverage_policy_name)
 
 
 def run_negative_control_gate(demo_result: dict, control_result: dict) -> pd.DataFrame:

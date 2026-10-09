@@ -1,0 +1,37 @@
+{
+  "_comment": "Case B: smaller bank under the basic Tier 1 leverage ratio (Category IV / under $100B, or a community bank). Illustrative profile, not a real bank's figures. See governance/REGULATORY_RULEBOOK.md for every rule ID cited below.",
+  "policy_version": "2.0.0",
+  "case_label": "Case B: Tier 1 leverage community/regional bank",
+  "as_of_date": "2026-01-01",
+  "slr_mode": false,
+  "bank_category": "BELOW_100B",
+  "bank_category_source": "illustrative case study, not a real bank's FR Y-9C/Y-15 filing",
+
+  "tier1_leverage_minimum": 0.04,
+  "tier1_leverage_well_capitalised": 0.05,
+  "slr_minimum": 0.03,
+  "eslr_buffer": 0.00,
+  "management_buffer": 0.01,
+
+  "slr_ccf_by_commitment_type": {
+    "UNCONDITIONALLY_CANCELLABLE": 0.10,
+    "NON_UCC_ORIGINAL_MATURITY_LE_1Y": 0.20,
+    "NON_UCC_ORIGINAL_MATURITY_GT_1Y": 0.50
+  },
+  "risk_based_ccf_ucc": 0.00,
+
+  "product_commitment_type": {
+    "credit_card": "UNCONDITIONALLY_CANCELLABLE"
+  },
+  "products_without_commitments": ["mortgage_term", "auto_loan", "personal_loan_term", "deposit"],
+
+  "cost_of_capital_annual": 0.12,
+  "capital_benefit_rate_annual": 0.00,
+
+  "show_shadow_value_when_inactive": true,
+
+  "inputs_verified": false,
+  "verified_by": "",
+  "verified_on": "",
+  "provenance": "assumption"
+}

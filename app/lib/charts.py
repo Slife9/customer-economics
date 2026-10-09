@@ -197,6 +197,20 @@ def liquidity_by_segment_chart(customer_view: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def leverage_by_segment_chart(customer_view: pd.DataFrame) -> go.Figure:
+    df = customer_view[customer_view["leverage_capital_cost"].notna()]
+    by_seg = df.groupby("Segment", observed=True)["leverage_capital_cost"].sum().sort_values(
+        ascending=False)
+    regime = df["leverage_regime"].iloc[0] if len(df) else "TIER1"
+    fig = go.Figure(go.Bar(
+        x=by_seg.index, y=by_seg.to_numpy(), marker_color=COLORS["cost"],
+        text=[f"${v:,.0f}" for v in by_seg.to_numpy()], textposition="outside"))
+    fig.update_layout(
+        title=f"Annual leverage capital cost by segment ({regime} regime, diagnostic, not in NEP)",
+        yaxis_title="USD / year", height=400, margin=dict(t=60, b=20))
+    return fig
+
+
 def leakage_bar(leakage_df: pd.DataFrame) -> go.Figure:
     df = leakage_df.copy()
     df["value"] = df["priced_value_usd"].fillna(0.0)

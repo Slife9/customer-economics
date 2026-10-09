@@ -56,6 +56,15 @@ negative control gate's "zero planted defects" assertion.
   HQLA, annual cost, count needing individual assessment), a by-segment chart
   and table, and a filterable customer-level table. Policy inputs (outflow
   rate by segment, yield gap) live in `engine/config/liquidity_policy.json`.
+- **Leverage Capital** — a third diagnostic, separate from both CEV and the
+  Liquidity page even though both charge something against the same unused
+  exposure: the capital cost of unused card lines under the **leverage
+  ratio** (as opposed to risk-based capital's 0% CCF). Only large banks
+  subject to the Supplementary Leverage Ratio (SLR) charge anything here; a
+  Tier-1-only bank shows $0 by regulation. The regime is chosen on the Home
+  page sidebar (Case A: SLR / Case B: Tier 1) — never inferred from the data
+  — and feeds L2's DECREASE/INCREASE sizing symmetrically. Every citation
+  behind this page is tracked in `governance/REGULATORY_RULEBOOK.md`.
 - **Governance & Fairness** — the negative-control gate chart and table, the
   four-fifths test on both score and treatment, and the suppression breakdown.
 - **Downloads** — the five outputs (score file, worklist, leakage register,

@@ -19,6 +19,7 @@ import pandas as pd
 from .core.contract import load_portfolio, DataContractViolation
 from .core import ledger as LEDGER
 from .core import customer_view as CV
+from .core import leverage_capital as LEV
 from .core import suppression as SUPP
 from .core import routing as ROUTE
 from .core import outputs as OUT
@@ -63,10 +64,15 @@ def _spend_decline(tx: pd.DataFrame) -> pd.DataFrame:
     return declined.rename("spend_declined").reset_index()
 
 
-def build_pipeline(data_dir: Path):
+def build_pipeline(data_dir: Path, leverage_policy_name: str = LEV.DEFAULT_POLICY_NAME):
     portfolio = load_portfolio(data_dir)
     led = LEDGER.build(portfolio)
     cv = CV.build(led, portfolio)
+
+    leverage_policy, leverage_policy_path, leverage_warnings = LEV.load_policy(leverage_policy_name)
+    leverage_df = LEV.compute(cv, leverage_policy)
+    cv = cv.merge(leverage_df.drop(columns=["avg_undrawn_12m"]), on="Masked Customer Number", how="left")
+    leverage_audit = LEV.audit_record(leverage_policy_path, leverage_policy, leverage_warnings, leverage_df)
 
     suppressed = SUPP.run(cv)
     routed = ROUTE.route(suppressed)
@@ -103,12 +109,15 @@ def build_pipeline(data_dir: Path):
         "suppressed": suppressed, "routed": routed, "levers": levers,
         "populations": populations, "sizes": sizes, "worklists": worklists,
         "fairness": fairness_result, "routing_summary": rsum,
+        "leverage_policy": leverage_policy, "leverage_policy_path": str(leverage_policy_path),
+        "leverage_warnings": leverage_warnings, "leverage_audit": leverage_audit,
     }
 
 
-def run(data_dir: Path, out_dir: Path, compare_to: Path | None = None) -> dict:
+def run(data_dir: Path, out_dir: Path, compare_to: Path | None = None,
+       leverage_policy_name: str = LEV.DEFAULT_POLICY_NAME) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
-    result = build_pipeline(data_dir)
+    result = build_pipeline(data_dir, leverage_policy_name)
 
     latest_cycle = sorted(result["ledger"]["card"]["Cycle Month"].unique())[-1]
     sf = OUT.score_file(result["customer_view"], result["suppressed"].suppressed,
@@ -121,7 +130,7 @@ def run(data_dir: Path, out_dir: Path, compare_to: Path | None = None) -> dict:
 
     gate_report = pd.DataFrame()
     if compare_to is not None:
-        control_result = build_pipeline(compare_to)
+        control_result = build_pipeline(compare_to, leverage_policy_name)
         gt_demo = portfolio_defect_count(data_dir)
         gt_ctrl = portfolio_defect_count(compare_to)
         gate_results = [NEGCTL.check_defects(gt_demo, gt_ctrl)]
@@ -151,6 +160,7 @@ def run(data_dir: Path, out_dir: Path, compare_to: Path | None = None) -> dict:
         "fairness_score_any_failure": result["fairness"]["score_any_failure"],
         "fairness_treatment_any_failure": result["fairness"]["treatment_any_failure"],
         "negative_control_gate": gate_report.to_dict("records") if len(gate_report) else None,
+        "leverage_audit": result["leverage_audit"],
     }
     (out_dir / "run_summary.json").write_text(json.dumps(summary, indent=2, default=str))
     return summary
@@ -173,11 +183,19 @@ if __name__ == "__main__":
     ap.add_argument("--compare-to", default=None,
                     help="a second portfolio (the negative control) to run "
                         "the gate against")
+    ap.add_argument("--leverage-policy", default=LEV.DEFAULT_POLICY_NAME,
+                    help="name of a file under engine/config/ matching "
+                        "leverage_capital_policy.<name>.json, e.g. "
+                        "case_a_slr_category_iii or case_b_tier1_regional")
     a = ap.parse_args()
     try:
         summary = run(Path(a.data), Path(a.out),
-                     Path(a.compare_to) if a.compare_to else None)
+                     Path(a.compare_to) if a.compare_to else None,
+                     a.leverage_policy)
     except DataContractViolation as e:
         print(f"DATA CONTRACT VIOLATION - refusing to run: {e}")
+        raise SystemExit(1)
+    except LEV.LeveragePolicyViolation as e:
+        print(f"LEVERAGE POLICY VIOLATION - refusing to run: {e}")
         raise SystemExit(1)
     print(json.dumps(summary, indent=2, default=str))
