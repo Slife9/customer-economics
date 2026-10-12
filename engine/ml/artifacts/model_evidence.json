@@ -1,0 +1,743 @@
+{
+  "trained_at_utc": "2026-10-12T06:45:46.038974+00:00",
+  "sklearn_version": "1.9.1",
+  "joblib_version": "1.6.0",
+  "bundle_sha256": "7cc89e9981bb32cb9d2e7ee900dca87ca4e025ca096594e03e4df0fa485eb68f",
+  "scenarios": [
+    "demo",
+    "transactor_heavy",
+    "subprime_heavy",
+    "premium_heavy",
+    "negative_control"
+  ],
+  "data_manifest": {
+    "demo": {
+      "n_customers": 5000,
+      "n_cycles": 36,
+      "files": {
+        "Table10_FTP_Curve.csv": {
+          "sha256": "a1720e5776fb6e0c7f162872c665cfb108e8d47bd79f21b000e5846710e375b6",
+          "rows": 216
+        },
+        "Table11_Cost_Pools.csv": {
+          "sha256": "7f621ae3ab06a7c57f1309cd1b29805823c815f73a797a77960c7f9f7b27ddf9",
+          "rows": 22
+        },
+        "Table12_Cost_Drivers.csv": {
+          "sha256": "5e2dfd4d1701480c6a685bbcbcaa364c10c7eda00de2ff3d8ee298fde8d23461",
+          "rows": 141728
+        },
+        "Table12b_Cost_Pool_Monthly_Totals.csv": {
+          "sha256": "476a7b3a46b37378cd21d69c443e22d0cc5940ee74dac14fd919f32b512ba1ab",
+          "rows": 12
+        },
+        "Table13_Fee_Schedule.csv": {
+          "sha256": "a240ab042444febd1b08b006c11dc3cc021b8e95e74d39cda7781a18a8e8958d",
+          "rows": 15
+        },
+        "Table13b_Fee_Events.csv": {
+          "sha256": "21509244bcff15b0f3655b4c7f046c3a592af5b5dc4fe73b50da3fac9d22f2a3",
+          "rows": 7142
+        },
+        "Table13c_Fee_Entitled_Vs_Charged.csv": {
+          "sha256": "900031536b2bfcf2a980f1c437e93606581d30760a759545afe86ec85a69afe9",
+          "rows": 5000
+        },
+        "Table14_Waivers_And_Exceptions.csv": {
+          "sha256": "b8514e217737ee0430f6ee9e491e4c9fb2e22ae25c0ae1a34b77661947c57493",
+          "rows": 929
+        },
+        "Table15_Interchange_Rate_Card.csv": {
+          "sha256": "e704d7311cbe9678873ec4a79f0da9d22a9da2340f2a461edb4347bfaf6a8f7b",
+          "rows": 100
+        },
+        "Table16_Reward_Program_Rules.csv": {
+          "sha256": "68271ccf7af693eeec1f48c73234e3c2347aecfc0fc693ef9f342c9c0e60c6c5",
+          "rows": 7
+        },
+        "Table17_Reward_Redemption.csv": {
+          "sha256": "5dda478055583f4d00e16b40286faccb4ac3feef70cdf99344831f392395eabe",
+          "rows": 15403
+        },
+        "Table18_Reward_Liability.csv": {
+          "sha256": "4cf16c8d619ed16a74699bba227057e2b77881891e819a45ef7b81475b692198",
+          "rows": 132856
+        },
+        "Table19_Reward_Expiry.csv": {
+          "sha256": "5db5998faf51f2f50f4b34dff7924618cdf23d2cfd7631bf3c72596be9bab050",
+          "rows": 5589
+        },
+        "Table1_Customer.csv": {
+          "sha256": "e12fdd652fa3e7ef4bff3a69f143f7730083594fd5a8ce0394cd06c03298ade8",
+          "rows": 5000
+        },
+        "Table20_Limit_Change_Events.csv": {
+          "sha256": "32febc506443b82f9aca94890f93069eab8caef736390f355e1b3cc4b8ac7bcb",
+          "rows": 4127
+        },
+        "Table21_Rate_Change_Events.csv": {
+          "sha256": "bee44ec07e4c9a31cfa7b4f856fa5b521f38962af4e82d316c9ec14f22358674",
+          "rows": 0
+        },
+        "Table22_Attrition_Events.csv": {
+          "sha256": "23d326a971de45a58f71b042d06372514f1483da78847ffe8ff3a7bf5c6e6534",
+          "rows": 1396
+        },
+        "Table23_Acquisition.csv": {
+          "sha256": "4e51bc233587b4d5e666bb69e0082ad2fecbe960b53126f5a7a73e06f40b573b",
+          "rows": 5000
+        },
+        "Table24_Product_Holding_Timeline.csv": {
+          "sha256": "276684dfd55122be694b63d9dfbd1a403a86841ac3ac6596d63ea9b2463efd21",
+          "rows": 21062
+        },
+        "Table2_Card_Account.csv": {
+          "sha256": "4715a1f5ca33ed4e5639a068218f17b708b8c8508bee4a88d84994cb530ec2a9",
+          "rows": 5000
+        },
+        "Table2b_Account_Open_Reference.csv": {
+          "sha256": "c8e865dcd0275ce4ad204a26b2042216071675ef831cc6810282f55e15f665f3",
+          "rows": 5000
+        },
+        "Table3_Card.csv": {
+          "sha256": "f93f67653e14e25d33bc9a14855c5bbe101c9d3c26da2a6ed3672947e9cb79f7",
+          "rows": 11223
+        },
+        "Table4_Account_Cycle.csv": {
+          "sha256": "8ce4abcf026aff3e0a0abcdb470df86963369ec46d4c2d5f8d38473418d645e1",
+          "rows": 141728
+        },
+        "Table5_Transaction.csv": {
+          "sha256": "bdc60060cb88f4be6a6e47f6d4eea02235cf3b9f546b9bca09cb253bd82cdcbd",
+          "rows": 929346
+        },
+        "Table5a_Installment_Plan.csv": {
+          "sha256": "57425b0fa6a716d745b30dcb547bc597a5545cfcfda8faeb57da90ef330cb5f4",
+          "rows": 6221
+        },
+        "Table5b_Installment_Plan_Cycle.csv": {
+          "sha256": "805b27df6dcef428947cc2e6b719ecaa81d08eb10c508ec8b6b4f216b30f6504",
+          "rows": 41653
+        },
+        "Table6_Deposit_Account.csv": {
+          "sha256": "48cc44b5384b08a68c9d25ae5bab3a2fe577aeaa91520c7610cc90198aedcafa",
+          "rows": 2709
+        },
+        "Table6b_Deposit_Account_Cycle.csv": {
+          "sha256": "93e1e47cdb60057c64ef6680c2bc8ad795369d2538037192640d25f9694580a6",
+          "rows": 83579
+        },
+        "Table7_Loan_Account.csv": {
+          "sha256": "7b03b53f959cb3cc6bad73bddfd73c369bc77941bfd02cc06e11a4565d412a51",
+          "rows": 983
+        },
+        "Table7b_Loan_Account_Cycle.csv": {
+          "sha256": "4caeb59a6d3fe58385d8ebd898de109bdd9c10a0e9d958bfcfbdb85e068132ee",
+          "rows": 29787
+        },
+        "Table8_Risk_Parameters.csv": {
+          "sha256": "adc3e720d54b0e7a54553cba589e3cf0e1fe87a107ea51a3aaf5adb6e6f00127",
+          "rows": 141728
+        },
+        "Table8b_Charge_Off_And_Recovery.csv": {
+          "sha256": "47693273a1b5ac5d8cfc7429d1c053181eca43e1ce5d413d593da055b2610a55",
+          "rows": 251
+        },
+        "Table9_Capital_RWA.csv": {
+          "sha256": "007f1ae8051f64b8fea55575cd561795f09f273c1c6398b3649f008675de5a88",
+          "rows": 141728
+        }
+      }
+    },
+    "transactor_heavy": {
+      "n_customers": 2000,
+      "n_cycles": 36,
+      "files": {
+        "Table10_FTP_Curve.csv": {
+          "sha256": "a02ef6f8869ee16b04be174124358c62e9d5126ad0dddaa8340aa4618fe7576d",
+          "rows": 216
+        },
+        "Table11_Cost_Pools.csv": {
+          "sha256": "7f621ae3ab06a7c57f1309cd1b29805823c815f73a797a77960c7f9f7b27ddf9",
+          "rows": 22
+        },
+        "Table12_Cost_Drivers.csv": {
+          "sha256": "096256d69d5a4e1cdcf66b4bbbe34bbef5f7a39f0ea11c24252277cac4f9179c",
+          "rows": 61567
+        },
+        "Table12b_Cost_Pool_Monthly_Totals.csv": {
+          "sha256": "2c4fad4757d9eb28af0c20d23ef3a4021856ff5f23e4b1b2607424574a1ff847",
+          "rows": 12
+        },
+        "Table13_Fee_Schedule.csv": {
+          "sha256": "a240ab042444febd1b08b006c11dc3cc021b8e95e74d39cda7781a18a8e8958d",
+          "rows": 15
+        },
+        "Table13b_Fee_Events.csv": {
+          "sha256": "12d0723a35815531b1e44eef74482f2685599d7bef178b7ff957254364def1f1",
+          "rows": 2319
+        },
+        "Table13c_Fee_Entitled_Vs_Charged.csv": {
+          "sha256": "7b97053e7ce2b1e1fb0aa109ad85689be7f29169fd4919bc04a62da66f2f8535",
+          "rows": 2000
+        },
+        "Table14_Waivers_And_Exceptions.csv": {
+          "sha256": "60271fd8ccf4b9ba6957960fbd1ec2c08ae677dc65d6d27c3aff1d490af01da2",
+          "rows": 302
+        },
+        "Table15_Interchange_Rate_Card.csv": {
+          "sha256": "e704d7311cbe9678873ec4a79f0da9d22a9da2340f2a461edb4347bfaf6a8f7b",
+          "rows": 100
+        },
+        "Table16_Reward_Program_Rules.csv": {
+          "sha256": "68271ccf7af693eeec1f48c73234e3c2347aecfc0fc693ef9f342c9c0e60c6c5",
+          "rows": 7
+        },
+        "Table17_Reward_Redemption.csv": {
+          "sha256": "25695d4d5bef0efb0dfa127bd7bc08c7de1c994c09fa4b3a8bd3b16b23ea9dd5",
+          "rows": 7106
+        },
+        "Table18_Reward_Liability.csv": {
+          "sha256": "21205eff3e345a7875a16656783ad7b8500b1d9ba8a3e92128e5b58c2db933e4",
+          "rows": 61198
+        },
+        "Table19_Reward_Expiry.csv": {
+          "sha256": "12a2c59b7268780d98a8e13125276e3765a87d5b4bc419e0a85f6de978ceb840",
+          "rows": 3171
+        },
+        "Table1_Customer.csv": {
+          "sha256": "129be40ff442791be42efbdfaf767e7cb27270a35f1975d206d6a479194b2c06",
+          "rows": 2000
+        },
+        "Table20_Limit_Change_Events.csv": {
+          "sha256": "305edac862e739e8eb87e0e60db1b487ec2a5c11aa464f94127742430f1f5b40",
+          "rows": 2048
+        },
+        "Table21_Rate_Change_Events.csv": {
+          "sha256": "bee44ec07e4c9a31cfa7b4f856fa5b521f38962af4e82d316c9ec14f22358674",
+          "rows": 0
+        },
+        "Table22_Attrition_Events.csv": {
+          "sha256": "5d8f652b6b8112217ded1e1cb99142899a6339ee5bbf0f163a601177f25f0b41",
+          "rows": 295
+        },
+        "Table23_Acquisition.csv": {
+          "sha256": "82860082884077e52de592275b6724a73b892ff6374d6cc8a699a0ccc7391802",
+          "rows": 2000
+        },
+        "Table24_Product_Holding_Timeline.csv": {
+          "sha256": "0ba4d01df55dc11caa024ab3cbcf42a1ff226c31bf58872e288878f753ee4428",
+          "rows": 8770
+        },
+        "Table2_Card_Account.csv": {
+          "sha256": "003f867be8b2d5869e6f775e89770103682613029cf619382c77b96383d3f453",
+          "rows": 2000
+        },
+        "Table2b_Account_Open_Reference.csv": {
+          "sha256": "2984c4b417042c34bbeb913b4fbf57087ae7659e1f985e7261d5217038ceb0ca",
+          "rows": 2000
+        },
+        "Table3_Card.csv": {
+          "sha256": "b616f4dbed9321b374297a737b7ce43833635e7a32771385df58641c05de2573",
+          "rows": 4568
+        },
+        "Table4_Account_Cycle.csv": {
+          "sha256": "c9ce2b3db99024577b09ae1912114c4fa52c25663008c5c856ef67b2dba08a31",
+          "rows": 61567
+        },
+        "Table5_Transaction.csv": {
+          "sha256": "04d21edadd42e4afc5a26245cb5132e7d35210c0418e21fce4dae7de7e2c4afc",
+          "rows": 439142
+        },
+        "Table5a_Installment_Plan.csv": {
+          "sha256": "bacc9c36e0e7914b5fbf879cafa4b3273ea401df1dd002b65b807d74a1618ed9",
+          "rows": 2816
+        },
+        "Table5b_Installment_Plan_Cycle.csv": {
+          "sha256": "d3b4fa6b69fc0f1e3c31a826f3dcf9e1424def9ab9d06712cc87f853a6498757",
+          "rows": 19499
+        },
+        "Table6_Deposit_Account.csv": {
+          "sha256": "64c2e7ce2f651f5a236b3efda74fc2f09e48a590cd0e454cdb37e68d4c23d241",
+          "rows": 1130
+        },
+        "Table6b_Deposit_Account_Cycle.csv": {
+          "sha256": "8d0f17f27b557c8f6b3bfde3d79028a14f9fffbb335a87efdcb820663bb742c9",
+          "rows": 34669
+        },
+        "Table7_Loan_Account.csv": {
+          "sha256": "4426dd7b56d59239a804d602c72e3fae8af3a889accbab18df3a2ec0d9ab6179",
+          "rows": 374
+        },
+        "Table7b_Loan_Account_Cycle.csv": {
+          "sha256": "e9fddfe25e69b741f2cfa332100d30550c2e7268e7ed6a841fb81eeb26f20962",
+          "rows": 11396
+        },
+        "Table8_Risk_Parameters.csv": {
+          "sha256": "db058933542ff4e5b449b385713e210235ccd20b7fc79bf1f6fafb711da5b1a6",
+          "rows": 61567
+        },
+        "Table8b_Charge_Off_And_Recovery.csv": {
+          "sha256": "5c098c55569314362c876707a4989fdaa5d1b3ddd293010d2cd8c9ef6156d968",
+          "rows": 28
+        },
+        "Table9_Capital_RWA.csv": {
+          "sha256": "f55a583af7a47f317cefd4bc5c2ecef201d1ad4c9250b5e93d418698da3f4fbd",
+          "rows": 61567
+        }
+      }
+    },
+    "subprime_heavy": {
+      "n_customers": 2000,
+      "n_cycles": 36,
+      "files": {
+        "Table10_FTP_Curve.csv": {
+          "sha256": "d0bc750c379f4ff809af6a449a51b7f63de0fcd6d011b412654362581c0ed832",
+          "rows": 216
+        },
+        "Table11_Cost_Pools.csv": {
+          "sha256": "7f621ae3ab06a7c57f1309cd1b29805823c815f73a797a77960c7f9f7b27ddf9",
+          "rows": 22
+        },
+        "Table12_Cost_Drivers.csv": {
+          "sha256": "4f6991bfe30d9959db415f4c7d90da40283cb127944125a3b72a02cd8a87679c",
+          "rows": 48902
+        },
+        "Table12b_Cost_Pool_Monthly_Totals.csv": {
+          "sha256": "347ab62f0d5a4fd6f35d5e08d4bcfe861b02dce9919b088c0d90d2d1d5a7b17b",
+          "rows": 12
+        },
+        "Table13_Fee_Schedule.csv": {
+          "sha256": "a240ab042444febd1b08b006c11dc3cc021b8e95e74d39cda7781a18a8e8958d",
+          "rows": 15
+        },
+        "Table13b_Fee_Events.csv": {
+          "sha256": "8e62683519d4f86acd957423530349516c26db555c9159e2150bacd366b07f8b",
+          "rows": 3012
+        },
+        "Table13c_Fee_Entitled_Vs_Charged.csv": {
+          "sha256": "869841e1c1ac92b99a5ac18dd78b23beed0ef59a349363aac171b06d757c08b9",
+          "rows": 2000
+        },
+        "Table14_Waivers_And_Exceptions.csv": {
+          "sha256": "c81b9722a28a9d24e92f1481aa2b3d1671fb9644228bceee7d0cd7766db73c68",
+          "rows": 438
+        },
+        "Table15_Interchange_Rate_Card.csv": {
+          "sha256": "e704d7311cbe9678873ec4a79f0da9d22a9da2340f2a461edb4347bfaf6a8f7b",
+          "rows": 100
+        },
+        "Table16_Reward_Program_Rules.csv": {
+          "sha256": "68271ccf7af693eeec1f48c73234e3c2347aecfc0fc693ef9f342c9c0e60c6c5",
+          "rows": 7
+        },
+        "Table17_Reward_Redemption.csv": {
+          "sha256": "5c878e87b839aca13bdccd4e55ec3047370452b5423ccad58ecd8d399d4f5dc8",
+          "rows": 5320
+        },
+        "Table18_Reward_Liability.csv": {
+          "sha256": "d93f67c5d0ae05a31f34cf50b6fe217fa1d4a05ae5bcb8065aba37bf787f39c1",
+          "rows": 44408
+        },
+        "Table19_Reward_Expiry.csv": {
+          "sha256": "42030c594093d64fb4b3cbcfbd763bec4ce65a379f70840a28cf1bfb0e6a5db3",
+          "rows": 879
+        },
+        "Table1_Customer.csv": {
+          "sha256": "ac2f5011ab73fa046f19528346fea3f103b0e311dc857a1a7900712ad37f1b01",
+          "rows": 2000
+        },
+        "Table20_Limit_Change_Events.csv": {
+          "sha256": "a0bdc11e0e8c3a276d772981a704d3268aa12d1b93eac90b0b2f6c885ace63e2",
+          "rows": 74
+        },
+        "Table21_Rate_Change_Events.csv": {
+          "sha256": "bee44ec07e4c9a31cfa7b4f856fa5b521f38962af4e82d316c9ec14f22358674",
+          "rows": 0
+        },
+        "Table22_Attrition_Events.csv": {
+          "sha256": "30fa0aaaf12c50976ef33b029e60ffe42067674a213c055c5c84146a57569375",
+          "rows": 1003
+        },
+        "Table23_Acquisition.csv": {
+          "sha256": "81bf03909ec3f4fc31bbe8e1b70abdace35ad762b5db1282833171c9c1d20871",
+          "rows": 2000
+        },
+        "Table24_Product_Holding_Timeline.csv": {
+          "sha256": "4e4ee78e8955bf3117895a320ed34a49d7682d76d7be240b8a5edcd39da8391b",
+          "rows": 7995
+        },
+        "Table2_Card_Account.csv": {
+          "sha256": "5005efeba81d8389d98bc032f9476a4270ba3feac06e8f330f7fb365932385eb",
+          "rows": 2000
+        },
+        "Table2b_Account_Open_Reference.csv": {
+          "sha256": "0c1821b0f8c54371805880754b1a0fd4d117eaddda0c3a806ee191e6a0329fb5",
+          "rows": 2000
+        },
+        "Table3_Card.csv": {
+          "sha256": "ee7abb296fc74d2e2915c532e8608cf0bc2d8ae3048ed14dd01733e75d228fba",
+          "rows": 4365
+        },
+        "Table4_Account_Cycle.csv": {
+          "sha256": "12605616ce2dfd78db0ab4c01d2a95c45e37e5bba88343b8687ff781326ffd3a",
+          "rows": 48902
+        },
+        "Table5_Transaction.csv": {
+          "sha256": "98941292e6397b83fe5fa34545db3d758fbbe492261e467094b60b125109f5d5",
+          "rows": 328954
+        },
+        "Table5a_Installment_Plan.csv": {
+          "sha256": "a63c8ebe305775ced4474a717927e4e406c7d8172bc55dc244391953aaf2c64e",
+          "rows": 2017
+        },
+        "Table5b_Installment_Plan_Cycle.csv": {
+          "sha256": "3a6a58af0dc98bdd2ce60295e079b58f61023219192245ce0b5e3f5a8b96c3ab",
+          "rows": 12777
+        },
+        "Table6_Deposit_Account.csv": {
+          "sha256": "ce19831053c2a6fe69cdf3ba086bed70e96564a55afec90817b966833c8d3551",
+          "rows": 1106
+        },
+        "Table6b_Deposit_Account_Cycle.csv": {
+          "sha256": "ad7e3de97f64de5daecd3af068329598f8d31b815cdd04b0f56380f6d4aa12ea",
+          "rows": 34426
+        },
+        "Table7_Loan_Account.csv": {
+          "sha256": "0091522082907c286e8df3ca393e203e75e90e16803bdab60d0dd5e9cdccf966",
+          "rows": 409
+        },
+        "Table7b_Loan_Account_Cycle.csv": {
+          "sha256": "c0b606b82f11d6432cf81da8dc1c43a7de7942e66c90ce004aba7c4afacd2947",
+          "rows": 12414
+        },
+        "Table8_Risk_Parameters.csv": {
+          "sha256": "f29270da8df4951d302ed2870a5125c16dbbdf0e3f37a581fcd6d66fdba84f27",
+          "rows": 48902
+        },
+        "Table8b_Charge_Off_And_Recovery.csv": {
+          "sha256": "245db2b43d6b6d1543b6d9f0ee39fcd99ba041e606ffc73678f29c31de4ecb54",
+          "rows": 182
+        },
+        "Table9_Capital_RWA.csv": {
+          "sha256": "e34781c9e27cc7bc3dc3781f92156151b39536d17b9d25ab40258ee5f2a54d07",
+          "rows": 48902
+        }
+      }
+    },
+    "premium_heavy": {
+      "n_customers": 2000,
+      "n_cycles": 36,
+      "files": {
+        "Table10_FTP_Curve.csv": {
+          "sha256": "b3dd5f409117daed23f8f6f29545aba7cf3fa58e3ace3e8317b9c534a3152fd8",
+          "rows": 216
+        },
+        "Table11_Cost_Pools.csv": {
+          "sha256": "7f621ae3ab06a7c57f1309cd1b29805823c815f73a797a77960c7f9f7b27ddf9",
+          "rows": 22
+        },
+        "Table12_Cost_Drivers.csv": {
+          "sha256": "e2dca21516124127fa23c33d3aa22ef8ba1544aadfa5b25c03ad7f849d59040f",
+          "rows": 61373
+        },
+        "Table12b_Cost_Pool_Monthly_Totals.csv": {
+          "sha256": "037bf2cfa0cf34e0bfa9aff0c2222f9aae6ee95ee8dfb7011a398954cec3bb46",
+          "rows": 12
+        },
+        "Table13_Fee_Schedule.csv": {
+          "sha256": "a240ab042444febd1b08b006c11dc3cc021b8e95e74d39cda7781a18a8e8958d",
+          "rows": 15
+        },
+        "Table13b_Fee_Events.csv": {
+          "sha256": "27d4b72c568df42b22d64de5c79eaec231be9ecf4adae89f86df3008b76874be",
+          "rows": 3339
+        },
+        "Table13c_Fee_Entitled_Vs_Charged.csv": {
+          "sha256": "4ff3bc00fc8620f8fd34c39950b026b294dadeb0392b334e3b7768d0390f41c8",
+          "rows": 2000
+        },
+        "Table14_Waivers_And_Exceptions.csv": {
+          "sha256": "c1c9ab97198444535dcebc6a4b95a803382d507a9672362206e725aa44851804",
+          "rows": 617
+        },
+        "Table15_Interchange_Rate_Card.csv": {
+          "sha256": "e704d7311cbe9678873ec4a79f0da9d22a9da2340f2a461edb4347bfaf6a8f7b",
+          "rows": 100
+        },
+        "Table16_Reward_Program_Rules.csv": {
+          "sha256": "68271ccf7af693eeec1f48c73234e3c2347aecfc0fc693ef9f342c9c0e60c6c5",
+          "rows": 7
+        },
+        "Table17_Reward_Redemption.csv": {
+          "sha256": "1ea3ac4b6ee90d07fc04ceb631d3a27455371b91505c0f290f59e8f0bdb6b277",
+          "rows": 7320
+        },
+        "Table18_Reward_Liability.csv": {
+          "sha256": "627ced870279d21b7e380e3e6762799614f26e99e5dc13257decb4ae2b033cf5",
+          "rows": 61951
+        },
+        "Table19_Reward_Expiry.csv": {
+          "sha256": "aacdea78832f05b783193995c66d6438ad62260d3981ccc467b91e1e98539c50",
+          "rows": 3925
+        },
+        "Table1_Customer.csv": {
+          "sha256": "a01921bc3f5e60d1edbdfd48bbbf15fab48ac065446cfb9301fa67e021af2f66",
+          "rows": 2000
+        },
+        "Table20_Limit_Change_Events.csv": {
+          "sha256": "efae88c80193f8d21b40f6a1493a9962c940e7e8fcc45ed994961920046dd254",
+          "rows": 2204
+        },
+        "Table21_Rate_Change_Events.csv": {
+          "sha256": "bee44ec07e4c9a31cfa7b4f856fa5b521f38962af4e82d316c9ec14f22358674",
+          "rows": 0
+        },
+        "Table22_Attrition_Events.csv": {
+          "sha256": "d4d8c02022ce9d301d37663a3fcc274492aca14a07bdd3c7056921f58b5068a7",
+          "rows": 315
+        },
+        "Table23_Acquisition.csv": {
+          "sha256": "c8b8494104a36d37bcb8b50463c1affe7f881d21879a07d1c7337d3caf42e4ec",
+          "rows": 2000
+        },
+        "Table24_Product_Holding_Timeline.csv": {
+          "sha256": "d7890b2a62f6650fbd84785c54b5bf28b7825ca941303e1e993b728bbac56a20",
+          "rows": 12195
+        },
+        "Table2_Card_Account.csv": {
+          "sha256": "97889cd6516869afd4d0d89c83dabb0b663adfdd6995797e8be0c369f6f5703c",
+          "rows": 2000
+        },
+        "Table2b_Account_Open_Reference.csv": {
+          "sha256": "53f394a387ee5038ca77339c55fafe88f1e01b156db82825598ed9289806d17e",
+          "rows": 2000
+        },
+        "Table3_Card.csv": {
+          "sha256": "c4b88e127de65f94d12fbf50780bca4ec6440bb1dec25aa290ee0453eabda861",
+          "rows": 4679
+        },
+        "Table4_Account_Cycle.csv": {
+          "sha256": "df5f9be1f6ba2042adfd9d372c151ef6bfabf418f6335b7d6b1db6c8419ad030",
+          "rows": 61373
+        },
+        "Table5_Transaction.csv": {
+          "sha256": "b3d840ef8192de5bc692c0d684fbe2394d363fa992cd1934a93c03e09baaed8b",
+          "rows": 851619
+        },
+        "Table5a_Installment_Plan.csv": {
+          "sha256": "501d8ea736554e247a8c89a17d30af3886d36c7fd2cbef52093d91ce444e2bb7",
+          "rows": 4554
+        },
+        "Table5b_Installment_Plan_Cycle.csv": {
+          "sha256": "391d6ed047d40165a54cfa773a02693e42d4baa790ba5a5832f5e129494140fd",
+          "rows": 30988
+        },
+        "Table6_Deposit_Account.csv": {
+          "sha256": "da99a9ffe1f2f5e07efc59d1f13b9b4c22f7abf85a68801ea6d3273325660cbf",
+          "rows": 1318
+        },
+        "Table6b_Deposit_Account_Cycle.csv": {
+          "sha256": "bf18485d8d0784e4f13d8eab1953b8554b6fb72ef9ffe9dc50bbbd8affe874f2",
+          "rows": 39138
+        },
+        "Table7_Loan_Account.csv": {
+          "sha256": "61b02b3c8df4226994eda7c60ec85466d6939e71f0f048e6fcca09f9acb22650",
+          "rows": 468
+        },
+        "Table7b_Loan_Account_Cycle.csv": {
+          "sha256": "bbdbcb886f8f504d4f7a0ae2acae82c7b0fc127eff5a39bbbb0ce71a62817b77",
+          "rows": 14028
+        },
+        "Table8_Risk_Parameters.csv": {
+          "sha256": "a41d45ec1d633a3ae727bc1caa8132c79cc1ba37fa051ac2dbc2d619dacb9040",
+          "rows": 61373
+        },
+        "Table8b_Charge_Off_And_Recovery.csv": {
+          "sha256": "2f75d5c6e258abd99b0fe6a9c04b7b48ceb20bed14d0b9616a7e70c3be72f98a",
+          "rows": 49
+        },
+        "Table9_Capital_RWA.csv": {
+          "sha256": "498bd50aaaf0a7d3cd395c43c407a41291fec31d9eefbed9cd25069a221442d1",
+          "rows": 61373
+        }
+      }
+    },
+    "negative_control": {
+      "n_customers": 5000,
+      "n_cycles": 36,
+      "files": {
+        "Table10_FTP_Curve.csv": {
+          "sha256": "60c28251c7a640450802006957020b7bc7c28b6ec355a530c1493edb5cadba7c",
+          "rows": 216
+        },
+        "Table11_Cost_Pools.csv": {
+          "sha256": "7f621ae3ab06a7c57f1309cd1b29805823c815f73a797a77960c7f9f7b27ddf9",
+          "rows": 22
+        },
+        "Table12_Cost_Drivers.csv": {
+          "sha256": "086e0261816d32ed84e534ab4c19519fbc84239c1e9a1b21c54065d316613db2",
+          "rows": 139831
+        },
+        "Table12b_Cost_Pool_Monthly_Totals.csv": {
+          "sha256": "316a1c730fbcd42b7993c4a099cd764ae2608f5d4ae3d5593f3b11de71ecadcd",
+          "rows": 12
+        },
+        "Table13_Fee_Schedule.csv": {
+          "sha256": "a240ab042444febd1b08b006c11dc3cc021b8e95e74d39cda7781a18a8e8958d",
+          "rows": 15
+        },
+        "Table13b_Fee_Events.csv": {
+          "sha256": "131b5388f009a3fe3f2e31367da80640d757f141d05d51903323e3d717731742",
+          "rows": 6511
+        },
+        "Table13c_Fee_Entitled_Vs_Charged.csv": {
+          "sha256": "3a4eda9ecc826b1c717bec1b2490593d0a6ac9e02ac432c05e12a87e2896972c",
+          "rows": 5000
+        },
+        "Table14_Waivers_And_Exceptions.csv": {
+          "sha256": "c7f825bf47a9d8c27f4f6204e7f5d99c0612bac476d712bf1d1cd5f428f6ca96",
+          "rows": 304
+        },
+        "Table15_Interchange_Rate_Card.csv": {
+          "sha256": "e704d7311cbe9678873ec4a79f0da9d22a9da2340f2a461edb4347bfaf6a8f7b",
+          "rows": 100
+        },
+        "Table16_Reward_Program_Rules.csv": {
+          "sha256": "68271ccf7af693eeec1f48c73234e3c2347aecfc0fc693ef9f342c9c0e60c6c5",
+          "rows": 7
+        },
+        "Table17_Reward_Redemption.csv": {
+          "sha256": "3a3f03b07f6d2f596e1d2faf848d8ce1de3d51e0d598e42894138fadea6b5491",
+          "rows": 15119
+        },
+        "Table18_Reward_Liability.csv": {
+          "sha256": "6d9b5ffcd5d1ffaf6b3f8af4550f1640b0643d986970846eb78b3fb1f08ea9ad",
+          "rows": 131277
+        },
+        "Table19_Reward_Expiry.csv": {
+          "sha256": "c3425d92afd4392710807db00d27b81e52d03171c3e7843e09d80757d884d8ac",
+          "rows": 5538
+        },
+        "Table1_Customer.csv": {
+          "sha256": "bf680106558ead9cd7c574a85b325d11514c0c3459d222563b1737a4d8c0d9a7",
+          "rows": 5000
+        },
+        "Table20_Limit_Change_Events.csv": {
+          "sha256": "6e75612f0856fe0529b0ab3450ae9c70f575130d2b0bee0a2ff069d1d32c10bf",
+          "rows": 8125
+        },
+        "Table21_Rate_Change_Events.csv": {
+          "sha256": "cdf55178dd7d2cb17be523ac23a0021f90e73c804538258d60d4d16030df2441",
+          "rows": 636
+        },
+        "Table22_Attrition_Events.csv": {
+          "sha256": "141bc69f4b9cd37fa3831634ab6dfe8c16925d6a36c367966ecb5c40d4b547e5",
+          "rows": 1506
+        },
+        "Table23_Acquisition.csv": {
+          "sha256": "c2883b3f1173ad584e62c23b28986f01defc654cd1d5af5673439f6b5f7adaa4",
+          "rows": 5000
+        },
+        "Table24_Product_Holding_Timeline.csv": {
+          "sha256": "c0ae026000a664cc03686b12a971cda2556187e5df009fdf0fa75c4a369705f3",
+          "rows": 20757
+        },
+        "Table2_Card_Account.csv": {
+          "sha256": "8bdff46033b39c55f2139e3437b24af2d1e86fcb3b5739bcf1e798f8bb6dbb4d",
+          "rows": 5000
+        },
+        "Table2b_Account_Open_Reference.csv": {
+          "sha256": "c8e865dcd0275ce4ad204a26b2042216071675ef831cc6810282f55e15f665f3",
+          "rows": 5000
+        },
+        "Table3_Card.csv": {
+          "sha256": "5ad303243999a7b80770ec9921e75e1b2de15c26233978e5bd17f807834037f4",
+          "rows": 11231
+        },
+        "Table4_Account_Cycle.csv": {
+          "sha256": "84fabcad05fd1e98bdaa7ef7def731d73ff6eb4a06c3ee2526e1500efa7ffabf",
+          "rows": 139831
+        },
+        "Table5_Transaction.csv": {
+          "sha256": "9511e2949aa8dfb236438b256630b45cd2108a6194411df19d41955974c869cc",
+          "rows": 903348
+        },
+        "Table5a_Installment_Plan.csv": {
+          "sha256": "38ce65419e41f45282550b5c5fe1ebd3ea97f6aa1e415e5d2bb63c71b630aefd",
+          "rows": 5985
+        },
+        "Table5b_Installment_Plan_Cycle.csv": {
+          "sha256": "bcffac7daa043d236474eb67319059ec77edf724ba7cead2bac3176afdee2a7c",
+          "rows": 39481
+        },
+        "Table6_Deposit_Account.csv": {
+          "sha256": "16c120bd4649c15f2798f06e4acc8771956e699d000a1e8127fa75ae0918cd94",
+          "rows": 2756
+        },
+        "Table6b_Deposit_Account_Cycle.csv": {
+          "sha256": "d92ce22b159cd8f75e0bd76c05c751830cfb6a735b3a8a5ca65fcedbb445b5d2",
+          "rows": 84950
+        },
+        "Table7_Loan_Account.csv": {
+          "sha256": "8a9118b92083ee24259807c65dc30246c2d7151e6293ffd24909f8ceaf05551d",
+          "rows": 984
+        },
+        "Table7b_Loan_Account_Cycle.csv": {
+          "sha256": "eded69b227d1b62a9ae396ea8ce215421304358234da91552933cb3b878ca0a5",
+          "rows": 29735
+        },
+        "Table8_Risk_Parameters.csv": {
+          "sha256": "529aad211ceb561a00eab6531fcd520b7fcec28aad4155f0cae1342e2c79493e",
+          "rows": 139831
+        },
+        "Table8b_Charge_Off_And_Recovery.csv": {
+          "sha256": "5c0fa8a3ebb16bb8f010abc98edbf467250e4ff1e721154c1081794eef0e4ed9",
+          "rows": 241
+        },
+        "Table9_Capital_RWA.csv": {
+          "sha256": "8898febd9658d06db749c77f8368768e8f27f24406e267ea31b44369e4f53715",
+          "rows": 139831
+        }
+      }
+    }
+  },
+  "row_counts": {
+    "total_panel_rows": 453401,
+    "train": 258076,
+    "val": 75533,
+    "test": 73954,
+    "unseen_account_holdout": 45838
+  },
+  "targets": {
+    "risk_30dpd_3m": {
+      "deployed": "model",
+      "model_val_pr_auc": 0.11697900123127818,
+      "baseline_val_pr_auc": 0.0940574853217355,
+      "improvement_required": 0.05,
+      "test_pr_auc": 0.09663104099488665,
+      "unseen_account_holdout_pr_auc": 0.13255247775831136,
+      "base_rate_train": 0.03663147062771241
+    },
+    "spend_3m": {
+      "deployed": "model",
+      "model_val_mae": 778.4232968067885,
+      "baseline_val_mae": 872.1063288239303,
+      "improvement_required": 0.05,
+      "test_mae": 783.4547656256008,
+      "unseen_account_holdout_mae": 778.7671721633907
+    },
+    "peak_balance_3m": {
+      "deployed": "model",
+      "model_val_mae": 263.48145735147097,
+      "baseline_val_mae": 338.67173300274044,
+      "improvement_required": 0.05,
+      "test_mae": 280.23166653717897,
+      "unseen_account_holdout_mae": 268.09472953832125
+    }
+  },
+  "excluded_features": [
+    "Age (ECOA/Reg B prohibited basis)",
+    "Charged Purchase APR (possible L3 repricing-mechanism proxy)"
+  ]
+}

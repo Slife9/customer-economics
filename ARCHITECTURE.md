@@ -206,6 +206,43 @@ contract → ledger → customer_view → suppression → routing → levers →
    re-run), and no interactive CCF/target-ratio/cost-of-capital sensitivity
    grid.
 
+3b. **`ml/`** — CES's first real machine-learning component: a replica of the
+   sibling `credit-limit-recommendation-system` repo's capability, built on
+   CES's own data. Three models (trained OFFLINE via
+   `python -m engine.ml.train_credit_limit_model`, never inside the live
+   app) forecast 30+-days-past-due probability, 3-month spend, and 3-month
+   peak balance per account; `ml/decisions.py` turns those forecasts into
+   one of seven actions (`INCREASE`/`MAINTAIN`/`DECREASE_UNUSED_EXPOSURE`/
+   `FREEZE_NO_INCREASE`/`MANUAL_REVIEW`/`NOT_ELIGIBLE`/`INSUFFICIENT_HISTORY`)
+   via a ported pressure-score/stress-flag/9-step-waterfall rules engine —
+   **the model never sets a limit, only supplies evidence**, same
+   separation of concerns as the sibling repo.
+
+   `ml/features.py` builds its own panel (one row per account per cycle)
+   reading `Table4_Account_Cycle.csv`/`Table1_Customer.csv` directly,
+   deliberately decoupled from `ledger.py` (which hard-fails on reconciliation
+   issues unrelated to credit-limit risk) and from `customer_view.py` (which
+   produces one row per customer, not the many-rows-per-account panel
+   training needs). `Age` and `Charged Purchase APR` are excluded from the
+   feature set by design — the former an ECOA/Reg B prohibited basis (the
+   sibling repo's own `MODEL_CARD.md` documents the same fix), the latter a
+   possible proxy for L3's own repricing-tracks-risk mechanism
+   (`MECHANISM_VARIED_IN_CONTROL["L3"]` above).
+
+   Scored and decided in `run.py` right after `customer_view.build()`,
+   merged into `cv` **before** `suppression.run(cv)` executes — meaning
+   suppressed customers are excluded from the ML page for free, the same
+   protection every other page gets, with zero suppression logic on the
+   page itself. A dedicated four-fifths fairness check runs on the ML
+   "treatment" population, surfaced separately from the six levers'
+   fairness result (`result["ml_fairness"]`) so the Governance page's
+   existing shape doesn't change. The new page also shows L2's existing
+   rules-based action next to the ML action — two independent engines over
+   the same lever surface, agreement is a sanity check, not a requirement.
+
+   Full detail, training results, and every deliberate exclusion/scope gap:
+   `engine/ml/MODEL_CARD.md`.
+
 4. **`core/suppression.py`** — removes hardship, accommodation-plan, and SCRA
    customers from ever being flagged or routed. Returns a `SuppressedPopulation`
    wrapper (not a plain DataFrame). **This is the key governance mechanism**:

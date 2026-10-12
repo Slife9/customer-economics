@@ -201,5 +201,6 @@ st.markdown("**Next:** open **Portfolio Economics** for the full cost breakdown,
            "customer-level drill-down, **Acquisition Cost** for whether what we "
            "spent to get each customer has paid back, **Liquidity** for the regulatory "
            "liquidity cost on unused credit lines, **Leverage** for the separate "
-           "leverage-ratio capital cost (Case A/B toggle, sidebar), or **Governance** "
+           "leverage-ratio capital cost (Case A/B toggle, sidebar), **ML Credit Limit** "
+           "for a genuinely separate, model-driven limit recommendation, or **Governance** "
            "for the fairness and negative-control results.")

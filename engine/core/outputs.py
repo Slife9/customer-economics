@@ -32,6 +32,11 @@ def score_file(customer_view: pd.DataFrame, suppressed_customers: pd.DataFrame,
     sf["Cycle Month"] = cycle_month
     sf["suppressed"] = False
 
+    ml_cols = ["ml_action", "ml_primary_reason", "ml_recommended_limit",
+              "predicted_risk_probability"]
+    if all(c in customer_view.columns for c in ml_cols):
+        sf = sf.join(customer_view[ml_cols])
+
     if len(suppressed_customers):
         supp = suppressed_customers[["Masked Customer Number",
                                      "suppression_reason"]].copy()
@@ -55,6 +60,9 @@ def score_file(customer_view: pd.DataFrame, suppressed_customers: pd.DataFrame,
         supp["leverage_status"] = pd.NA
         supp["leverage_exposure"] = pd.NA
         supp["leverage_capital_cost"] = pd.NA
+        for c in ml_cols:
+            if c in sf.columns:
+                supp[c] = pd.NA
         supp["Cycle Month"] = cycle_month
         supp["suppressed"] = True
         sf = pd.concat([sf.drop(columns=[]), supp.drop(columns=["suppression_reason"])],

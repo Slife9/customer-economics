@@ -23,6 +23,8 @@ from .core import leverage_capital as LEV
 from .core import suppression as SUPP
 from .core import routing as ROUTE
 from .core import outputs as OUT
+from .ml import score as MLSCORE
+from .ml import decisions as MLDEC
 from .levers.l1_rewards import L1Rewards
 from .levers.l2_lines import L2Lines
 from .levers.l3_pricing import L3Pricing
@@ -74,6 +76,28 @@ def build_pipeline(data_dir: Path, leverage_policy_name: str = LEV.DEFAULT_POLIC
     cv = cv.merge(leverage_df.drop(columns=["avg_undrawn_12m"]), on="Masked Customer Number", how="left")
     leverage_audit = LEV.audit_record(leverage_policy_path, leverage_policy, leverage_warnings, leverage_df)
 
+    # ML credit-limit recommendation (see engine/ml/). Scores against a
+    # pre-trained, committed bundle - never retrains here. Optional: if no
+    # bundle has been trained yet (engine/ml/train_credit_limit_model.py
+    # hasn't been run), the rest of the pipeline proceeds without it and
+    # the new page degrades gracefully, the same pattern used throughout
+    # this app for any optional input.
+    ml_policy, ml_policy_warnings = MLDEC.load_policy()
+    ml_available = False
+    try:
+        ml_bundle = MLSCORE.load_bundle()
+        ml_scored = MLSCORE.score(portfolio, ml_bundle)
+        ml_decided = MLDEC.decide(ml_scored, cv, ml_policy)
+        ml_cols = [c for c in ml_decided.columns if c.startswith("ml_")
+                  or c in ("predicted_risk_probability", "predicted_3m_spend",
+                          "predicted_3m_peak_balance", "risk_model_deployed",
+                          "spend_model_deployed", "peak_balance_model_deployed")]
+        cv = cv.merge(ml_decided[["Masked Customer Number"] + ml_cols],
+                      on="Masked Customer Number", how="left")
+        ml_available = True
+    except MLSCORE.ModelBundleUnavailable:
+        pass
+
     suppressed = SUPP.run(cv)
     routed = ROUTE.route(suppressed)
 
@@ -104,6 +128,19 @@ def build_pipeline(data_dir: Path, leverage_policy_name: str = LEV.DEFAULT_POLIC
     fairness_result = FAIR.run(routed.frame, worklists)
     rsum = ROUTE.routing_summary(routed)
 
+    # A SEPARATE fairness check on the ML worklist - not merged into
+    # fairness_result above, so the existing Governance page (built around
+    # exactly six levers) doesn't need to change shape. "Treatment" here is
+    # the three actions that actually change what a customer experiences
+    # (INCREASE / DECREASE_UNUSED_EXPOSURE / FREEZE_NO_INCREASE), not
+    # MAINTAIN/MANUAL_REVIEW/NOT_ELIGIBLE/INSUFFICIENT_HISTORY.
+    ml_fairness = None
+    if ml_available:
+        actionable = routed.frame["ml_action"].isin(
+            ["INCREASE", "DECREASE_UNUSED_EXPOSURE", "FREEZE_NO_INCREASE"])
+        ml_worklist = routed.frame.loc[actionable, ["Masked Customer Number"]]
+        ml_fairness = FAIR.run(routed.frame, {"ML_CREDIT_LIMIT": ml_worklist})
+
     return {
         "portfolio": portfolio, "ledger": led, "customer_view": routed.frame,
         "suppressed": suppressed, "routed": routed, "levers": levers,
@@ -111,6 +148,8 @@ def build_pipeline(data_dir: Path, leverage_policy_name: str = LEV.DEFAULT_POLIC
         "fairness": fairness_result, "routing_summary": rsum,
         "leverage_policy": leverage_policy, "leverage_policy_path": str(leverage_policy_path),
         "leverage_warnings": leverage_warnings, "leverage_audit": leverage_audit,
+        "ml_available": ml_available, "ml_policy": ml_policy,
+        "ml_policy_warnings": ml_policy_warnings, "ml_fairness": ml_fairness,
     }
 
 

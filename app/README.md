@@ -23,6 +23,12 @@ governance/negative-control gate.
    `samples/negative_control_portfolio.zip` enables the negative-control
    gate on the Governance page.
 
+The **ML Credit Limit** page needs a trained model bundle to populate -
+`engine/ml/artifacts/credit_limit_model_bundle.joblib` is already committed,
+so no extra step is needed to try it. To retrain (e.g. after a feature
+change), run `python -m engine.ml.train_credit_limit_model` - see
+`engine/ml/MODEL_CARD.md`.
+
 ## What to upload
 
 A zip of a portfolio folder as produced by `generator/run.py` — i.e. the
@@ -65,6 +71,18 @@ negative control gate's "zero planted defects" assertion.
   page sidebar (Case A: SLR / Case B: Tier 1) — never inferred from the data
   — and feeds L2's DECREASE/INCREASE sizing symmetrically. Every citation
   behind this page is tracked in `governance/REGULATORY_RULEBOOK.md`.
+- **ML Credit Limit** — CES's first real machine-learning diagnostic: a
+  replica of the sibling `credit-limit-recommendation-system` repo's
+  capability, trained offline on this repo's own generator output
+  (`python -m engine.ml.train_credit_limit_model`), scored live against the
+  committed bundle. Forecasts (risk, spend, peak balance) feed a ported
+  pressure-score/stress-flag/9-step-waterfall rules engine for one of seven
+  actions and a recommended limit — the model never sets a dollar figure.
+  Shows L2's existing action alongside the ML action (two independent
+  engines, agreement is a sanity check not a requirement), a dedicated
+  fairness check on the ML treatment, and the same misleading-aggregate
+  caveat on its money figures the sibling repo states about its own. Full
+  detail in `engine/ml/MODEL_CARD.md`.
 - **Governance & Fairness** — the negative-control gate chart and table, the
   four-fifths test on both score and treatment, and the suppression breakdown.
 - **Downloads** — the five outputs (score file, worklist, leakage register,

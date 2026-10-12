@@ -211,6 +211,28 @@ def leverage_by_segment_chart(customer_view: pd.DataFrame) -> go.Figure:
     return fig
 
 
+ML_ACTION_COLORS = {
+    "MAINTAIN": COLORS["neutral"], "INCREASE": COLORS["net_pos"],
+    "DECREASE_UNUSED_EXPOSURE": COLORS["amber"], "FREEZE_NO_INCREASE": COLORS["net_neg"],
+    "MANUAL_REVIEW": "#7c3aed", "NOT_ELIGIBLE": "#94a3b8",
+    "INSUFFICIENT_HISTORY": "#cbd5e1",
+}
+ML_ACTION_ORDER = ["MAINTAIN", "INCREASE", "DECREASE_UNUSED_EXPOSURE", "FREEZE_NO_INCREASE",
+                  "MANUAL_REVIEW", "NOT_ELIGIBLE", "INSUFFICIENT_HISTORY"]
+
+
+def ml_action_distribution_chart(customer_view: pd.DataFrame) -> go.Figure:
+    counts = customer_view["ml_action"].value_counts().reindex(ML_ACTION_ORDER).fillna(0)
+    colors = [ML_ACTION_COLORS[a] for a in counts.index]
+    fig = go.Figure(go.Bar(
+        x=counts.index, y=counts.to_numpy(), marker_color=colors,
+        text=counts.to_numpy().astype(int), textposition="outside"))
+    fig.update_layout(title="Customers by ML Credit-Limit Action",
+                      yaxis_title="Customers", height=420, margin=dict(t=60, b=100))
+    fig.update_xaxes(tickangle=-20)
+    return fig
+
+
 def leakage_bar(leakage_df: pd.DataFrame) -> go.Figure:
     df = leakage_df.copy()
     df["value"] = df["priced_value_usd"].fillna(0.0)

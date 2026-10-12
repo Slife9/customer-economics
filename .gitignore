@@ -8,6 +8,11 @@ __pycache__/
 generator/out/
 engine/out/
 
+# ML training scratch: the 5 scenario portfolios train_credit_limit_model.py
+# generates fresh each run (~1GB) - only the trained bundle + evidence JSON
+# under engine/ml/artifacts/ are committed, never this
+engine/ml/_train_scratch/
+
 # Archival reference data from the original pre-rebuild audit - not needed
 # to run or understand the current system
 initial_data/
