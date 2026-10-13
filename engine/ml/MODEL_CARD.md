@@ -110,6 +110,19 @@ delinquency prediction is, even on measured, non-adversarial synthetic data.
   outflow rate (`engine/config/liquidity_policy.json`), or the 10% SLR CCF
   (`engine/config/leverage_capital_policy.*.json`). Four different regimes, four different
   numbers, on purpose.
+- **A marginal (before/after) expected-loss figure, not just the absolute snapshot.** CLRS's own
+  documentation (SYSTEM_BREAKDOWN.md Part 10) flags that its single `Expected Loss Proxy` is
+  "computed for every account, not for the marginal decision" and that "the relevant number for
+  evaluating the recommendations is the CHANGE in expected loss caused by the limit changes." CES
+  actually builds that number: `ml_expected_loss_delta_proxy` evaluates `PD x EAD x LGD` at the
+  recommended limit AND at the current limit (the do-nothing counterfactual) and reports the
+  difference - negative for a DECREASE (loss avoided), positive for an INCREASE (a disclosed,
+  real cost of taking on more exposure), and exactly zero for FREEZE, since a freeze leaves the
+  current limit untouched and therefore has nothing to compare against in this snapshot - its real
+  value is preventing future growth, not changing today's number. This is the figure the ML page's
+  "Strategy breakdown" section and the Downloads score file use; the absolute
+  `ml_expected_loss_proxy` is kept too, for context, but is never the number used to answer "what
+  does adopting this recommendation change."
 
 ## Scoring eligibility: only accounts still reporting as of "now"
 

@@ -102,6 +102,20 @@ assert (result["ml_action"] == "DECREASE_UNUSED_EXPOSURE").sum() <= max_reductio
 print(f"  PASS  {int((result['ml_action'] == 'DECREASE_UNUSED_EXPOSURE').sum())} reductions "
      f"<= pilot cap of {max_reductions}")
 
+sec("T-MARGINAL: expected-loss delta is the marginal (before/after) effect, not the absolute figure")
+assert (decreases["ml_expected_loss_delta_proxy"] <= 1e-6).all(), \
+    "a DECREASE must never show a positive (worse) expected-loss delta"
+assert (increases["ml_expected_loss_delta_proxy"] >= -1e-6).all(), \
+    "an INCREASE must never show a negative (better) expected-loss delta"
+freezes = result[result["ml_action"] == "FREEZE_NO_INCREASE"]
+assert (freezes["ml_expected_loss_delta_proxy"].abs() < 1e-6).all(), \
+    "FREEZE leaves the limit untouched, so its delta must be exactly zero"
+recon = (result["ml_expected_loss_proxy"] - result["ml_expected_loss_at_current_limit_proxy"]
+        - result["ml_expected_loss_delta_proxy"]).abs()
+assert (recon < 1e-6).all(), "delta must equal post-action minus current-limit expected loss, exactly"
+print(f"  PASS  DECREASE always <=0 (loss avoided), INCREASE always >=0 (disclosed cost), "
+     f"FREEZE always ==0 (no limit change to compare)")
+
 sec("T-SUPPRESS: decide() does not self-suppress; exclude_suppressed() does")
 from engine.core import suppression as SUPP  # noqa: E402
 suppressed_pop = SUPP.run(cv)

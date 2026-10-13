@@ -279,14 +279,37 @@ def _apply_pilot_cap(d: pd.DataFrame, waterfall: pd.DataFrame, pressure: pd.Data
     return wf
 
 
-def _money_figures(d: pd.DataFrame, waterfall: pd.DataFrame, policy: dict) -> pd.DataFrame:
-    undrawn = (waterfall["ml_recommended_limit"] - d["current_balance"]).clip(lower=0)
+def _expected_loss(limit: pd.Series, d: pd.DataFrame, policy: dict, lgd: pd.Series) -> pd.Series:
+    """PD x EAD x LGD at a given limit - a pure function of which limit you
+    plug in, so it can be evaluated at the CURRENT limit (the do-nothing
+    counterfactual) and at the RECOMMENDED limit (what adopting the action
+    produces). Never a number on its own - only the two evaluations and
+    their difference are meaningful (see _money_figures)."""
+    undrawn = (limit - d["current_balance"]).clip(lower=0)
     ead = d["current_balance"].clip(lower=0) + undrawn * policy["undrawn_exposure_conversion_factor"]
+    return d["predicted_risk_probability"].fillna(0) * ead * lgd
+
+
+def _money_figures(d: pd.DataFrame, waterfall: pd.DataFrame, policy: dict) -> pd.DataFrame:
     lgd = d["lgd"].fillna(policy["loss_given_difficulty_fallback"]) if "lgd" in d.columns \
         else pd.Series(policy["loss_given_difficulty_fallback"], index=d.index)
 
     interchange = (d["predicted_3m_spend"].fillna(0) * policy["interchange_revenue_rate"])
-    expected_loss = (d["predicted_risk_probability"].fillna(0) * ead * lgd)
+
+    # The post-action snapshot (what the book looks like after adopting the
+    # recommendation) ...
+    expected_loss = _expected_loss(waterfall["ml_recommended_limit"], d, policy, lgd)
+    # ... and the do-nothing counterfactual (expected loss if the current
+    # limit were left exactly as it is). The DIFFERENCE between these two is
+    # the actual, marginal effect of adopting the recommendation - the
+    # number that answers "what does taking this action change", not just
+    # "what does the book look like afterward". A DECREASE/FREEZE should
+    # show this as negative (loss avoided); an INCREASE takes on a little
+    # more exposure and can show it as positive (a real, disclosed cost of
+    # growth, not hidden).
+    expected_loss_at_current_limit = _expected_loss(d["current_limit"], d, policy, lgd)
+    expected_loss_delta = expected_loss - expected_loss_at_current_limit
+
     is_decrease = waterfall["ml_action"] == "DECREASE_UNUSED_EXPOSURE"
     released_exposure = (d["current_limit"] - waterfall["ml_recommended_limit"]).clip(lower=0).where(
         is_decrease, 0.0)
@@ -296,6 +319,8 @@ def _money_figures(d: pd.DataFrame, waterfall: pd.DataFrame, policy: dict) -> pd
     return pd.DataFrame({
         "ml_expected_3m_interchange_proxy": interchange,
         "ml_expected_loss_proxy": expected_loss,
+        "ml_expected_loss_at_current_limit_proxy": expected_loss_at_current_limit,
+        "ml_expected_loss_delta_proxy": expected_loss_delta,
         "ml_released_capacity_value_proxy_3m": released_value_3m,
         "ml_risk_adjusted_value_proxy": risk_adjusted,
     })

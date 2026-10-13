@@ -33,7 +33,8 @@ def score_file(customer_view: pd.DataFrame, suppressed_customers: pd.DataFrame,
     sf["suppressed"] = False
 
     ml_cols = ["ml_action", "ml_primary_reason", "ml_recommended_limit",
-              "predicted_risk_probability"]
+              "predicted_risk_probability", "ml_expected_3m_interchange_proxy",
+              "ml_expected_loss_delta_proxy"]
     if all(c in customer_view.columns for c in ml_cols):
         sf = sf.join(customer_view[ml_cols])
 

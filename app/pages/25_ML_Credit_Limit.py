@@ -97,6 +97,67 @@ if n_deferred:
               f"reason code `REDUCTION_CANDIDATE_OUTSIDE_PILOT_CAP`.")
 
 st.divider()
+st.subheader("Strategy breakdown — probable revenue effect by action")
+st.caption("What adopting each recommendation actually does, and the measured dollar effect of taking "
+          "that specific action on that specific group — not a portfolio-wide snapshot.")
+
+STRATEGIES = {
+    "INCREASE": {
+        "icon": "📈",
+        "definition": "Raise the limit for customers with low predicted risk AND strong forecast "
+                     "demand — sized to land at a target utilization, not a blanket percentage, and "
+                     "capped by four simultaneous ceilings (band %, absolute $, product max, demand).",
+        "trigger": "risk ≤ 8% · not under stress · pressure score ≥ 38 · forecast 3-month spend ≥ 70% of current limit",
+    },
+    "DECREASE_UNUSED_EXPOSURE": {
+        "icon": "📉",
+        "definition": "Trim the limit on accounts with very low utilization, flawless payment history, "
+                     "and no sign of ramping up — floored by four measures of actual need, capped at a "
+                     "25% cut per review, and limited to the safest 5% of the book per review cycle.",
+        "trigger": "12+ months on file · avg utilization ≤5%, peak ≤15% · zero missed/late payments · risk ≤ 8%",
+    },
+    "FREEZE_NO_INCREASE": {
+        "icon": "🧊",
+        "definition": "Stop any further credit-line growth — the existing limit is left exactly as is, "
+                     "but no increase will be considered until behavior improves. The most common "
+                     "preventative action for emerging risk, not a punitive one.",
+        "trigger": "risk ≥ 18%, OR severe stress (e.g. maxed out + minimum-only payments), OR currently delinquent",
+    },
+}
+
+has_freeze = False
+for action, meta in STRATEGIES.items():
+    grp = cv[cv["ml_action"] == action]
+    if not len(grp):
+        continue
+    if action == "FREEZE_NO_INCREASE":
+        has_freeze = True
+    with st.container(border=True):
+        st.markdown(f"#### {meta['icon']} {action.replace('_', ' ').title()} — {len(grp):,} customers")
+        st.caption(meta["definition"])
+        st.caption(f"**Trigger:** {meta['trigger']}")
+        k1, k2, k3, k4 = st.columns(4)
+        change = grp["ml_recommended_limit"] - grp["current_limit"]
+        k1.metric("Avg limit change", f"${change.mean():,.0f}")
+        k2.metric("Total limit change", f"${change.sum():,.0f}")
+        k3.metric("Expected 3mo interchange", f"${grp['ml_expected_3m_interchange_proxy'].sum():,.0f}",
+                 help="Forecast spend × interchange rate — independent of the limit change itself in "
+                     "this version (see caveat below the table).")
+        delta = grp["ml_expected_loss_delta_proxy"].sum()
+        k4.metric("Expected loss: avoided (−) / taken on (+)", f"${delta:,.0f}",
+                 help="The MARGINAL change in expected loss this specific action causes, versus "
+                     "leaving the limit untouched — not the absolute post-action figure.")
+
+if has_freeze:
+    st.caption("**Why FREEZE shows $0 above:** the limit itself doesn't change on a freeze, so there's "
+              "nothing to compare against — its real value is preventative (stopping a risky account "
+              "from growing further), which this before/after snapshot can't capture by itself.")
+st.caption("**Caveat on interchange:** the spend forecast is a pure behavioral projection in this "
+          "version — it does not yet model whether an INCREASE unlocks spend beyond what the customer "
+          "would have done anyway. The revenue shown for INCREASE is a conservative floor, not an "
+          "upside case; a future version could model incremental spend response directly.")
+
+st.divider()
 st.subheader("L2 vs. ML — do the two recommendation engines agree?")
 st.caption("L2 (Levers & Strategy) decides credit-line changes from pure rules on observed "
           "trailing-12m behavior. This page decides from a trained model's forecasts. They are "
@@ -136,17 +197,26 @@ else:
     st.caption("Fairness check unavailable this run.")
 
 st.divider()
-st.subheader("Money figures (diagnostic — see the caveat before reading the total)")
-mm1, mm2, mm3 = st.columns(3)
+st.subheader("Portfolio-wide money figures (diagnostic — see the caveat before reading the total)")
+mm1, mm2, mm3, mm4 = st.columns(4)
 mm1.metric("Expected 3mo interchange", f"${cv.loc[has_ml, 'ml_expected_3m_interchange_proxy'].sum():,.0f}")
-mm2.metric("Expected loss (unconditional)", f"${cv.loc[has_ml, 'ml_expected_loss_proxy'].sum():,.0f}")
-mm3.metric("Released capacity value (3mo)", f"${cv.loc[has_ml, 'ml_released_capacity_value_proxy_3m'].sum():,.0f}")
-st.caption("**Why the total is misleading, stated plainly (ported from the sibling system's own "
-          "documentation):** revenue here is interchange-only on a 3-month horizon; expected "
-          "loss is a full unconditional PD×EAD×LGD figure computed for every scored account, "
-          "most of which exists whether or not any recommendation changes — not the *marginal* "
-          "loss caused by this page's decisions. Comparing this total between two policy "
-          "configurations is valid; reading the absolute number as a profit forecast is not.")
+mm2.metric("Expected loss (post-action, unconditional)",
+          f"${cv.loc[has_ml, 'ml_expected_loss_proxy'].sum():,.0f}",
+          help="The absolute snapshot after every action is applied — most of this loss exists "
+              "regardless of what we do, and is NOT the effect of adopting these recommendations.")
+mm3.metric("Expected loss: net marginal effect",
+          f"${cv.loc[has_ml, 'ml_expected_loss_delta_proxy'].sum():,.0f}",
+          help="The sum of every action's OWN before/after delta — this is the actual, isolated "
+              "effect of adopting all the recommendations on this page, nothing else blended in.")
+mm4.metric("Released capacity value (3mo)", f"${cv.loc[has_ml, 'ml_released_capacity_value_proxy_3m'].sum():,.0f}")
+st.caption("**Two different expected-loss numbers, on purpose:** the post-action figure is what the "
+          "book looks like after every action — most of that loss already exists today and isn't "
+          "caused by anything on this page. The **net marginal effect** is the one that actually "
+          "answers \"what does adopting these recommendations change\" — it's the figure used in the "
+          "strategy breakdown above, summed across every action. Interchange and released capacity are "
+          "legitimately comparable revenue-like figures; neither should be summed against the absolute "
+          "expected-loss snapshot, only against the marginal delta — comparing this total between two "
+          "policy configurations is valid, reading any single version as a profit forecast is not.")
 
 st.divider()
 st.subheader("Customer-level detail")
@@ -162,8 +232,8 @@ if risk_opts:
 
 st.caption(f"Showing {len(filtered):,} of {int(has_ml.sum()):,} scored customers")
 show_cols = ["Masked Customer Number", "current_limit", "ml_action", "ml_primary_reason",
-            "ml_recommended_limit", "predicted_risk_probability", "ml_risk_category",
-            "ml_pressure_score", "ml_confidence"]
+            "ml_recommended_limit", "ml_expected_3m_interchange_proxy", "ml_expected_loss_delta_proxy",
+            "predicted_risk_probability", "ml_risk_category", "ml_pressure_score", "ml_confidence"]
 show_cols = [c for c in show_cols if c in filtered.columns]
 st.dataframe(filtered[show_cols].sort_values("ml_pressure_score", ascending=False),
             width="stretch", height=420)
