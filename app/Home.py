@@ -11,7 +11,7 @@ from pathlib import Path
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.lib import pipeline_runner as PR, charts as C
+from app.lib import pipeline_runner as PR, charts as C, presentation as P
 from engine.core.contract import DataContractViolation
 
 st.set_page_config(page_title="ProfitInsight — Customer Economics System",
@@ -20,6 +20,7 @@ st.set_page_config(page_title="ProfitInsight — Customer Economics System",
 st.title("💳 ProfitInsight Customer Economics System")
 st.caption("What is each customer worth, after every cost — and which of six "
           "levers actually fixes it.")
+st.markdown(P.legend(), unsafe_allow_html=True)
 
 DATAGEN_APP_URL = "https://customer-economics-g36dfysbdmfgwf2f8ygmms.streamlit.app/"
 
@@ -148,7 +149,13 @@ if "result" not in st.session_state:
 
 result = st.session_state["result"]
 cv = result["customer_view"]
+# result["ledger"]["card"] is built BEFORE suppression and still includes
+# hardship/accommodation/SCRA customers; cv does not. Restricting led to
+# cv's own customers keeps the cost waterfall's "Net Economic Profit" total
+# reconciled to the headline NEP metric below, exactly as
+# charts.py:revenue_cost_waterfall's own docstring requires.
 led = result["ledger"]["card"]
+led = led[led["Masked Customer Number"].isin(cv["Masked Customer Number"])]
 
 st.success(f"Loaded **{st.session_state['demo_label']}** — "
           f"{cv['Masked Customer Number'].nunique():,} customers, "
@@ -163,18 +170,38 @@ below_cost = int(cv["is_below_cost"].sum())
 below_cost_share = below_cost / max(total_customers, 1)
 total_nep = cv["trailing_12m_net_economic_profit"].sum()
 total_loss = -cv.loc[cv["is_below_cost"], "trailing_12m_net_economic_profit"].sum()
+total_managed_limit = cv["current_limit"].sum()
+total_card_balance = cv["latest_purchase_balance"].sum()
 
 c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("Customers scored", f"{total_customers:,}")
+c1.metric("Customers scored", f"{total_customers:,}",
+         help="How large the portfolio is, by relationship count.")
 c2.metric("Suppressed (protected)", f"{suppressed_n:,}",
          help="Hardship, accommodation plan, or SCRA — removed before any lever runs.")
-c3.metric("Trailing-12mo portfolio NEP", f"${total_nep:,.0f}")
-c4.metric("Below-cost customers", f"{below_cost:,}", f"{below_cost_share:.1%} of book")
-c5.metric("Total loss to route", f"${total_loss:,.0f}")
+c3.metric("Trailing-12mo portfolio NEP", f"${total_nep:,.0f}",
+         help="Net Economic Profit: everything the portfolio earned (interest, "
+             "interchange, fees, deposit and loan margin) minus everything it cost "
+             "(rewards, funding, credit losses, servicing, capital) over the last "
+             "12 months. The single bottom-line number every other chart explains.")
+c4.metric("Below-cost customers", f"{below_cost:,}", f"{below_cost_share:.1%} of book",
+         help="Customers whose trailing-12mo NEP is negative — they currently cost "
+             "the bank more than they earn.")
+c5.metric("Total loss to route", f"${total_loss:,.0f}",
+         help="The combined annual loss from every below-cost customer, before any "
+             "lever is applied — the size of the problem the six levers exist to fix.")
+st.markdown(
+    f"{P.tag('measured')} Managed card credit lines: **\\${total_managed_limit:,.0f}** "
+    f"carrying **\\${total_card_balance:,.0f}** in balances as of the latest cycle — "
+    f"the portfolio's scale in dollars, not just headcount.",
+    unsafe_allow_html=True)
 
 left, right = st.columns([3, 2])
 with left:
     st.plotly_chart(C.revenue_cost_waterfall(led), width="stretch")
+    st.caption("This waterfall covers **card economics only**. The headline "
+              "Trailing-12mo portfolio NEP above also adds each customer's "
+              "deposit and loan relationship value, so the two totals differ "
+              "on purpose — see **Portfolio Economics** for the full breakdown.")
 with right:
     st.plotly_chart(C.cev_band_distribution(cv), width="stretch")
 
@@ -196,11 +223,38 @@ if "STRUCTURAL" in structural.index:
               f"plan promising to recover the *entire* loss pool is wrong.")
 
 st.divider()
-st.markdown("**Next:** open **Portfolio Economics** for the full cost breakdown, "
-           "**Levers & Strategy** for the business case per lever and a "
-           "customer-level drill-down, **Acquisition Cost** for whether what we "
-           "spent to get each customer has paid back, **Liquidity** for the regulatory "
-           "liquidity cost on unused credit lines, **Leverage** for the separate "
-           "leverage-ratio capital cost (Case A/B toggle, sidebar), **ML Credit Limit** "
-           "for a genuinely separate, model-driven limit recommendation, or **Governance** "
-           "for the fairness and negative-control results.")
+st.subheader("📍 Where to look next")
+routing_tbl = result["routing_summary"]
+actionable = routing_tbl[routing_tbl.index.notna() & (routing_tbl.index != "STRUCTURAL")]
+findings = []
+if len(actionable):
+    top_lever = actionable.index[0]
+    top_loss = actionable.loc[top_lever, "total_loss"]
+    top_n = int(actionable.loc[top_lever, "customers"])
+    findings.append(f"**{top_lever}** carries this run's single largest below-cost loss "
+                    f"pool — **${top_loss:,.0f}/yr** across **{top_n:,} customers**. "
+                    f"Open **Levers & Strategy** for the business case and a customer-"
+                    f"level drill-down.")
+if "STRUCTURAL" in routing_tbl.index:
+    s_n = int(routing_tbl.loc["STRUCTURAL", "customers"])
+    findings.append(f"**{s_n} customers ({s_n/max(below_cost,1):.1%} of loss-makers)** "
+                    f"have no single dominant fixable cost — a structural floor no "
+                    f"lever removes. Any plan promising to recover the entire loss "
+                    f"pool is wrong.")
+if covers_n:
+    findings.append(f"**{covers_n} customers** look unprofitable on their card alone "
+                    f"but are profitable across the full relationship — never route "
+                    f"these for exit.")
+if suppressed_n:
+    findings.append(f"**{suppressed_n} customers** were removed before any lever ran "
+                    f"(hardship/accommodation/SCRA) — protected, not ignored.")
+for f in findings:
+    st.markdown(f"- {f}")
+
+st.caption("Other pages: **Portfolio Economics** for the full cost breakdown, "
+          "**Acquisition Cost** for whether what we spent to get each customer has "
+          "paid back, **Liquidity** for the regulatory liquidity cost on unused "
+          "credit lines, **Leverage** for the separate leverage-ratio capital cost "
+          "(Case A/B toggle, sidebar), **ML Credit Limit** for a genuinely separate, "
+          "model-driven limit recommendation, or **Governance** for the fairness and "
+          "negative-control results.")
