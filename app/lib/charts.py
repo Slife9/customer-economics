@@ -233,6 +233,48 @@ def ml_action_distribution_chart(customer_view: pd.DataFrame) -> go.Figure:
     return fig
 
 
+CHANGE_BAND_ORDER = ["Small (<10%)", "Moderate (10-20%)", "Large (20%+)"]
+
+
+def ml_change_magnitude_band(pct_change: float) -> str:
+    p = abs(pct_change)
+    if p < 0.10:
+        return "Small (<10%)"
+    if p < 0.20:
+        return "Moderate (10-20%)"
+    return "Large (20%+)"
+
+
+def ml_change_magnitude_chart(customer_view: pd.DataFrame) -> go.Figure:
+    """How big a change each INCREASE/DECREASE recommendation actually is,
+    banded by the DELIVERED percentage change (ml_recommended_limit vs.
+    current_limit) - never the policy's nominal, uncapped band, since the
+    amount actually offered can be capped below it by the product-max,
+    absolute-ceiling, or demand-floor rules in engine/ml/decisions.py."""
+    actionable = customer_view[
+        customer_view["ml_action"].isin(["INCREASE", "DECREASE_UNUSED_EXPOSURE"])].copy()
+    if not len(actionable):
+        return go.Figure()
+    pct = ((actionable["ml_recommended_limit"] - actionable["current_limit"])
+          / actionable["current_limit"].replace(0, pd.NA))
+    actionable["_band"] = pct.map(ml_change_magnitude_band)
+
+    fig = go.Figure()
+    for action, label, color in [("INCREASE", "Increase", COLORS["net_pos"]),
+                                 ("DECREASE_UNUSED_EXPOSURE", "Decrease", COLORS["amber"])]:
+        grp = actionable[actionable["ml_action"] == action]
+        counts = grp["_band"].value_counts().reindex(CHANGE_BAND_ORDER).fillna(0)
+        fig.add_trace(go.Bar(
+            name=label, x=CHANGE_BAND_ORDER, y=counts.to_numpy(), marker_color=color,
+            text=counts.to_numpy().astype(int), textposition="outside"))
+    fig.update_layout(title="Degree of recommended change, by action",
+                      barmode="group", yaxis_title="Customers",
+                      xaxis_title="Magnitude of recommended $ change vs. current limit",
+                      height=420, margin=dict(t=60, b=60),
+                      legend=dict(orientation="h", y=-0.2))
+    return fig
+
+
 def leakage_bar(leakage_df: pd.DataFrame) -> go.Figure:
     df = leakage_df.copy()
     df["value"] = df["priced_value_usd"].fillna(0.0)

@@ -105,6 +105,15 @@ i2.metric("📉 Customers to decrease", f"{len(decrease_grp):,}",
 st.divider()
 st.plotly_chart(C.ml_action_distribution_chart(cv), width="stretch")
 
+st.plotly_chart(C.ml_change_magnitude_chart(cv), width="stretch")
+st.caption("Banded by the percentage change **actually delivered** "
+          "(`ml_recommended_limit` vs. `current_limit`), not the policy's nominal "
+          "small/moderate/large band — the amount offered can be capped below that "
+          "nominal band by the product's own maximum limit, the absolute dollar "
+          "ceiling, or (for increases) the demand-based floor. Decrease magnitude "
+          "is capped at 25% of the current limit by policy; increase magnitude has "
+          "no symmetric cap, so a handful of accounts can land well past 20%.")
+
 n_deferred = int(cv.loc[has_ml, "ml_pilot_cap_deferred"].sum()) if "ml_pilot_cap_deferred" in cv.columns else 0
 if n_deferred:
     st.caption(f"**{n_deferred} customers** qualified for a reduction but were held back by the "
@@ -247,9 +256,23 @@ if risk_opts:
     filtered = filtered[filtered["ml_risk_category"].isin(risk_opts)]
 
 st.caption(f"Showing {len(filtered):,} of {int(has_ml.sum()):,} scored customers")
+# Degree of change is only a meaningful concept for the two actions that
+# actually move the limit - MAINTAIN (and every other non-action) always
+# means "no change", even on the rare account whose current_limit sits
+# below its product's configured minimum and so gets nudged by the
+# engine's own min/max clip. Leaving it blank there instead of showing a
+# number the action itself denies changing is the honest choice.
+changes_limit = filtered["ml_action"].isin(["INCREASE", "DECREASE_UNUSED_EXPOSURE"])
+pct = pd.Series(pd.NA, index=filtered.index, dtype="object")
+pct[changes_limit] = (
+    (filtered.loc[changes_limit, "ml_recommended_limit"]
+    - filtered.loc[changes_limit, "current_limit"])
+    / filtered.loc[changes_limit, "current_limit"].replace(0, pd.NA))
+filtered["degree of change (%)"] = pct.map(lambda v: f"{v:+.1%}" if pd.notna(v) else "—")
 show_cols = ["Masked Customer Number", "current_limit", "ml_action", "ml_primary_reason",
-            "ml_recommended_limit", "ml_expected_3m_interchange_proxy", "ml_expected_loss_delta_proxy",
-            "predicted_risk_probability", "ml_risk_category", "ml_pressure_score", "ml_confidence"]
+            "ml_recommended_limit", "degree of change (%)", "ml_expected_3m_interchange_proxy",
+            "ml_expected_loss_delta_proxy", "predicted_risk_probability", "ml_risk_category",
+            "ml_pressure_score", "ml_confidence"]
 show_cols = [c for c in show_cols if c in filtered.columns]
 st.dataframe(filtered[show_cols].sort_values("ml_pressure_score", ascending=False),
             width="stretch", height=420)
