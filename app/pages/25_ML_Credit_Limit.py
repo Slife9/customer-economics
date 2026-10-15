@@ -86,6 +86,22 @@ m4.metric("Risk-adjusted value proxy (3mo)", f"${cv.loc[has_ml, 'ml_risk_adjuste
          help="Interchange + released capacity − expected loss. See the caption below the money "
              "figures table — this total is NOT a profit forecast.")
 
+i1, i2 = st.columns(2)
+increase_grp = cv[cv["ml_action"] == "INCREASE"]
+decrease_grp = cv[cv["ml_action"] == "DECREASE_UNUSED_EXPOSURE"]
+increase_total = (increase_grp["ml_recommended_limit"] - increase_grp["current_limit"]).sum()
+decrease_total = (decrease_grp["ml_recommended_limit"] - decrease_grp["current_limit"]).sum()
+i1.metric("📈 Customers to increase", f"{len(increase_grp):,}",
+         f"+${increase_total:,.0f} total added capacity", delta_color="off",
+         help="Count of accounts flagged INCREASE, and the sum of ml_recommended_limit minus "
+             "current_limit across all of them — how much credit line this recommends adding, "
+             "not just the direction.")
+i2.metric("📉 Customers to decrease", f"{len(decrease_grp):,}",
+         f"-${abs(decrease_total):,.0f} total removed capacity", delta_color="off",
+         help="Count of accounts flagged DECREASE_UNUSED_EXPOSURE, and the sum of "
+             "ml_recommended_limit minus current_limit across all of them — how much credit "
+             "line this recommends trimming, not just the direction.")
+
 st.divider()
 st.plotly_chart(C.ml_action_distribution_chart(cv), width="stretch")
 
