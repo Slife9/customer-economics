@@ -148,8 +148,8 @@ class L2Lines(Lever):
         leverage_note = (
             f"Leverage capital freed by decreases: ${leverage_capital_freed:,.0f}/yr; "
             f"consumed by increases: ${leverage_capital_consumed:,.0f}/yr (both included "
-            f"in priced value, SLR regime, 12 CFR 217.10, R-04/R-06). See the Leverage "
-            f"Diagnostic page." if leverage_regime == "SLR" else
+            f"in priced value, SLR regime, 12 CFR 217.10, R-04/R-06)."
+            if leverage_regime == "SLR" else
             f"Leverage capital: not charged. This bank is assessed under the Tier 1 "
             f"leverage regime, which counts on-balance-sheet assets only (R-01) - "
             f"decreases free $0 and increases consume $0.")

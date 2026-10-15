@@ -64,7 +64,7 @@ with st.sidebar:
             "Leverage Ratio, which charges capital on unused card lines "
             "despite their 0% risk-based CCF. Smaller banks use the basic "
             "Tier 1 leverage ratio, which doesn't. This is a policy fact "
-            "about the bank, never inferred - see the Leverage page.")
+            "about the bank, never inferred.")
     leverage_policy_name = LEVERAGE_POLICY_OPTIONS[leverage_choice_label]
 
     run_clicked = st.button("Run analysis", type="primary", width="stretch",
@@ -254,7 +254,6 @@ for f in findings:
 st.caption("Other pages: **Portfolio Economics** for the full cost breakdown, "
           "**Acquisition Cost** for whether what we spent to get each customer has "
           "paid back, **Liquidity** for the regulatory liquidity cost on unused "
-          "credit lines, **Leverage** for the separate leverage-ratio capital cost "
-          "(Case A/B toggle, sidebar), **ML Credit Limit** for a genuinely separate, "
+          "credit lines, **ML Credit Limit** for a genuinely separate, "
           "model-driven limit recommendation, or **Governance** for the fairness and "
           "negative-control results.")

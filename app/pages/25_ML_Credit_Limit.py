@@ -15,7 +15,7 @@ diagnostic in this app. Suppressed customers (hardship/accommodation/SCRA)
 are already excluded from result["customer_view"] by the time this page
 reads it - engine/run.py merges the ml_* columns in BEFORE suppression
 runs, so this page needs no suppression logic of its own, exactly like the
-Liquidity and Leverage pages.
+Liquidity page.
 """
 from __future__ import annotations
 import json
