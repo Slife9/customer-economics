@@ -1,0 +1,44 @@
+# Render Blueprint for the ProfitInsight Customer Economics System.
+#
+# Deploy: Render dashboard -> New -> Blueprint -> point at
+# github.com/Slife9/customer-economics, branch main -> Apply. Every push to
+# main then auto-redeploys both services, the same behavior as the existing
+# Streamlit Community Cloud apps this mirrors (see ARCHITECTURE.md section 8).
+#
+# Both services default to the free plan (no cost, but the instance spins
+# down after 15 minutes idle and is limited to 512MB RAM/0.1 CPU - fine for
+# the bundled demo portfolio, worth upgrading to Starter or higher in the
+# Render dashboard for always-on access or a larger uploaded portfolio).
+#
+# PYTHON_VERSION is pinned to match the version this repo was developed and
+# tested against, so the committed ML model bundle
+# (engine/ml/artifacts/credit_limit_model_bundle.joblib, built with
+# scikit-learn==1.9.1 / joblib==1.6.0) unpickles under an identical
+# interpreter - a mismatched Python/sklearn build is the most common way a
+# committed joblib bundle silently fails to load on a new host.
+services:
+  - type: web
+    name: customer-economics
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r app/requirements.txt
+    startCommand: streamlit run app/Home.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    healthCheckPath: /_stcore/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.12
+
+  - type: web
+    name: customer-economics-datagen
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r datagen_app/requirements.txt
+    startCommand: streamlit run datagen_app/Home.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    healthCheckPath: /_stcore/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.12

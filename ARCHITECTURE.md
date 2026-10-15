@@ -424,6 +424,17 @@ Both deploy from **`github.com/Slife9/customer-economics`**, branch `main`,
 via Streamlit Community Cloud, auto-redeploying on every push. The repo is
 currently **public**.
 
+A **Render Blueprint** (`render.yaml`, repo root) deploys the same two apps
+as Render Web Services instead - same entry points, same auto-redeploy-on-
+push behavior, same shared `.streamlit/config.toml` theme. Use this when
+hosting needs to move off Streamlit Community Cloud (e.g. a company-managed
+Render account). Deploy via Render's dashboard: New -> Blueprint -> point
+at this repo -> Apply. The `PYTHON_VERSION` pinned in `render.yaml` matches
+the interpreter this repo is developed against, which matters specifically
+for `engine/ml/artifacts/credit_limit_model_bundle.joblib` - a joblib
+bundle built under one scikit-learn/Python build can fail to unpickle
+under another.
+
 | App | Entry point | Live URL | Purpose |
 |---|---|---|---|
 | Customer Economics System | `app/Home.py` | https://customer-economics-exut3amfwi9uesfmpqvm4j.streamlit.app/ | Upload a portfolio zip, see the full analysis |
