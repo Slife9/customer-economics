@@ -14,6 +14,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.lib import pipeline_runner as PR, charts as C, presentation as P
 from engine.core.contract import DataContractViolation
 
+# This deployment runs under one fixed leverage regime rather than letting
+# each session pick one: Case A, the Supplementary Leverage Ratio (SLR),
+# Category III - unused card lines ARE charged capital here, unlike under
+# risk-based capital's 0% CCF or the basic Tier 1 leverage ratio (Case B),
+# which doesn't charge them at all. See engine/config/
+# leverage_capital_policy.case_a_slr_category_iii.json for the policy itself.
+LEVERAGE_POLICY_NAME = "case_a_slr_category_iii"
+
 st.set_page_config(page_title="ProfitInsight — Customer Economics System",
                   page_icon="💳", layout="wide")
 
@@ -22,50 +30,11 @@ st.caption("What is each customer worth, after every cost — and which of six "
           "levers actually fixes it.")
 st.markdown(P.legend(), unsafe_allow_html=True)
 
-DATAGEN_APP_URL = "https://customer-economics-g36dfysbdmfgwf2f8ygmms.streamlit.app/"
-
 with st.sidebar:
-    st.caption(f"Need a portfolio to test with? [Generate one here]({DATAGEN_APP_URL}) — "
-              f"pick a scenario, size, and data-quality issue rate, then come back "
-              f"and upload it below.")
-    st.divider()
-
-    if st.button("🔄 Clear cache & reload", width="stretch",
-                help="The analysis result is cached by portfolio path. If "
-                    "you've just pulled or edited code under engine/, click "
-                    "this before re-running - otherwise you may see a stale "
-                    "result computed by the old code."):
-        st.cache_resource.clear()
-        for k in ("result", "result_root", "demo_label", "control_result",
-                 "control_label", "gate_report"):
-            st.session_state.pop(k, None)
-        st.rerun()
-
     st.header("1 · Load a portfolio")
     demo_zip = st.file_uploader(
         "Portfolio to analyze (zip of the table CSVs)", type="zip", key="demo_zip")
     st.caption("e.g. `generator/out/demo` zipped up")
-
-    st.header("2 · Optional: negative control")
-    control_zip = st.file_uploader(
-        "Negative control portfolio (zip)", type="zip", key="control_zip")
-    st.caption("Enables the negative-control gate on the Governance page — "
-              "proof the findings track their cause, not the generator.")
-
-    st.header("3 · Leverage regime")
-    LEVERAGE_POLICY_OPTIONS = {
-        "Case B — Tier 1 leverage (unused lines not charged)": "case_b_tier1_regional",
-        "Case A — SLR, Category III (unused lines charged)": "case_a_slr_category_iii",
-    }
-    leverage_choice_label = st.selectbox(
-        "Which leverage rule applies to this bank?",
-        list(LEVERAGE_POLICY_OPTIONS.keys()), index=0,
-        help="Only large banks (Category I/II/III) face the Supplementary "
-            "Leverage Ratio, which charges capital on unused card lines "
-            "despite their 0% risk-based CCF. Smaller banks use the basic "
-            "Tier 1 leverage ratio, which doesn't. This is a policy fact "
-            "about the bank, never inferred.")
-    leverage_policy_name = LEVERAGE_POLICY_OPTIONS[leverage_choice_label]
 
     run_clicked = st.button("Run analysis", type="primary", width="stretch",
                             disabled=demo_zip is None)
@@ -82,7 +51,7 @@ with st.sidebar:
 if sample_clicked:
     with st.spinner("Loading the bundled sample portfolio…"):
         result, root = PR.run_pipeline_for_sample(
-            sample_dir / "demo_portfolio.zip", "demo", leverage_policy_name)
+            sample_dir / "demo_portfolio.zip", "demo", LEVERAGE_POLICY_NAME)
         st.session_state["result"] = result
         st.session_state["result_root"] = str(root)
         st.session_state["demo_label"] = "samples/demo_portfolio.zip"
@@ -90,7 +59,7 @@ if sample_clicked:
     if ctrl_path.exists():
         with st.spinner("Loading the bundled negative control…"):
             control_result, control_root = PR.run_pipeline_for_sample(
-                ctrl_path, "control", leverage_policy_name)
+                ctrl_path, "control", LEVERAGE_POLICY_NAME)
             st.session_state["control_result"] = control_result
             st.session_state["control_label"] = "samples/negative_control_portfolio.zip"
             st.session_state["gate_report"] = PR.run_negative_control_gate(
@@ -99,29 +68,19 @@ if sample_clicked:
 if run_clicked and demo_zip is not None:
     with st.spinner("Validating data contract, building the ledger, routing levers…"):
         try:
-            result, root = PR.run_pipeline_for_upload(demo_zip, "demo", leverage_policy_name)
+            result, root = PR.run_pipeline_for_upload(demo_zip, "demo", LEVERAGE_POLICY_NAME)
             st.session_state["result"] = result
             st.session_state["result_root"] = str(root)
             st.session_state["demo_label"] = demo_zip.name
         except DataContractViolation as e:
             st.error(f"**Data contract violation — refusing to run.**\n\n{e}")
             st.stop()
-
-    if control_zip is not None:
-        with st.spinner("Building the negative control for comparison…"):
-            try:
-                control_result, control_root = PR.run_pipeline_for_upload(
-                    control_zip, "control", leverage_policy_name)
-                st.session_state["control_result"] = control_result
-                st.session_state["control_label"] = control_zip.name
-                st.session_state["gate_report"] = PR.run_negative_control_gate(
-                    result, control_result)
-            except DataContractViolation as e:
-                st.warning(f"Negative control failed the data contract, so the "
-                          f"gate is unavailable this run: {e}")
-    else:
-        st.session_state.pop("control_result", None)
-        st.session_state.pop("gate_report", None)
+    # No negative-control upload for a user-supplied portfolio (the sidebar
+    # control for that was removed) - clear any stale gate from a previous
+    # sample-portfolio run so the Governance page doesn't show a gate that
+    # belongs to a different portfolio.
+    st.session_state.pop("control_result", None)
+    st.session_state.pop("gate_report", None)
 
 if "result" not in st.session_state:
     st.info("👈 Upload a zipped portfolio in the sidebar and click **Run analysis** "
@@ -143,7 +102,8 @@ if "result" not in st.session_state:
 6. **Six levers** — each priced where the data honestly supports it, and left
    `None` — never a fabricated number — where it doesn't.
 7. **Governance** — a four-fifths fairness test on both the score and the
-   treatment, and (if you load a negative control) the circularity gate.
+   treatment, and, when you use the bundled sample portfolio, the
+   circularity gate against its paired negative control.
     """)
     st.stop()
 
