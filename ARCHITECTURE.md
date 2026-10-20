@@ -544,6 +544,28 @@ come back empty placeholders (no page reads them - the policy *name* a
 bundle was produced under is shown in the app's info panel instead, from the
 manifest).
 
+**The "Try it with the bundled sample portfolio" button loads a pre-computed
+bundle** (`samples/demo_portfolio_50k_bundle.zip`, 50,000 customers, 94.3 MB,
+committed to the repo) rather than running the live engine, specifically so
+the one-click demo doesn't need the ~7 GB a live run needs at that scale -
+it doubles as a working example of this feature. It does not demo the
+negative-control gate (no paired 50k control bundle exists); the raw
+5,000-customer `samples/demo_portfolio.zip` and its paired
+`negative_control_portfolio.zip` are unchanged and still usable via the
+manual upload path for that.
+
+A real production incident shaped two further changes, both in
+`app/lib/results_bundle.py` and `app/Home.py`: loading a 50k bundle on the
+actual hosted Render instance once failed with a 502 (the process hit its
+memory ceiling). The validator no longer decodes the two largest tables
+into a full DataFrame twice (it now reads row counts from Parquet's own
+footer metadata); and loading a bundle now clears the engine's shared,
+never-expiring `st.cache_resource` pipeline cache and drops the session's
+own reference to whatever was loaded before, so two large results can't sit
+in memory at once. See STATUS.md for the measured effect and the honest
+trade-off (cache-clearing affects every session on that instance, not just
+the one loading the bundle).
+
 ## 9. Open items — real gaps, not yet built
 
 In roughly most-to-least valuable order:

@@ -18,10 +18,15 @@ governance/negative-control gate.
    ```bash
    streamlit run app/Home.py
    ```
-4. It opens at `http://localhost:8501`. Upload a portfolio zip in the sidebar
-   — `samples/demo_portfolio.zip` is ready to go, and
-   `samples/negative_control_portfolio.zip` enables the negative-control
-   gate on the Governance page.
+4. It opens at `http://localhost:8501`. Upload a portfolio zip in the
+   sidebar — `samples/demo_portfolio.zip` is ready to go — or click **"Try
+   it with the bundled sample portfolio"** to load
+   `samples/demo_portfolio_50k_bundle.zip`, a pre-computed 50,000-customer
+   results bundle, instantly (see ARCHITECTURE.md §8a). Neither of these
+   two one-click paths currently demos the negative-control gate; to see
+   that, run `python -m engine.run --compare-to <control_dir>` or export a
+   bundle with `--compare-to` and load it (`samples/negative_control_portfolio.zip`
+   is the matching control for the raw `demo_portfolio.zip`).
 
 The **ML Credit Limit** page needs a trained model bundle to populate -
 `engine/ml/artifacts/credit_limit_model_bundle.joblib` is already committed,

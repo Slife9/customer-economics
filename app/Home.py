@@ -42,12 +42,15 @@ with st.sidebar:
 
     st.divider()
     sample_dir = Path(__file__).resolve().parents[1] / "samples"
-    sample_available = (sample_dir / "demo_portfolio.zip").exists()
+    sample_bundle_path = sample_dir / "demo_portfolio_50k_bundle.zip"
+    sample_available = sample_bundle_path.exists()
     sample_clicked = st.button(
-        "Try it with the bundled sample portfolio", width="stretch",
+        "Try it with the bundled sample portfolio (50,000 customers)", width="stretch",
         disabled=not sample_available,
-        help="Loads samples/demo_portfolio.zip and samples/negative_control_portfolio.zip "
-            "from this project - no file picker needed.")
+        help="Loads samples/demo_portfolio_50k_bundle.zip from this project - "
+            "a pre-computed results bundle, not a live engine run - no file "
+            "picker needed. (No negative-control gate demo on this path; see "
+            "the Governance page's own note.)")
 
     st.divider()
     st.header("2 · Or load pre-computed results")
@@ -61,21 +64,22 @@ with st.sidebar:
 
 if sample_clicked:
     with st.spinner("Loading the bundled sample portfolio…"):
-        result, root = PR.run_pipeline_for_sample(
-            sample_dir / "demo_portfolio.zip", "demo", LEVERAGE_POLICY_NAME)
+        # This is a pre-computed results bundle (see ARCHITECTURE.md §8a),
+        # not a live engine run - the same reasoning that motivated the
+        # whole bundle feature (a 50,000-customer live run needs ~7GB of
+        # memory) applies here too, so the "try it" demo uses a bundle at
+        # this size rather than running the engine in-process. Drop any
+        # previously-loaded result first so it doesn't stack in memory.
+        st.session_state.pop("result", None)
+        st.session_state.pop("control_result", None)
+        PR._cached_pipeline.clear()
+        result, bundle_meta, gate_report = RB.load_bundle_from_bytes(
+            sample_bundle_path.read_bytes(), sample_bundle_path.name)
         st.session_state["result"] = result
-        st.session_state["result_root"] = str(root)
-        st.session_state["demo_label"] = "samples/demo_portfolio.zip"
-        st.session_state.pop("bundle_metadata", None)
-    ctrl_path = sample_dir / "negative_control_portfolio.zip"
-    if ctrl_path.exists():
-        with st.spinner("Loading the bundled negative control…"):
-            control_result, control_root = PR.run_pipeline_for_sample(
-                ctrl_path, "control", LEVERAGE_POLICY_NAME)
-            st.session_state["control_result"] = control_result
-            st.session_state["control_label"] = "samples/negative_control_portfolio.zip"
-            st.session_state["gate_report"] = PR.run_negative_control_gate(
-                result, control_result)
+        st.session_state["result_root"] = f"<bundle: {sample_bundle_path.name}>"
+        st.session_state["demo_label"] = f"{bundle_meta.portfolio_label} (pre-computed)"
+        st.session_state["bundle_metadata"] = bundle_meta
+        st.session_state.pop("gate_report", None)  # no negative control for this sample
 
 if run_clicked and demo_zip is not None:
     with st.spinner("Validating data contract, building the ledger, routing levers…"):
@@ -97,6 +101,15 @@ if run_clicked and demo_zip is not None:
 
 if load_bundle_clicked and bundle_zip is not None:
     with st.spinner("Validating and loading the pre-computed results bundle…"):
+        # Drop this session's own reference to whatever was loaded before
+        # (a live run or an earlier bundle), and clear the engine's shared
+        # result cache, BEFORE building the new one - a bundle load doesn't
+        # need either, and on a memory-constrained host, leaving a previous
+        # multi-hundred-MB result resident while loading a new one is
+        # exactly what pushes total memory over the instance's limit.
+        st.session_state.pop("result", None)
+        st.session_state.pop("control_result", None)
+        PR._cached_pipeline.clear()
         try:
             result, bundle_meta, gate_report = RB.load_bundle_from_bytes(
                 bundle_zip.getvalue(), bundle_zip.name)
@@ -104,7 +117,6 @@ if load_bundle_clicked and bundle_zip is not None:
             st.session_state["result_root"] = f"<bundle: {bundle_zip.name}>"
             st.session_state["demo_label"] = f"{bundle_meta.portfolio_label} (pre-computed)"
             st.session_state["bundle_metadata"] = bundle_meta
-            st.session_state.pop("control_result", None)
             if gate_report is not None:
                 st.session_state["gate_report"] = gate_report
             else:
@@ -133,8 +145,9 @@ if "result" not in st.session_state:
 6. **Six levers** — each priced where the data honestly supports it, and left
    `None` — never a fabricated number — where it doesn't.
 7. **Governance** — a four-fifths fairness test on both the score and the
-   treatment, and, when you use the bundled sample portfolio, the
-   circularity gate against its paired negative control.
+   treatment, plus (when a run is paired with its own negative control -
+   see `engine/export_bundle.py --compare-to`) the circularity gate against
+   it.
     """)
     st.stop()
 

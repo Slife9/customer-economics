@@ -29,6 +29,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -143,7 +144,14 @@ def _validate(zf: zipfile.ZipFile, manifest: dict) -> None:
                 f"checksum mismatch for {path!r} - the bundle may be corrupted "
                 f"or tampered with. Refusing to load.")
         if meta.get("row_count") is not None and path.endswith(".parquet"):
-            actual_rows = len(pd.read_parquet(io.BytesIO(data), engine="pyarrow"))
+            # Reads only the Parquet footer's row-group metadata, never
+            # materializes the actual column data - checking a row count by
+            # decoding the whole table into a DataFrame (as an earlier
+            # version of this function did) doubles peak memory on the two
+            # largest tables (ledger_card, customer_view) for nothing, since
+            # the real DataFrame gets built again right after validation
+            # passes anyway.
+            actual_rows = pq.ParquetFile(io.BytesIO(data)).metadata.num_rows
             if actual_rows != meta["row_count"]:
                 raise BundleValidationError(
                     f"row count mismatch for {path!r}: manifest says "

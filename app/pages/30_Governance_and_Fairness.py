@@ -40,9 +40,15 @@ doesn't vary the mechanism for is reported **inconclusive**, not a pass.
         icon = {"PASS": "✅", "FAIL": "❌", "INCONCLUSIVE": "⚪"}[r["status"]]
         st.markdown(f"{icon} **{r['lever']}** — {r['detail']}")
 else:
-    st.info("Upload a negative control portfolio on the **Home** page to enable "
-           "this gate — the strongest available evidence that findings here "
-           "track their cause rather than the generator that produced the demo data.")
+    st.info("No negative-control gate for this run — neither the hosted app's "
+           "live-upload path nor its bundled sample currently run one. It's "
+           "the strongest available evidence that a lever's finding tracks "
+           "its real cause rather than the generator that produced the demo "
+           "data. To see it: export a results bundle locally with "
+           "`python -m engine.export_bundle --data <dir> --compare-to "
+           "<control_dir> --out bundle.zip` and load that bundle on the "
+           "Home page, or run `python -m engine.run --compare-to <control_dir>` "
+           "from the command line.")
 
 st.divider()
 st.subheader("Fairness — four-fifths test")

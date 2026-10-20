@@ -19,7 +19,7 @@ pip install -r requirements.txt
 streamlit run Home.py
 ```
 
-A ready-to-use demo portfolio is bundled — the app's home page has a one-click "try the sample data" option, no upload needed to explore it.
+A ready-to-use demo portfolio is bundled — the app's home page has a one-click "try the sample data" option, no upload needed to explore it. That button loads a pre-computed 50,000-customer results bundle (not a live engine run), so it also doubles as a live example of the results-bundle feature described below. A raw, smaller (5,000-customer) portfolio zip is still available under `samples/demo_portfolio.zip` for manually testing the normal upload-and-run path.
 
 ### Analyzing a portfolio too large to upload or re-run on the hosted app
 

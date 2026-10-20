@@ -6,6 +6,70 @@ Additive only — no engine calculation, threshold, routing rule, suppression
 rule, fairness test, negative-control logic, or ML logic was changed. See
 `ARCHITECTURE.md` §8a for the full design and format.
 
+## Follow-up round: real-world memory failure, and the "try it" button
+
+After the first version shipped, loading a real 50,000-customer bundle on
+the actual Render instance failed with a 502 (the backend process almost
+certainly hit the instance's memory ceiling and was killed/restarted -
+Render surfaces that as a generic connection error, not a diagnosable
+message). Two contributing causes were identified and fixed:
+
+1. **`app/lib/results_bundle.py`'s validation step decoded the two largest
+   tables (the full ledger and customer view) into a complete pandas
+   DataFrame twice** - once just to check the row count against the
+   manifest, then again right after to actually use it. Fixed to read the
+   row count from the Parquet file's own footer metadata
+   (`pyarrow.parquet.ParquetFile(...).metadata.num_rows`) instead, which
+   never materializes the column data. Measured effect at 50k: load peak
+   RSS 1,547.6 MB → 1,507.6 MB, load time 2.29s → 1.56s.
+2. **The engine's live-pipeline cache (`@st.cache_resource` on
+   `pipeline_runner._cached_pipeline`) is shared server-wide and never
+   expires.** A user who tried the bundled 5k sample first, then loaded a
+   50k bundle, had both results resident in memory at once - this is almost
+   certainly the larger contributor to the actual crash (confirmed: the
+   user who hit the 502 had done exactly this sequence). Fixed: loading a
+   bundle (`app/Home.py`) now drops the current session's own reference to
+   any previously-loaded result and calls `_cached_pipeline.clear()` before
+   building the new one. Trade-off worth stating plainly: this clears the
+   cache for every session on that instance, not just the one loading the
+   bundle - acceptable on a small, low-concurrency internal tool, but a real
+   shared side effect, not a free fix.
+
+The standalone measurement script used throughout this feature's
+development cannot reproduce cause #2 (it never had two results cached at
+once to begin with), so its effect is unverified by measurement - only by
+the fix matching the exact failure sequence the user reported.
+
+**The "Try it with the bundled sample portfolio" button now loads a
+pre-computed 50,000-customer results bundle** (`samples/demo_portfolio_50k_bundle.zip`,
+committed to the repo, 94.3 MB) instead of running the live engine on the
+5,000-customer `samples/demo_portfolio.zip`. This was a deliberate choice,
+not a default left in place: it doubles as a live example of the bundle
+feature on first use, and it is much cheaper to load (no live
+`build_pipeline()` call at all - the only memory cost is the bundle load
+itself, not the ~7GB the live engine needs at this scale). Trade-off
+accepted explicitly: this sample no longer demos the negative-control gate
+(no paired 50k control was generated) - the Governance page's empty-gate
+message was rewritten to say so plainly and point at how to see the gate
+locally, since it previously pointed at a sidebar control that had already
+been removed in an earlier change (a pre-existing staleness this surfaced,
+not one this feature introduced). The raw `samples/demo_portfolio.zip` and
+`samples/negative_control_portfolio.zip` files are unchanged and still used
+by the manual-upload path documented in `app/README.md`.
+
+A real bug was caught before shipping this: the first export of
+`demo_portfolio_50k_bundle.zip` used the engine's *default* leverage policy
+(`case_b_tier1_regional`) rather than the one the app is hardcoded to
+(`case_a_slr_category_iii`, set in `app/Home.py`'s `LEVERAGE_POLICY_NAME`) -
+caught by checking the bundle's own metadata panel after loading it in a
+local browser test, not by any automated check. Re-exported with
+`--leverage-policy case_a_slr_category_iii` explicitly. **This is a real gap
+in `audit/audit_results_bundle.py`'s equivalence test**: it never compares
+the bundle's declared leverage policy against the value the app actually
+passes anywhere, so a policy mismatch like this would not have been caught
+by the test suite - only by a manual check. Worth hardening if this bundle
+is regenerated again in the future.
+
 ## What was built
 
 - **`engine/core/bundle_schema.py`** (new) — the single source of truth for
