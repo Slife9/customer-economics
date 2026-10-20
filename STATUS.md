@@ -1,170 +1,141 @@
-# STATUS: Leverage Capital Cost (SPEC v2)
+# STATUS: Pre-computed results bundle
 
-Built against `SPEC_leverage_capital_cost_v2.md` and `REGULATORY_RULEBOOK.md`
-(delivered as a spec package). This repo has no `tests/`, no YAML actually in
-use, no `governance/` folder at the root, and no existing SHA-256
-model-registry/audit-trail pattern — stages below note where the spec's
-literal ask was adapted to this codebase's real shape rather than built from
-a convention that doesn't exist here.
+Built so the hosted Streamlit app (2 GB instance) can show a large portfolio
+without re-running the engine on it or accepting a multi-gigabyte upload.
+Additive only — no engine calculation, threshold, routing rule, suppression
+rule, fairness test, negative-control logic, or ML logic was changed. See
+`ARCHITECTURE.md` §8a for the full design and format.
 
-## Stage 1 — Repo mapping (done)
+## What was built
 
-Liquidity cost pattern mapped: `engine/config/liquidity_policy.json` (plain
-JSON, `json.loads` inside the computing function, no caching at import time)
-→ `customer_view.py:_compute_liquidity_cost()` (merged into `cv` inside
-`build()`) → `engine/levers/l2_lines.py` (DECREASE savings derived from each
-customer's own already-computed rate, never a re-read constant) → a
-dedicated Streamlit page. Mirrored for leverage, with one structural
-difference: leverage computation happens in `engine/run.py` right after
-`CV.build()` returns (not inside `build()`), because the regime is a
-per-run user choice (Home page toggle) rather than a fixed file — this
-keeps `customer_view.build()`'s signature untouched.
+- **`engine/core/bundle_schema.py`** (new) — the single source of truth for
+  the bundle format, shared by the writer and the loader: schema version,
+  size/tolerance constants, file-name constants, `LeverStub`, and
+  `compute_headline_totals()` (used both when writing the manifest and when
+  validating a loaded bundle, so the two can never compute it differently).
+- **`engine/export_bundle.py`** (new) — `python -m engine.export_bundle
+  --data <dir> [--compare-to <dir>] --out <bundle.zip>`. Calls
+  `engine.run.build_pipeline()` and, when `--compare-to` is given, the
+  existing `negative_control` gate logic — no new calculation anywhere in
+  this file. Writes `manifest.json` (provenance, leverage policy name,
+  customer/cycle counts, per-file SHA-256 + row count, headline totals) plus
+  Parquet tables and small JSON objects into a zip.
+- **`app/lib/results_bundle.py`** (new) — `load_bundle_from_bytes()`:
+  validates (manifest/schema version, per-file hash + row count, path
+  traversal, max uncompressed size, headline-total reconciliation within
+  tolerance) then reconstructs a `result` dict pages can read with no
+  changes, using real `SuppressedPopulation`/`SizeResult` constructors (never
+  pickle/joblib). Exposes `BundleTableUnavailable` for the few raw-table
+  dependencies a bundle doesn't carry.
+- **`app/Home.py`** (modified) — sidebar "Load pre-computed results (.zip)"
+  option below the existing upload/sample buttons; on load, shows the
+  bundle's metadata (file name, size, export timestamp, leverage policy,
+  data source) in an info panel; wires the bundle's own gate report (if any)
+  into `st.session_state["gate_report"]`, exactly like the sample-portfolio
+  path already does for a live-run gate.
+- **`app/pages/10_Portfolio_Economics.py`** and
+  **`app/pages/20_Levers_and_Strategy.py`** (modified) — the handful of
+  places that read a raw portfolio table (effective-interchange-rate
+  denominator; the customer drill-down's transaction and per-activity
+  cost-to-serve tabs) now catch `BundleTableUnavailable` and show a plain
+  message instead of letting an exception reach the page. A live engine run
+  never raises here, so these pages are byte-for-byte unchanged on that path.
+- **`audit/audit_results_bundle.py`** (new) — equivalence test, same
+  print/assert style as every other `audit/*.py` script. Runs the pipeline
+  directly on the bundled demo + its negative control, exports a bundle from
+  the same two portfolios, loads it back, and asserts every page-visible
+  value matches.
+- **`app/requirements.txt`** — added `pyarrow==23.0.0` (previously absent;
+  confirmed installed in the dev environment at the same version already).
+- **`ARCHITECTURE.md`**, **`README.md`**, **`app/README.md`** — documented
+  (see ARCHITECTURE.md §8a for the full design).
 
-No `tests/` directory or pytest anywhere in the repo (confirmed by search).
-The only testing convention is `audit/` — standalone, print-based diagnostic
-scripts run directly with `python`. Followed that convention:
-`audit/audit_leverage_capital.py` (assert-driven, worked examples T-01/T-02/
-T-03/T-08/T-09/T-13 plus the five validation-rule tests) — run it with:
+## Measurements (actually run, this session)
+
+All on one Windows development machine (32 GB RAM). "5k" is the bundled demo
+portfolio (`generator/out/demo`, 5,000 generated customers); "50k" is a
+freshly generated 50,000-customer, 36-cycle portfolio (profile `demo`, seed
+`20260921`) used only for this measurement, matching the 152s/2.8GB
+generation benchmark already documented in `ARCHITECTURE.md` §9.
+
+| | 5k (4,856 post-suppression) | 50k (48,508 post-suppression) |
+|---|---|---|
+| `build_pipeline()` peak RSS | 601.5 MB | 7,098.0 MB (~7.0 GB) |
+| Export time (no control) | 12.2 s | 109.8 s |
+| Bundle size | 10.46 MB | **94.28 MB** |
+| Bundle load time | 0.31 s | 2.29 s |
+| Load peak RSS (whole process) | 322.7 MB | **1,547.6 MB** |
+
+The 50k engine peak (~7.0 GB) is notably **higher** than this project's own
+prior ~6 GB linear-extrapolation estimate — confirming the bundle approach is
+necessary, not just convenient, at this scale. Bundle size at 50k (94 MB)
+comes in well under the <200 MB target. Load peak RSS (1.55 GB) fits a 2 GB
+hosted instance with roughly 500 MB of headroom above the load itself —
+enough for Streamlit and the rest of the app's own baseline, but not a large
+margin; see Limitations below.
+
+The 5k demo + its negative control (two pipeline runs) exports a 10.43 MB
+bundle in 17.7 s and loads it in 0.70 s (measured inside
+`audit/audit_results_bundle.py`'s own run, reported below).
+
+## Equivalence test output (actually run)
 
 ```
-python audit/audit_leverage_capital.py
+python audit/audit_results_bundle.py
 ```
 
-All checks pass as of this writing (verified via the PowerShell tool during
-the build, matching the spec's own worked-example numbers exactly: Case A
-capital 32.00/cost 3.84, Case B all-zero, non-UCC-≤1y capital 64.00/cost
-7.68).
+```
+export time (demo + control): 17.7s
+bundle size: 10.43 MB
+load time: 0.70s
 
-`pyyaml` is a declared dependency in `app/requirements.txt` /
-`datagen_app/requirements.txt` but is **not actually used anywhere** in the
-live `engine/`/`app/` code — the real, exercised convention is JSON. Used
-JSON for the two case policy files, matching `liquidity_policy.json` exactly,
-rather than introducing the first real YAML usage in the repo.
+77/77 CHECKS PASSED
+```
 
-## Stage 2 — Rule register (done)
+Covers: customer/below-cost/suppressed counts, portfolio NEP and total loss,
+CEV-band distribution, routing summary (index order, customer counts, loss
+amounts), all six levers' `SizeResult` fields and `.gates`, all six
+worklists' row counts/action distributions/membership, both fairness tables
+(score and treatment, selection rates and pass/fail), ML action counts and
+ML treatment fairness, the full 9-column negative-control gate report
+(status, driver ratio, value ratio), and the manifest's own reconciliation
+totals. Exact equality for counts/strings, tolerance (≤$0.01 or ≤1e-4 on
+ratios) for floats.
 
-`governance/REGULATORY_RULEBOOK.md` and `governance/regulatory_verification_log.md`
-created at the repo root (no `governance/` folder existed there before —
-only `engine/governance/` for the fairness/negative-control *code modules*,
-a different thing entirely; don't confuse the two). Every rule from the
-supplied rulebook is present, Code location and Test columns filled in
-against this implementation, verification log seeded with every rule `OPEN`.
+## Known limitations
 
-## Stage 3 — Policy schema, two case files, validation (done)
-
-`engine/config/leverage_capital_policy.case_a_slr_category_iii.json` and
-`...case_b_tier1_regional.json`, following the YAML schema in the spec
-field-for-field but in JSON. `leverage_capital.validate_policy()` implements
-V-01 through V-09 (errors: V-01, V-04, V-06, V-07-in-SLR-mode; warnings:
-everything else) — verified in `audit_leverage_capital.py`.
-
-## Stage 4 — Core calculation (done)
-
-`engine/core/leverage_capital.py:compute()`. Matches the spec's formula and
-worked examples exactly (see Stage 1 test results). One adaptation: operates
-on `customer_view.avg_undrawn_12m` (the same trailing-12-month base the
-liquidity cost diagnostic already uses) rather than per-account-per-ledger-
-period, for consistency with every other customer-level figure in this
-engine — documented as a gap (R-13) rather than silently assumed equivalent
-to regulatory quarterly-average reporting.
-
-Always computes a "shadow" SLR-as-if cost regardless of the active regime
-(T-10: never read downstream when `slr_mode` is false) — this powers the
-optional "if this bank were SLR" panel on the Leverage page.
-
-## Stage 5 — Ledger/CEV/PLI integration (partially applicable)
-
-**This system has no CELTV and no PLI concept** — those are from a different
-system than this one; M-01's intent ("never blend into a headline figure")
-was carried out against what this system actually has: `customer_view`
-columns, `trailing_12m_net_economic_profit`, `cev_score`, `cev_band`,
-`is_below_cost`. Verified unchanged under both policy toggles (identical
-total NEP, $2,526,782.39, confirmed by direct script run for both Case A
-and Case B against the bundled sample portfolio).
-
-`engine/core/outputs.py:score_file()` carries `leverage_regime`,
-`leverage_status`, `leverage_exposure`, `leverage_capital_cost` through to
-the downloadable score file, with correct NA-handling for suppressed
-customers (same pattern as the liquidity columns).
-
-## Stage 6 — L2 wiring and consumer protection (done, with one scope note)
-
-`engine/levers/l2_lines.py`: DECREASE/DECREASE_RISK_EXPOSURE now also prices
-leverage capital freed; INCREASE now also *subtracts* leverage capital
-consumed from its priced value (M-02 symmetry) — both $0 under Tier 1 by
-construction, confirmed in the test run (T-11 equivalent, verified manually:
-Case B run showed `$0`/`$0` for both; Case A run showed `$1,681/yr` freed).
-
-**C-03 (fair lending side-by-side) scoped down**: the spec asks for the
-existing fairness analysis to run under both toggle positions and be
-reported side by side on the diagnostic page. Not built as a literal dual
-pipeline re-run in this pass — `slr_mode` only changes the dollar value
-attached to an already-determined DECREASE population, never which
-customers are selected, so the population (and therefore the fairness
-result) is provably identical either way. This is documented as a standing
-note on the Leverage page and in the rulebook (C-03) rather than built as a
-second, redundant pipeline execution. If you want the literal side-by-side
-view anyway (e.g. for an auditor who wants to see it, not just be told it's
-identical), that's a contained follow-up: re-run `FAIR.run()` against the
-same `routed.frame` under the other policy's L2 sizing and diff the two
-fairness dicts.
-
-## Stage 7 — Run audit trail (done, scoped)
-
-No pre-existing SHA-256 model-registry/audit-trail pattern exists anywhere
-in this codebase to extend (confirmed by search — the only other `sha256`
-usage in the app is an unrelated upload-cache key). Built a lightweight
-per-run audit dict instead (`result["leverage_audit"]`, also written into
-`run_summary.json` when run via the CLI `engine/run.py`): run timestamp,
-active policy file name + SHA-256, `slr_mode`, rule IDs applied, validation
-warnings, `inputs_verified`, and totals. This is attached to the run result,
-not a persisted/queryable registry — a genuine registry (a database or
-append-only log of every run ever made) would be new infrastructure for this
-repo and was out of scope for this pass.
-
-## Stage 8 — Leverage Diagnostic page (done, scoped)
-
-`app/pages/24_Leverage_Capital.py`. Built: regime banner with verification-
-status flag, plain-English explainer, portfolio KPIs, cost-as-%-of-NEP
-context line, the "if this bank were SLR" shadow panel (Tier 1 mode only),
-by-segment chart + table, the L2 leverage slice (points to Levers & Strategy
-for the full picture rather than duplicating it), the rule-IDs-applied audit
-expander, and a filterable customer-level table.
-
-**Not built**: the interactive CCF/target-ratio/cost-of-capital sensitivity
-("what-if") grid from spec §7.2.8. The two case-file toggle already lets a
-user compare two concrete scenarios; a live slider-driven grid is a
-meaningfully larger UI piece and was judged lower priority than getting the
-core diagnostic, L2 wiring, and audit trail right in this pass.
-
-## Stage 9 — Docs (done)
-
-`ARCHITECTURE.md` §4 (new subsection before `core/suppression.py`) and
-`app/README.md`'s page list both updated, matching the documentation
-discipline already established in this repo for every prior feature. This
-file (`STATUS.md`) stands in for the spec's own stage-by-stage status
-tracking.
-
-## Stage 10 — Regression and delivery
-
-No zip package produced (this is a live, version-controlled repo, not a
-drop-in patch delivery — changes are committed directly to `main` via git,
-per how every other feature in this session has shipped). All new/changed
-files:
-
-**New:** `engine/core/leverage_capital.py`,
-`engine/config/leverage_capital_policy.case_a_slr_category_iii.json`,
-`engine/config/leverage_capital_policy.case_b_tier1_regional.json`,
-`app/pages/24_Leverage_Capital.py`, `audit/audit_leverage_capital.py`,
-`governance/REGULATORY_RULEBOOK.md`, `governance/regulatory_verification_log.md`,
-`STATUS.md`.
-
-**Modified:** `engine/run.py`, `engine/levers/l2_lines.py`,
-`engine/core/outputs.py`, `app/lib/pipeline_runner.py`, `app/lib/charts.py`,
-`app/Home.py`, `ARCHITECTURE.md`, `app/README.md`.
-
-Regression-checked by hand (direct pipeline runs + browser walkthrough of
-both regimes against the bundled sample portfolio) rather than an automated
-regression suite, since none exists in this repo: total NEP, below-cost
-count, and CEV distribution confirmed byte-identical between the two
-`slr_mode` settings.
+- **`ml_fairness["score_fairness"]`, `["score_fairness_by_product_tier"]`,
+  and `["score_any_failure"]` are not carried** in the bundle and come back
+  `None` on a bundle-loaded result. A full grep of `app/pages/25_ML_Credit_Limit.py`
+  confirms only `proxy_method`, `treatment_fairness`, and
+  `treatment_any_failure` are ever read — `score_fairness` would in any case
+  be numerically identical to the non-ML `fairness["score_fairness"]` (both
+  score every customer by `cev_band` alone, independent of any worklist), so
+  nothing is lost that a page displays.
+- **`result["suppressed"].frame` on a bundle-loaded result is the
+  post-routing `customer_view`, not the original pre-routing frame** the
+  live engine would have produced. No page or prior audit reads `.frame`
+  (only `.suppressed`), so this is unobservable from the UI — documented
+  here rather than silently relied upon.
+- **`result["leverage_policy"]`, `["leverage_warnings"]`, `["leverage_audit"]`,
+  `["populations"]` come back as empty placeholders.** Confirmed by grep
+  that no page reads any of these on a live result either (only
+  `pipeline_runner.run_negative_control_gate` touches `populations`, and
+  that function is never called against a bundle-loaded result — the bundle
+  carries the finished gate instead). The leverage policy *name* a bundle
+  was produced under is shown in the app's info panel from the manifest.
+- **The per-customer transaction drill-down and per-activity cost-to-serve
+  breakdown are unavailable** on a bundle-loaded result (no raw portfolio
+  tables in the bundle, by design) — both show a plain message. Everything
+  else on `20_Levers_and_Strategy.py`'s drill-down (the monthly P&L,
+  full ledger view, and CSV exports) still works, since `ledger["card"]` is
+  in the bundle.
+- **~500 MB of load-time headroom on a 2 GB instance at 50k customers** is
+  not a large margin once Streamlit's own baseline and any concurrent
+  session are accounted for — this was measured as a standalone Python
+  process, not inside the actual hosted Streamlit runtime. A portfolio
+  meaningfully larger than 50,000 customers has not been measured and may
+  need either a tighter table selection or a larger hosting tier.
+- **Schema versioning is all-or-nothing**: `results_bundle.py` requires an
+  exact schema-version match and refuses anything else outright. There is no
+  migration path yet for an older bundle against a newer app build.

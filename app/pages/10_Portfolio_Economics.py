@@ -9,6 +9,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from app.lib import charts as C, presentation as P
+from app.lib.results_bundle import BundleTableUnavailable
 
 st.set_page_config(page_title="Portfolio Economics", page_icon="📊", layout="wide")
 st.title("📊 Portfolio Economics")
@@ -31,15 +32,26 @@ led = result["ledger"]["card"]
 led = led[led["Masked Customer Number"].isin(cv["Masked Customer Number"])]
 measured = result["ledger"]["measured"]
 
-tx = result["portfolio"]["Table5_Transaction.csv"]
-effective_interchange = led["interchange_revenue"].sum() / max(tx["Transaction Amount"].sum(), 1)
+# A pre-computed results bundle never carries the raw transaction table (see
+# ARCHITECTURE.md's "Results bundle" section) - it carries this one
+# already-summed scalar instead, measured at export time from the same
+# table. A live engine run never has this key, so it always falls through
+# to the raw-table sum below, unchanged from before this feature existed.
+try:
+    tx = result["portfolio"]["Table5_Transaction.csv"]
+    total_tx_amount = float(tx["Transaction Amount"].sum())
+except BundleTableUnavailable:
+    total_tx_amount = measured.get("total_transaction_amount_usd")
+effective_interchange = (led["interchange_revenue"].sum() / max(total_tx_amount, 1)
+                        if total_tx_amount is not None else None)
 
 st.subheader("Measured, not assumed")
 st.markdown(P.tag("measured"), unsafe_allow_html=True)
 m1, m2, m3 = st.columns(3)
 m1.metric("Blended cost per reward point", f"${measured['cost_per_point_blended']:.4f}")
 m2.metric("Breakage (matured vintages)", f"{measured['breakage_rate_matured_vintages']:.1%}")
-m3.metric("Effective interchange rate", f"{effective_interchange:.2%}")
+m3.metric("Effective interchange rate",
+         f"{effective_interchange:.2%}" if effective_interchange is not None else "N/A")
 st.caption("These three figures were never a generator input — they are computed "
           "from the redemption, expiry and transaction tables you uploaded. If "
           "they could not be measured, the engine would have refused to run "

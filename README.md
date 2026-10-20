@@ -21,6 +21,29 @@ streamlit run Home.py
 
 A ready-to-use demo portfolio is bundled — the app's home page has a one-click "try the sample data" option, no upload needed to explore it.
 
+### Analyzing a portfolio too large to upload or re-run on the hosted app
+
+The engine's memory use grows with portfolio size (roughly 7 GB RSS at
+~48,500 customers), and a 50,000-customer portfolio is multiple GB on disk —
+both well past what the hosted app's instance or upload limit can handle.
+For a portfolio that size, run the engine locally and export a compact
+**results bundle** instead:
+
+```
+python -m engine.export_bundle --data <portfolio_dir> --out <bundle.zip>
+```
+
+Add `--compare-to <control_dir>` to also compute and store the finished
+negative-control gate report. Then, in the app, use the **"Load pre-computed
+results (.zip)"** option in the sidebar (next to the normal portfolio
+upload) to load that bundle directly — no re-analysis, no large upload. A
+bundle never contains raw transactions or other large input tables (it's
+Parquet + JSON, validated on load, never pickled), so a feature that
+genuinely needs that detail — the per-customer transaction drill-down — says
+so plainly instead of erring. See [`ARCHITECTURE.md`](ARCHITECTURE.md)
+section 8a for the full format and what's deliberately left out, and
+[`STATUS.md`](STATUS.md) for measured bundle size/time/memory.
+
 ## Project layout
 
 - `generator/` — synthetic portfolio data generator (demo data only; no real customer data)

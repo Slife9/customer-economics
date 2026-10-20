@@ -452,6 +452,98 @@ Both apps share the root `.streamlit/config.toml` theme automatically (Streamlit
 resolves this relative to the repo root regardless of which app's entry point
 is running).
 
+## 8a. Results bundle: analyzing a portfolio too large to host
+
+The hosted app (§8) runs the full engine on whatever portfolio is uploaded.
+That's fine at the 5,000-customer demo scale, but it doesn't scale to the
+app's hosting budget: engine peak memory is roughly 610 MB at 5,000
+customers and measured at **~7.0 GB RSS at ~48,500 customers** (not linear -
+worse than the ~6 GB a naive linear extrapolation would suggest), and a
+50,000-customer portfolio is ~2.7 GB on disk (the transaction table alone is
+~1.6 GB) - far above both a 2 GB hosted instance's memory and any practical
+upload limit.
+
+The fix is additive, not a change to any calculation: run the engine
+**locally**, export a compact **results bundle**, and let the hosted app
+load that bundle instead of re-running the pipeline.
+
+```
+python -m engine.export_bundle --data <portfolio_dir> --out <bundle.zip>
+python -m engine.export_bundle --data <portfolio_dir> --compare-to <control_dir> --out <bundle.zip>
+```
+
+**Format** (`engine/core/bundle_schema.py` is the single source of truth for
+this, shared by the writer and the loader so they cannot drift apart): a zip
+containing `manifest.json` (schema version, engine git commit, timestamps,
+portfolio label, customer/cycle counts, leverage policy name, a data-source
+flag, and — for every file in the bundle — its SHA-256 and row count, plus
+headline totals for reconciliation), one Parquet file per DataFrame a page
+needs (`tables/*.parquet`, via `pyarrow`), and a handful of small JSON files
+for non-tabular objects (`sizes.json`, `levers.json`, `fairness.json`,
+`ml.json`, `ledger_measured.json`). **Never pickle or joblib** - a bundle is
+untrusted input (it may travel between machines, or be tampered with in
+transit), so every table is Parquet (data only) and every object is plain
+JSON; nothing in a bundle can execute code on load.
+
+**Deliberately excluded** from the bundle (confirmed by an exhaustive grep of
+every `app/pages/*.py` file and `app/Home.py` before building this, not
+assumed): the raw portfolio tables (`Table2_Card_Account.csv`,
+`Table5_Transaction.csv`, `Table11_Cost_Pools.csv`,
+`Table12_Cost_Drivers.csv` - together the large majority of a portfolio's
+disk footprint), `result["populations"]`, `result["routed"]`,
+`result["leverage_policy"/"leverage_warnings"/"leverage_audit"]`, and live
+`Lever` objects (only `.gates`, a plain `list[str]`, is ever read off one -
+see `20_Levers_and_Strategy.py:164-166` - so the bundle carries a lightweight
+`LeverStub` instead). The one raw-table dependency that survives is
+`ledger["card"]` (the account x cycle P&L) - several pages need it in full,
+including a whole-table CSV export, so it stays. The negative-control gate
+(normally computed in the app from two live result dicts -
+`app/lib/pipeline_runner.run_negative_control_gate`) is instead computed
+**once, at export time**, when `--compare-to` is given, and the finished
+9-column gate DataFrame is stored directly - a bundle never recomputes it.
+
+**Loading** (`app/lib/results_bundle.py`): `app/Home.py`'s sidebar has a
+"Load pre-computed results (.zip)" uploader next to the existing portfolio
+upload (the sample-portfolio button stays first). On load, the bundle is
+validated — manifest present and schema version supported; every manifest-
+listed file present with a matching SHA-256 and row count; no zip entry
+outside the bundle root; a maximum uncompressed size; and the headline
+totals recomputed from the loaded tables and compared to the manifest within
+an explicit dollar tolerance — before any of it is trusted. A validation
+failure shows a specific, human-readable reason, never a traceback. On
+success, a `result` dict is reconstructed with the same keys and attribute
+surface every page already reads (real `SuppressedPopulation` and
+`SizeResult` instances, not duck-typed stand-ins, constructed from the
+validated data — never unpickled). Two features that need a raw table the
+bundle doesn't carry — `10_Portfolio_Economics.py`'s effective-interchange-
+rate metric and `20_Levers_and_Strategy.py`'s transaction/cost-driver
+drill-down tabs — catch `BundleTableUnavailable` and show a plain message
+instead of erroring; the interchange-rate metric additionally still works,
+via one pre-computed scalar (`ledger["measured"]["total_transaction_amount_usd"]`)
+the export step adds specifically so that one small metric doesn't need the
+full transaction table.
+
+**Equivalence**: `audit/audit_results_bundle.py` runs the pipeline directly
+against the bundled demo portfolio and its negative control, exports a
+bundle from the same two portfolios, loads it back, and asserts every value
+a page displays is identical between the live result and the bundle-loaded
+one (77 checks as of this writing - KPIs, CEV-band distribution, routing
+summary, lever sizes, worklist counts/actions, fairness tables, the gate
+report, ML action counts). See STATUS.md for the measured bundle size,
+export/load time, and peak load memory at both 5,000 and 50,000 customers.
+
+**Known limitations**: `ml_fairness["score_fairness"]`,
+`["score_fairness_by_product_tier"]`, and `["score_any_failure"]` are not
+carried in the bundle (no page reads them - `25_ML_Credit_Limit.py` only
+reads `proxy_method`, `treatment_fairness`, and `treatment_any_failure`) and
+come back `None` on a bundle-loaded result; `result["suppressed"].frame` on
+a bundle-loaded result holds the post-routing `customer_view`, not the
+original pre-routing frame (no page or audit reads `.frame`, only
+`.suppressed`); `result["leverage_policy"/"leverage_warnings"/"leverage_audit"]`
+come back empty placeholders (no page reads them - the policy *name* a
+bundle was produced under is shown in the app's info panel instead, from the
+manifest).
+
 ## 9. Open items — real gaps, not yet built
 
 In roughly most-to-least valuable order:

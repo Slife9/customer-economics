@@ -29,6 +29,11 @@ so no extra step is needed to try it. To retrain (e.g. after a feature
 change), run `python -m engine.ml.train_credit_limit_model` - see
 `engine/ml/MODEL_CARD.md`.
 
+For a portfolio too large to upload or re-run here (see ARCHITECTURE.md
+§8a), use **"Load pre-computed results (.zip)"** in the sidebar instead,
+below the normal upload — it loads a bundle exported locally with
+`python -m engine.export_bundle`, with no re-analysis needed.
+
 ## What to upload
 
 A zip of a portfolio folder as produced by `generator/run.py` — i.e. the

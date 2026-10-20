@@ -12,6 +12,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.lib import pipeline_runner as PR, charts as C, presentation as P
+from app.lib import results_bundle as RB
 from engine.core.contract import DataContractViolation
 
 # This deployment runs under one fixed leverage regime rather than letting
@@ -48,6 +49,16 @@ with st.sidebar:
         help="Loads samples/demo_portfolio.zip and samples/negative_control_portfolio.zip "
             "from this project - no file picker needed.")
 
+    st.divider()
+    st.header("2 · Or load pre-computed results")
+    st.caption("For a portfolio too large to upload or re-analyse on this "
+              "instance — export one locally with "
+              "`python -m engine.export_bundle`, then load the bundle here.")
+    bundle_zip = st.file_uploader(
+        "Load pre-computed results (.zip)", type="zip", key="bundle_zip")
+    load_bundle_clicked = st.button(
+        "Load bundle", width="stretch", disabled=bundle_zip is None)
+
 if sample_clicked:
     with st.spinner("Loading the bundled sample portfolio…"):
         result, root = PR.run_pipeline_for_sample(
@@ -55,6 +66,7 @@ if sample_clicked:
         st.session_state["result"] = result
         st.session_state["result_root"] = str(root)
         st.session_state["demo_label"] = "samples/demo_portfolio.zip"
+        st.session_state.pop("bundle_metadata", None)
     ctrl_path = sample_dir / "negative_control_portfolio.zip"
     if ctrl_path.exists():
         with st.spinner("Loading the bundled negative control…"):
@@ -81,6 +93,25 @@ if run_clicked and demo_zip is not None:
     # belongs to a different portfolio.
     st.session_state.pop("control_result", None)
     st.session_state.pop("gate_report", None)
+    st.session_state.pop("bundle_metadata", None)
+
+if load_bundle_clicked and bundle_zip is not None:
+    with st.spinner("Validating and loading the pre-computed results bundle…"):
+        try:
+            result, bundle_meta, gate_report = RB.load_bundle_from_bytes(
+                bundle_zip.getvalue(), bundle_zip.name)
+            st.session_state["result"] = result
+            st.session_state["result_root"] = f"<bundle: {bundle_zip.name}>"
+            st.session_state["demo_label"] = f"{bundle_meta.portfolio_label} (pre-computed)"
+            st.session_state["bundle_metadata"] = bundle_meta
+            st.session_state.pop("control_result", None)
+            if gate_report is not None:
+                st.session_state["gate_report"] = gate_report
+            else:
+                st.session_state.pop("gate_report", None)
+        except RB.BundleValidationError as e:
+            st.error(f"**Could not load this bundle — refusing to load.**\n\n{e}")
+            st.stop()
 
 if "result" not in st.session_state:
     st.info("👈 Upload a zipped portfolio in the sidebar and click **Run analysis** "
@@ -120,6 +151,17 @@ led = led[led["Masked Customer Number"].isin(cv["Masked Customer Number"])]
 st.success(f"Loaded **{st.session_state['demo_label']}** — "
           f"{cv['Masked Customer Number'].nunique():,} customers, "
           f"{led['Cycle Month'].nunique()} monthly cycles.")
+
+bundle_meta = st.session_state.get("bundle_metadata")
+if bundle_meta is not None:
+    st.info(
+        f"📦 **Pre-computed results** — loaded from `{bundle_meta.bundle_file_name}` "
+        f"({bundle_meta.bundle_size_bytes / 1e6:,.1f} MB), exported "
+        f"{bundle_meta.created_at_utc}. Produced under leverage policy "
+        f"**{bundle_meta.leverage_policy_name}**, data source **{bundle_meta.data_source}**. "
+        f"The engine was not re-run on this instance — transaction-level "
+        f"drill-down is not available for a pre-computed bundle; everything "
+        f"else on these pages is the same analysis the bundle was exported with.")
 
 st.header("Executive summary")
 

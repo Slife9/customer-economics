@@ -8,6 +8,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from app.lib import charts as C
+from app.lib.results_bundle import BundleTableUnavailable
 from engine.core import ledger as ENGINE_LEDGER
 
 ACTIVITY_LABELS = {
@@ -279,14 +280,26 @@ if picked:
                   "recommendation's word alone.")
 
         portfolio = result["portfolio"]
-        accounts = portfolio["Table2_Card_Account.csv"]
-        cust_accts = set(accounts.loc[
-            accounts["Masked Customer Number"] == picked, "Masked Account Number"])
         led = result["ledger"]["card"]
         cust_ledger = led[led["Masked Customer Number"] == picked].sort_values("Cycle Month")
-        tx_all = portfolio["Table5_Transaction.csv"]
-        cust_tx = tx_all[tx_all["Masked Account Number"].isin(cust_accts)].sort_values(
-            "Cycle Month")
+        # A pre-computed results bundle never carries raw portfolio tables
+        # (Table2/Table5/Table11/Table12 - see ARCHITECTURE.md's "Results
+        # bundle" section) to keep bundles small - this degrades the two
+        # tabs that need them below into a clear message rather than a
+        # Python error. A live engine run never raises here, so this tab
+        # behaves exactly as before this feature existed.
+        try:
+            accounts = portfolio["Table2_Card_Account.csv"]
+            cust_accts = set(accounts.loc[
+                accounts["Masked Customer Number"] == picked, "Masked Account Number"])
+            tx_all = portfolio["Table5_Transaction.csv"]
+            cust_tx = tx_all[tx_all["Masked Account Number"].isin(cust_accts)].sort_values(
+                "Cycle Month")
+            portfolio_detail_available = True
+        except BundleTableUnavailable:
+            cust_accts = set()
+            cust_tx = pd.DataFrame()
+            portfolio_detail_available = False
 
         tab_pl, tab_tx, tab_ledger = st.tabs(
             ["Monthly P&L", "Transaction Detail", "Full Ledger"])
@@ -394,7 +407,12 @@ if picked:
                 # engine function (Streamlit Cloud can lag a redeploy behind
                 # a push - see ARCHITECTURE.md) must degrade to the combined
                 # figures above, never hard-crash the whole page.
-                if hasattr(ENGINE_LEDGER, "cost_to_serve_by_activity"):
+                if not portfolio_detail_available:
+                    st.caption("Per-activity cost detail needs the raw cost-driver "
+                              "tables, which this pre-computed results bundle does "
+                              "not include - showing the combined cost-to-serve "
+                              "figures above only.")
+                elif hasattr(ENGINE_LEDGER, "cost_to_serve_by_activity"):
                     drv_all = portfolio["Table12_Cost_Drivers.csv"]
                     pools_all = portfolio["Table11_Cost_Pools.csv"]
                     by_activity = ENGINE_LEDGER.cost_to_serve_by_activity(drv_all, pools_all)
@@ -485,7 +503,12 @@ if picked:
                 st.caption("No card ledger rows for this customer in the trailing window.")
 
         with tab_tx:
-            if len(cust_tx):
+            if not portfolio_detail_available:
+                st.info("Transaction-level detail is not included in this "
+                       "pre-computed results bundle - re-run the engine on the "
+                       "full portfolio to see individual transactions for this "
+                       "customer.")
+            elif len(cust_tx):
                 cat_col = "Merchant Category" if "Merchant Category" in cust_tx.columns \
                     else "Merchant Category Description" if "Merchant Category Description" in cust_tx.columns \
                     else None
