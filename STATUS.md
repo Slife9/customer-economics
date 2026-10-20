@@ -70,6 +70,81 @@ passes anywhere, so a policy mismatch like this would not have been caught
 by the test suite - only by a manual check. Worth hardening if this bundle
 is regenerated again in the future.
 
+## Second follow-up round: the 502 kept recurring; categorical dtypes; 100k
+
+The 50,000-customer bundle continued to 502 on Render intermittently even
+after the first round's fixes. Rather than guess further, measured exactly
+where the loaded bundle's memory actually goes (table by table, via
+`df.memory_usage(deep=True)`): `ledger_card` (1.4M rows, 41 columns) is a
+97.8MB Parquet file that **expands to 858MB in memory** - six text columns
+(`Masked Customer Number`, `Masked Account Number`, `Cycle Month`,
+`Account Type`, `Product Tier`, `Delinquency Bucket`) account for ~490MB of
+that, and critically, even 3-36-distinct-value columns (`Account Type`,
+`Cycle Month`) cost nearly as much as the 50,000-distinct-value ID columns
+(~80MB each) - the cost is almost entirely per-cell Python object overhead,
+not content size, because pandas' default Parquet read expands a
+dictionary-encoded column back into one full Python string object per row.
+
+Fix: `engine/core/bundle_schema.py:optimize_dtypes_for_storage()`, applied
+by the exporter to `customer_view` and `ledger_card` before writing -
+stores these columns as pandas `category` dtype, which Parquet round-trips
+losslessly (identical values; comparisons, `groupby`, CSV export all behave
+the same). Measured: table memory 1,000.7MB -> 513.1MB (-49%); full bundle
+load peak RSS 1,507.6MB -> 1,321.2MB (-12% end-to-end, less than the table
+figure because validation/zip-decompression overhead doesn't shrink the
+same way). Bundle file size on disk is unchanged (94.3MB) - Parquet was
+already dictionary-encoding these columns efficiently; the fix is purely
+about what pandas does with them after decoding. Re-ran
+`audit/audit_results_bundle.py` after: still 77/77 passing. The committed
+`samples/demo_portfolio_50k_bundle.zip` was re-exported with this fix.
+
+**Separately, tested 100,000 customers** (at the user's request, to see how
+far the approach scales). Generation itself crashed with a genuine
+`MemoryError` - unrelated to the bundle feature, a previously-unknown limit
+in the generator (only 50,000x36mo and 100,000x12mo had ever been
+generated before; 100,000x36mo was new territory). Root-caused and fixed
+three real bugs, all the same class of problem as the dtype fix above -
+pandas eagerly consolidating/copying several large text columns into one
+combined allocation:
+- `generator/synth/transactions.py`: `TX.generate()`'s final
+  `pd.DataFrame({...})` now passes `copy=False`, skipping pandas' default
+  eager consolidation of this frame's 9 text columns into one >1GB array.
+- `generator/run.py` and `generator/synth/rewards.py`: removed two
+  redundant `.copy()` calls (the frame was already independent at each
+  point - boolean-mask filtering already returns a copy, not a view - so
+  the explicit `.copy()` served no purpose beyond forcing the same costly
+  consolidation).
+- `generator/run.py`: the `WRONG_EARN_RULE` ground-truth comparison
+  previously kept a full second copy of the entire transaction table alive
+  just to compute "what earn would have looked like without the defect."
+  Narrowed to just the (typically ~3%) accounts the defect actually
+  affects - verified at small scale that this gives **byte-identical**
+  ground-truth output to the full-table comparison (`pd.testing.assert_frame_equal`
+  passed), since `RW.earn()`'s only cross-row state, a per-account running
+  bonus-spend cap, is computed independently per account and is unaffected
+  by excluding other accounts' rows.
+
+With all three fixes, 100,000 customers x 36 months now generates (253.7s)
+and exports (a 186.7MB bundle) successfully, where it previously crashed
+outright before reaching the engine at all. **However: loading that bundle
+still measures ~2,467.8MB peak RSS even after the categorical-dtype fix -
+likely still too large for a 2GB hosted instance.** This is stated plainly
+as a known limitation, not implied to work: 100,000 customers is not
+currently a safe target for the hosted app on its current instance size,
+even though local generation and export now succeed. Export time at 100k
+was also measured at ~23.5 minutes (vs ~1.8 minutes at 50k) - a
+disproportionate, non-linear increase not fully explained by the fixes
+above; flagged here rather than chased further given the time already
+invested, and possibly contaminated by this machine's own memory pressure
+from running several large operations back to back during testing.
+
+`generator/synth/transactions.py` also carries two older, unrelated memory
+fixes from earlier in this session (vectorizing a date-string construction
+and a day-value dtype width issue) that had not yet been committed when
+this round's fix landed in the same file - included together in one commit
+since they are the same class of fix in the same file, after explicit
+confirmation.
+
 ## What was built
 
 - **`engine/core/bundle_schema.py`** (new) — the single source of truth for
