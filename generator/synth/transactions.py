@@ -160,9 +160,35 @@ def generate(accounts: pd.DataFrame, lat: pd.DataFrame, cycles: list[str],
     disputed = rng.random(total) < 0.0035
 
     day = rng.integers(1, 29, total)
-    tx_date = np.array([f"{cycles[c]}-{d:02d}" for c, d in zip(tx_cyc, day)])
+    # Vectorized equivalent of [f"{cycles[c]}-{d:02d}" for c, d in zip(tx_cyc, day)] -
+    # identical output for identical input, but the list-comprehension version
+    # materializes `total` individual Python str objects before np.array() can
+    # even start, which is fine at demo scale (a few million rows) but reliably
+    # MemoryErrors once `total` reaches the tens-to-hundreds of millions a
+    # 500,000-customer x 36-cycle run produces. Gathering from small lookup
+    # tables never materializes a Python list, and - unlike day.astype(str),
+    # which sizes every string for the largest POSSIBLE int64 (21 characters)
+    # rather than the 1-2 digits a day-of-month actually needs - never
+    # allocates wider strings than the 28 real values require.
+    day_lookup = np.array([f"{d:02d}" for d in range(1, 29)])
+    day_str = day_lookup[day - 1]
+    tx_date = np.char.add(np.char.add(np.array(cycles)[tx_cyc], "-"), day_str)
     post_lag = rng.integers(0, 3, total)
 
+    # copy=False: pandas' default DataFrame construction EAGERLY consolidates
+    # every same-dtype column into one combined block, via np.vstack - here
+    # that means all 9 of this frame's text columns (pandas stores any
+    # string column as dtype=object internally, regardless of the input
+    # array's own dtype) get vstacked into a single (9, total) object array.
+    # At demo scale that is fine; at a 100,000-customer x 36-cycle scale
+    # (~22.6M transaction rows) that single allocation is >1.5 GiB and
+    # reliably MemoryErrors even when the 9 columns individually would fit.
+    # copy=False skips that eager consolidation (safe here - every array
+    # below is freshly computed, not a shared/mutable reference the caller
+    # keeps using), keeping the 9 columns as separate smaller allocations
+    # instead of doubling up during one giant merge. Verified byte-identical
+    # output at demo scale; see also the day_lookup/tx_date fix above and
+    # the two prior fixes in this same function for the same class of issue.
     return pd.DataFrame({
         "Masked Customer Number": accounts["Masked Customer Number"].to_numpy()[tx_acct],
         "Masked Account Number": accounts["Masked Account Number"].to_numpy()[tx_acct],
@@ -185,4 +211,4 @@ def generate(accounts: pd.DataFrame, lat: pd.DataFrame, cycles: list[str],
         "Disputed Indicator": disputed,
         "_acct_ix": tx_acct,
         "_cycle_ix": tx_cyc,
-    })
+    }, copy=False)

@@ -105,6 +105,44 @@ class LeverStub:
     gates: list
 
 
+# Columns worth storing as pandas `category` dtype in the bundle - a
+# handful of distinct values repeated across many rows. Parquet already
+# dictionary-encodes these compactly on disk; the expansion happens on
+# LOAD, when pandas' default decodes them back into one full Python string
+# object per cell. Measured on the 50k bundle: ledger_card alone balloons
+# from a 97.8MB uncompressed Parquet file to 858MB in memory - these six
+# columns account for ~490MB of that, despite the lowest-cardinality ones
+# (3-36 distinct values) costing nearly as much as the two ID columns
+# (50,000 distinct values) - the cost is almost entirely per-cell Python
+# object overhead, not content size. Writing them as `category` lets
+# Parquet's own dictionary encoding round-trip straight into pandas'
+# equally compact categorical representation instead of expanding it.
+# `Masked Customer Number` is deliberately NOT included for customer_view -
+# there it is unique per row (one row per customer), so categorical would
+# add overhead instead of saving it; in ledger_card the same id repeats
+# once per cycle (~36x), where it is a clear win.
+CATEGORICAL_COLUMNS = {
+    "ledger_card": ["Masked Customer Number", "Masked Account Number",
+                    "Cycle Month", "Account Type", "Product Tier",
+                    "Delinquency Bucket"],
+    "customer_view": ["Segment", "Credit Score Band", "State", "Product Tier",
+                      "Metro Name", "net_band", "routed_lever",
+                      "cac_payback_status", "acquisition_channel"],
+}
+
+
+def optimize_dtypes_for_storage(df, table_key: str):
+    """Returns a NEW DataFrame (the original is not mutated) with this
+    table's CATEGORICAL_COLUMNS entries converted to category dtype, where
+    present. Safe and lossless: category dtype round-trips through Parquet
+    and compares/groups/CSV-exports identically to the plain string column
+    it replaces - this changes memory footprint only, never a displayed
+    value."""
+    cols = {c: "category" for c in CATEGORICAL_COLUMNS.get(table_key, [])
+           if c in df.columns}
+    return df.astype(cols) if cols else df
+
+
 def compute_headline_totals(customer_view, total_transaction_amount_usd: float | None) -> dict:
     """The reconciliation totals stored in manifest.json and recomputed from
     the loaded tables on every bundle load (see results_bundle.py:validate).

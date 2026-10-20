@@ -43,7 +43,15 @@ def earn(tx: pd.DataFrame, accounts: pd.DataFrame, rules: pd.DataFrame,
     """Apply the published rule to each transaction's reward category."""
     r = rules.set_index("Program Code")
     prog = accounts.set_index("Masked Account Number")["Reward Program Code"]
-    tx = tx.copy()
+    # No .copy() here: the caller (generator/run.py) always passes a `tx`
+    # produced fresh from a boolean-mask filter and immediately reassigns
+    # its own variable to this function's return value
+    # (`tx = RW.earn(tx, ...)`), so nothing else ever holds a reference to
+    # the object this mutates - safe to add columns in place. At a
+    # 100,000-customer scale, an explicit .copy() here forces pandas to
+    # eagerly consolidate this frame's 9 object-dtype (text) columns into
+    # one >1GB array (the same MemoryError class fixed above in
+    # transactions.py and generator/run.py).
     tx["Reward Program Code"] = tx["Masked Account Number"].map(prog)
 
     base = tx["Reward Program Code"].map(r["Base Earn Rate"]).astype(float)

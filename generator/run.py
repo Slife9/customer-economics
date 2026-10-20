@@ -134,8 +134,15 @@ def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: in
 
     # Transactions only exist while the account is open; re-clip against the
     # realized closure/charge-off cycle now that it is known.
+    # No .copy() here: boolean-mask row filtering already returns an
+    # independent DataFrame (not a view), and `tx` is never mutated by
+    # column assignment before its next reassignment (`tx = RW.earn(...)`
+    # below) - the .copy() was redundant and, at a 100,000-customer scale,
+    # forces pandas to eagerly consolidate this frame's 9 object-dtype
+    # (text) columns into one >1GB array, the same class of MemoryError
+    # TX.generate()'s own construction was fixed against above.
     tx = tx[tx["_cycle_ix"] < tx["Masked Account Number"].map(
-        pd.Series(closed_at, index=accounts["Masked Account Number"])).to_numpy()].copy()
+        pd.Series(closed_at, index=accounts["Masked Account Number"])).to_numpy()]
 
     # ---------------- card (plastic-level events) --------------------------
     card_events = CARDS.generate(accounts, lat, cycles, closed_at, rng)
@@ -157,10 +164,27 @@ def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: in
 
     # ---------------- rewards ---------------------------------------------
     rules, channels = RW.load_config(CFG)
-    tx_before = tx.copy()
+    # wrong_earn_ground_truth() needs "what earn would have looked like
+    # without the defect" to compare against - but only for the accounts
+    # the defect actually touches (a small prevalence-driven subset, e.g.
+    # ~3% of accounts). RW.earn()'s one piece of cross-row state (the
+    # per-account annual bonus-spend cap) is tracked via
+    # groupby(["account","year"]).cumsum(), which is computed independently
+    # per account - other accounts' transactions never affect it. So
+    # recomputing earn() on just wrong_earn_accts' own transactions gives
+    # IDENTICAL "Points Earned" values to recomputing it across the whole
+    # portfolio (verified directly at small scale: both approaches produce
+    # byte-identical ground-truth rows). Keeping a full second copy of `tx`
+    # alive just
+    # for this comparison (the previous approach) reliably MemoryErrors
+    # at a 100,000-customer scale; this keeps the second copy down to
+    # wrong_earn_accts' own rows only.
+    wrong_earn_mask = tx["Masked Account Number"].isin(wrong_earn_accts).to_numpy()
+    tx_before_subset = tx.loc[wrong_earn_mask].copy()
     tx = RW.earn(tx, accounts, rules, wrong_earn_accts)
     gt_earn = DEF.wrong_earn_ground_truth(
-        RW.earn(tx_before, accounts, rules, set()), tx, wrong_earn_accts)
+        RW.earn(tx_before_subset, accounts, rules, set()),
+        tx.loc[wrong_earn_mask], wrong_earn_accts)
     red, exp, liab = RW.redeem_and_expire(tx, accounts, lat, rules, channels,
                                           cycles, closed_at, rng)
     breakage = RW.measure_breakage(tx, exp, cycles, rules)

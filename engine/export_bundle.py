@@ -119,8 +119,10 @@ def export_bundle(data_dir: Path, out_path: Path, compare_to: Path | None = None
     measured = dict(result["ledger"]["measured"])
 
     w = _BundleWriter()
-    w.add_table(SCHEMA.CUSTOMER_VIEW_TABLE, cv)
-    w.add_table(SCHEMA.LEDGER_CARD_TABLE, led)
+    w.add_table(SCHEMA.CUSTOMER_VIEW_TABLE,
+               SCHEMA.optimize_dtypes_for_storage(cv, "customer_view"))
+    w.add_table(SCHEMA.LEDGER_CARD_TABLE,
+               SCHEMA.optimize_dtypes_for_storage(led, "ledger_card"))
     w.add_table(SCHEMA.ROUTING_SUMMARY_TABLE, result["routing_summary"].reset_index())
     w.add_table(SCHEMA.SUPPRESSED_TABLE, result["suppressed"].suppressed)
 
