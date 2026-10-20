@@ -165,17 +165,6 @@ st.success(f"Loaded **{st.session_state['demo_label']}** — "
           f"{cv['Masked Customer Number'].nunique():,} customers, "
           f"{led['Cycle Month'].nunique()} monthly cycles.")
 
-bundle_meta = st.session_state.get("bundle_metadata")
-if bundle_meta is not None:
-    st.info(
-        f"📦 **Pre-computed results** — loaded from `{bundle_meta.bundle_file_name}` "
-        f"({bundle_meta.bundle_size_bytes / 1e6:,.1f} MB), exported "
-        f"{bundle_meta.created_at_utc}. Produced under leverage policy "
-        f"**{bundle_meta.leverage_policy_name}**, data source **{bundle_meta.data_source}**. "
-        f"The engine was not re-run on this instance — transaction-level "
-        f"drill-down is not available for a pre-computed bundle; everything "
-        f"else on these pages is the same analysis the bundle was exported with.")
-
 st.header("Executive summary")
 
 n_years = max(led["Cycle Month"].nunique() / 12.0, 1e-9)
