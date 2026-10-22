@@ -81,7 +81,8 @@ navigation; the page registry is `app/lib/nav.py`):
   four-fifths test on score and treatment, the ML treatment fairness check
   (moved here from the ML page), and the suppression breakdown.
 - **Downloads** — the five outputs (score file, worklist, leakage register,
-  governance pack, ledger) as CSV/JSON.
+  governance pack, ledger) as CSV/JSON, each built when its button is
+  clicked. The ledger comes as a zipped CSV.
 
 **Reference**
 - **Lever Playbook** — what each lever is, how it is sized, and its gates.

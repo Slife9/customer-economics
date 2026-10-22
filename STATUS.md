@@ -80,9 +80,75 @@ and L1/L3 with no priced value at all.
   L4's staffing step).
 - The L6 channel gap is planted by the generator, so finding it shows the
   engine can detect it; it is not a business finding.
-- Found in passing: the Downloads page takes about 34s on the 100k bundle,
-  because it builds the full-ledger CSV before anyone clicks. This was
-  already the case before this branch.
+- Found in passing: the Downloads page took about 34s on the 100k bundle,
+  because it built the full-ledger CSV before anyone clicked. Fixed in B4
+  (below).
+
+## Part B: per-lever pages (done) and Part C: local evaluation
+
+| Stage | Commit | What |
+|---|---|---|
+| B1 | `4e87745`, `7498bc9` | Grouped navigation; Liquidity, Leverage Capital and ML merged into L2, acquisition into L6, ML fairness into Governance; Strategy Overview's six-lever table; Playbook sizing text updated to the new method |
+| B2/B3 | `c9d170a` … `ab80889` | The standard lever layout and customer drill-down (`app/lib/lever_page.py`); pages L1–L6 |
+| B4 | `7d76603` | Memory work (below); `max_entries=2`; the 50k sample re-exported in schema v2 |
+| C | `27d815e`, this commit | Fixes found in the browser run; `specs/lever_valuation_rebuild/EVALUATION_GUIDE.md` |
+
+**Tests, as run:**
+- `python audit/audit_lever_estimates.py --bundle-100k <re-exported bundle>`
+  gives **279/279** passing.
+- Every page renders with no exception on three sources: the live 5k run,
+  a v1 (pre-rebuild) 100k bundle, and the v2 100k bundle. The harness is
+  `streamlit.testing` AppTest.
+- Governance & Fairness shows its four-fifths failure on the 5k with
+  `st.error`. That is a reported result, not a crash.
+- A real browser run against a local Streamlit server covered:
+  - the 50k Try it path;
+  - the 100k bundle uploaded through the sidebar;
+  - all six lever pages;
+  - the L2 and L5 drill-downs, including a joint-review flag and a review
+    note.
+
+**Base figures under Case A**, which the app uses for uploads (the table
+above is the Tier 1 audit fixture):
+- 5k: L2 is $36,209 and the portfolio is **$56,347 / $99,012 / $134,534**.
+  Tier 1 omits the SLR terms, $1,218 net.
+- 50k sample: **$515,881 / $933,804 / $1,277,612**.
+
+**Memory, measured.** Windows peak working set. The real-server figures
+come from the browser run; AppTest is one process rendering every page.
+
+| | Before B4 | After |
+|---|---:|---:|
+| 100k bundle loaded (AppTest) | 1,874 MB (peak 2,134) | 1,145 MB (peak 1,591) |
+| 100k, every page incl. Downloads (AppTest) | peak 3,773 MB | peak 1,777 MB |
+| 100k, real server after load | 1,901 MB | 1,543 MB |
+| 100k, real server, lever pages | n/a | 1,455–1,548 MB |
+| 100k, real server, momentary load peak | 2,097 MB | ~2,090 MB |
+| 50k Try it, real server | ~550 MB per session | 771 MB once, +0 MB per extra session |
+| Downloads page render, 100k | 33–42 s | instant (files built on click) |
+
+On a **2 GB** instance:
+- The lever pages fit the 100k bundle in steady state.
+- The one-second peak while the ledger table is decoded is at the limit.
+  Two approaches were measured and rejected because they raise the peak:
+  column-batch reads, and smaller row groups.
+- The 50k sample fits with room to spare.
+
+**Open questions for the user:**
+1. **Instance size.** `render.yaml` sets `plan: free` (512 MB) for both
+   services. That cannot hold the 50k Try it bundle (771 MB loaded), let
+   alone 100k. Earlier notes in this file assume a 2 GB instance, so the
+   live plan may have been changed in the Render dashboard. That needs
+   checking there. `render.yaml` was deliberately not changed, because it
+   would affect production.
+2. **Staging deploy** (Part C, optional) has not been done. Do it only on
+   request, as a separate Render service, never by repointing the existing
+   one.
+3. **100k on 2 GB.** If the load peak must have margin, the options are a
+   larger instance, or a lazily loaded ledger: the lever pages don't need
+   the full ledger, only Home, Portfolio Economics, Downloads and the
+   per-customer workup do. The lazy ledger would be a structural change and
+   has not been started.
 
 ---
 

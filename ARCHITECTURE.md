@@ -95,7 +95,8 @@ contract → ledger → customer_view → suppression → routing → levers →
    into one pair of columns; `_cost_to_serve()` is now a thin wrapper that
    sums this function's output, so the per-activity detail and the ledger's
    combined columns can never silently diverge. The app's customer drill-down
-   (`app/pages/20_Levers_and_Strategy.py`) uses this directly to show which
+   (`app/lib/customer_workup.py`, shown on Strategy Overview and every lever
+   page's drill-down) uses this directly to show which
    specific activity drove a customer's servicing cost, and to render a
    two-column ledger (in/out) view of the same average-per-month figures.
 
@@ -185,8 +186,9 @@ contract → ledger → customer_view → suppression → routing → levers →
    model-registry pattern in this codebase to extend, so this is a plain
    record attached to the run result rather than a persisted registry.
 
-   Surfaced on its own page (`app/pages/24_Leverage_Capital.py`, separate
-   from the Liquidity page even though both charge something against the
+   Surfaced on the L2 page's "Unused-line carrying cost" tab
+   (`app/pages/32_L2_Credit_Lines.py`; formerly its own page), next to the
+   liquidity cost and kept as a separate line even though both charge something against the
    same `avg_undrawn_12m` base) and wired into **L2's DECREASE/INCREASE
    sizing symmetrically** (`engine/levers/l2_lines.py`): a decrease frees
    leverage capital, an increase consumes it, both derived from each
@@ -522,7 +524,7 @@ assumed): the raw portfolio tables (`Table2_Card_Account.csv`,
 disk footprint), `result["populations"]`, `result["routed"]`,
 `result["leverage_policy"/"leverage_warnings"/"leverage_audit"]`, and live
 `Lever` objects (only `.gates`, a plain `list[str]`, is ever read off one -
-see `20_Levers_and_Strategy.py:164-166` - so the bundle carries a lightweight
+see the lever pages' "Regulation & safeguards" section - so the bundle carries a lightweight
 `LeverStub` instead). The one raw-table dependency that survives is
 `ledger["card"]` (the account x cycle P&L) - several pages need it in full,
 including a whole-table CSV export, so it stays. The negative-control gate
@@ -531,7 +533,7 @@ including a whole-table CSV export, so it stays. The negative-control gate
 **once, at export time**, when `--compare-to` is given, and the finished
 9-column gate DataFrame is stored directly - a bundle never recomputes it.
 
-**Loading** (`app/lib/results_bundle.py`): `app/Home.py`'s sidebar has a
+**Loading** (`app/lib/results_bundle.py`): the landing page's (`app/pages/00_Landing.py`) sidebar has a
 "Load pre-computed results (.zip)" uploader next to the existing portfolio
 upload (the sample-portfolio button stays first). On load, the bundle is
 validated — manifest present and schema version supported; every manifest-
@@ -563,7 +565,7 @@ export/load time, and peak load memory at both 5,000 and 50,000 customers.
 
 **Known limitations**: `ml_fairness["score_fairness"]`,
 `["score_fairness_by_product_tier"]`, and `["score_any_failure"]` are not
-carried in the bundle (no page reads them - `25_ML_Credit_Limit.py` only
+carried in the bundle (no page reads them - the L2 page's ML tab and Governance & Fairness only
 reads `proxy_method`, `treatment_fairness`, and `treatment_any_failure`) and
 come back `None` on a bundle-loaded result; `result["suppressed"].frame` on
 a bundle-loaded result holds the post-routing `customer_view`, not the
@@ -594,6 +596,56 @@ own reference to whatever was loaded before, so two large results can't sit
 in memory at once. See STATUS.md for the measured effect and the honest
 trade-off (cache-clearing affects every session on that instance, not just
 the one loading the bundle).
+
+## 8b. App structure after the lever rebuild (per-lever pages)
+
+`app/Home.py` is now only the entrypoint: `set_page_config` plus
+`st.navigation(nav.sections()).run()`. The page list, groups and URL paths
+live in `app/lib/nav.py`, and every page has an explicit `url_path`. The
+former Home content is `app/pages/00_Landing.py`.
+
+| Group | Page | File |
+|---|---|---|
+| Overview | Home, Portfolio Economics | `00_Landing.py`, `10_Portfolio_Economics.py` |
+| Strategies | Strategy Overview | `20_Strategy_Overview.py` (formerly Levers & Strategy) |
+| | L1–L6 | `31_L1_Rewards.py` … `36_L6_Channel_Quality.py` |
+| Governance & Outputs | Governance & Fairness, Downloads | `30_Governance_and_Fairness.py`, `40_Downloads.py` |
+| Reference | Lever Playbook | `21_Lever_Playbook.py` |
+
+**Moved, not deleted.** The bodies of the former Liquidity, ML Credit Limit
+and Acquisition Cost pages are in `app/lib/sections/`. They are rendered as
+tabs on L2 (liquidity, ML second opinion) and L6 (acquisition). The ML
+fairness block moved to Governance & Fairness. The former Leverage Capital
+page's content is the L2 "Unused-line carrying cost" tab. Pages 22–25 no
+longer exist.
+
+**One layout for every lever page.** `app/lib/lever_page.py` renders a
+lever from a `LeverSpec`: overview, scope, value (low/base/high),
+assumptions, a what-if explorer, "How it's calculated", regulation, and the
+customer drill-down. Each page file only supplies its spec and any
+lever-specific extras.
+
+The drill-down calls the lever module's additive explanation functions
+(`selection_rules`, `customer_contributions`, `customer_trace`,
+`calculation_steps`), so a per-customer figure is always computed by the
+engine, never by the page. "Review together" pairs are listed in
+`lever_page.JOINT_REVIEW` and carry no prioritisation rule. Review notes are
+session-only.
+
+**Memory** (measured; see STATUS.md and
+`specs/lever_valuation_rebuild/EVALUATION_GUIDE.md` §5):
+- Bundle Parquet tables are read with `to_pandas(self_destruct=True,
+  split_blocks=True)`, and the Arrow pool is released after the load.
+- Pages that filter the ledger copy only `charts.WATERFALL_COLUMNS`.
+- Downloads builds files on click; the ledger is a chunked, zipped CSV.
+- The bundled sample is cached once per server (`_shared_sample_bundle`).
+- The bundle uploader gets a fresh key after each load, so the uploaded zip
+  is released.
+- `_cached_pipeline` has `max_entries=2`.
+
+Two approaches were measured and rejected because they raise the peak:
+reading the ledger in column batches (`pd.concat` copies), and smaller
+Parquet row groups (chunked columns are concatenated on conversion).
 
 ## 9. Open items — real gaps, not yet built
 
