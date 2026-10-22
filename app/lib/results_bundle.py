@@ -61,6 +61,10 @@ class BundleMetadata:
     has_negative_control_gate: bool
     bundle_file_name: str
     bundle_size_bytes: int
+    # "pre-rebuild valuation" for a schema-v1 bundle - its lever values are
+    # the old single figures, not the corrected low/base/high scenarios.
+    valuation_label: str = ""
+    lever_assumptions_sha256: str | None = None
 
 
 class BundlePortfolioStub:
@@ -105,11 +109,11 @@ def _validate(zf: zipfile.ZipFile, manifest: dict) -> None:
         raise BundleValidationError(
             "manifest.json is missing required fields - this does not look "
             "like a ProfitInsight results bundle.")
-    if manifest["schema_version"] != SCHEMA.SCHEMA_VERSION:
+    if manifest["schema_version"] not in SCHEMA.SUPPORTED_SCHEMA_VERSIONS:
         raise BundleValidationError(
             f"unsupported bundle schema version {manifest['schema_version']} "
-            f"(this app supports version {SCHEMA.SCHEMA_VERSION}). Re-export "
-            f"the bundle with a matching engine version.")
+            f"(this app supports versions {list(SCHEMA.SUPPORTED_SCHEMA_VERSIONS)}). "
+            f"Re-export the bundle with a matching engine version.")
 
     infos = zf.infolist()
     names_on_disk = set()
@@ -300,6 +304,11 @@ def load_bundle_from_bytes(data: bytes, file_name: str
         "ml_policy": ml_meta["ml_policy"],
         "ml_policy_warnings": ml_meta["ml_policy_warnings"],
         "ml_fairness": ml_fairness,
+        "lever_valuation_label": SCHEMA.VALUATION_LABELS.get(manifest["schema_version"], ""),
+        "lever_assumptions_sha256": manifest.get("lever_assumptions_sha256"),
+        "lever_assumptions": {code: s.assumptions_used for code, s in sizes.items()
+                              if s.assumptions_used},
+        "n_cycles": manifest.get("cycles"),
     }
 
     metadata = BundleMetadata(
@@ -316,6 +325,8 @@ def load_bundle_from_bytes(data: bytes, file_name: str
         has_negative_control_gate=manifest.get("has_negative_control_gate", False),
         bundle_file_name=file_name,
         bundle_size_bytes=len(data),
+        valuation_label=SCHEMA.VALUATION_LABELS.get(manifest["schema_version"], ""),
+        lever_assumptions_sha256=manifest.get("lever_assumptions_sha256"),
     )
 
     return result, metadata, gate_report

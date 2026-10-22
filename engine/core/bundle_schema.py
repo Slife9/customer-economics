@@ -27,7 +27,14 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-SCHEMA_VERSION = 1
+# v2 (lever valuation rebuild): sizes.json carries the full scenario
+# SizeResult (low/base/high components, extras, inputs, assumptions used) and
+# the manifest records the lever-assumptions SHA-256 and the portfolio lever
+# summary. v1 bundles still load, labelled "pre-rebuild valuation".
+SCHEMA_VERSION = 2
+SUPPORTED_SCHEMA_VERSIONS = (1, 2)
+VALUATION_LABELS = {1: "pre-rebuild valuation",
+                    2: "corrected valuation (lever rebuild)"}
 
 # Generous headroom over the <200MB/50k target - a hosted 2GB instance can
 # comfortably stage several times that during unzip + parquet decode, but an

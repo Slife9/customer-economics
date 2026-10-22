@@ -21,6 +21,7 @@ regardless of where it claims to come from.
 """
 from __future__ import annotations
 import argparse
+import dataclasses
 import io
 import json
 import subprocess
@@ -39,6 +40,7 @@ from engine.run import build_pipeline, portfolio_defect_count, MECHANISM_VARIED_
 from engine.core import leverage_capital as LEV  # noqa: E402
 from engine.core.contract import DataContractViolation  # noqa: E402
 from engine.core import bundle_schema as SCHEMA  # noqa: E402
+from engine.levers import summary as LSUMMARY  # noqa: E402
 from engine.governance import negative_control as NEGCTL  # noqa: E402
 
 
@@ -67,8 +69,16 @@ def _parquet_bytes(df: pd.DataFrame) -> bytes:
     return buf.getvalue()
 
 
+def _json_default(o):
+    # numpy scalars (np.float64, np.int64, np.bool_) -> native Python, so a
+    # number never round-trips as a string; anything else falls back to str.
+    if hasattr(o, "item") and callable(o.item):
+        return o.item()
+    return str(o)
+
+
 def _json_bytes(obj) -> bytes:
-    return json.dumps(obj, indent=2, default=str).encode("utf-8")
+    return json.dumps(obj, indent=2, default=_json_default).encode("utf-8")
 
 
 class _BundleWriter:
@@ -140,10 +150,9 @@ def export_bundle(data_dir: Path, out_path: Path, compare_to: Path | None = None
     if ml_fairness is not None:
         w.add_table(SCHEMA.ML_FAIRNESS_TREATMENT_TABLE, ml_fairness["treatment_fairness"])
 
-    sizes_json = {code: {
-        "priced_value_usd": s.priced_value_usd, "basis": s.basis,
-        "caveat": s.caveat, "unpriced_context_usd": s.unpriced_context_usd,
-    } for code, s in result["sizes"].items()}
+    # Full scenario SizeResult (schema v2): components, extras, the inputs
+    # value_scenarios() ran on, and the assumptions used.
+    sizes_json = {code: dataclasses.asdict(s) for code, s in result["sizes"].items()}
     w.add_json(SCHEMA.SIZES_NAME, sizes_json)
 
     levers_json = {code: {"code": lever.code, "name": lever.name, "gates": list(lever.gates)}
@@ -201,6 +210,9 @@ def export_bundle(data_dir: Path, out_path: Path, compare_to: Path | None = None
         "ml_available": result["ml_available"],
         "has_negative_control_gate": has_gate,
         "headline_totals": headline_totals,
+        "valuation_label": SCHEMA.VALUATION_LABELS[SCHEMA.SCHEMA_VERSION],
+        "lever_assumptions_sha256": result["lever_assumptions_sha256"],
+        "portfolio_lever_summary": LSUMMARY.portfolio_summary(result["sizes"]),
         "files": w.file_inventory,
     }
     w.write_zip(out_path, manifest)
