@@ -222,12 +222,18 @@ ML_ACTION_ORDER = ["MAINTAIN", "INCREASE", "DECREASE_UNUSED_EXPOSURE", "FREEZE_N
 
 
 def ml_action_distribution_chart(customer_view: pd.DataFrame) -> go.Figure:
-    counts = customer_view["ml_action"].value_counts().reindex(ML_ACTION_ORDER).fillna(0)
+    """MAINTAIN is deliberately excluded from the plot - it is the default,
+    usually the large majority of the book, and dwarfs every actionable or
+    review bar enough to make them unreadable next to it. ML_ACTION_ORDER
+    itself still includes MAINTAIN (the page's own Action filter still
+    offers it) - only the chart drops it."""
+    order = [a for a in ML_ACTION_ORDER if a != "MAINTAIN"]
+    counts = customer_view["ml_action"].value_counts().reindex(order).fillna(0)
     colors = [ML_ACTION_COLORS[a] for a in counts.index]
     fig = go.Figure(go.Bar(
         x=counts.index, y=counts.to_numpy(), marker_color=colors,
         text=counts.to_numpy().astype(int), textposition="outside"))
-    fig.update_layout(title="Customers by ML Credit-Limit Action",
+    fig.update_layout(title="Customers by ML Credit-Limit Action (excluding MAINTAIN)",
                       yaxis_title="Customers", height=420, margin=dict(t=60, b=100))
     fig.update_xaxes(tickangle=-20)
     return fig
