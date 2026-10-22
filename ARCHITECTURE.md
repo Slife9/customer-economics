@@ -282,19 +282,40 @@ worklist export, leakage register, governance pack JSON.
 
 ## 5. The six levers
 
-| Code | Name | Population | Sizing | Gates |
-|---|---|---|---|---|
-| L1 | Rewards & Promo Economics | Profitable, $0-fee, $100+/yr reward-value customers (opportunity) + routed losses | `None` — fee take-up is untested behavior. Reports the unpriced reward-cost ceiling. | Reg Z: 45-day notice, right to reject |
-| L2 | Line Management by Value | Four-way split on 12mo behavior: DECREASE (idle) / ENGAGE (dormant) / GROW_ENGAGEMENT (transactor, protected) / INCREASE (stretched, good standing) | Priced: EL avoided (same PD/LGD as reserving) + liquidity cost avoided (LCR outflow rate × yield gap on the limit cut, 12 CFR 249) + leverage capital freed/consumed (SLR regime only, 12 CFR 217.10 — $0 under Tier 1) + peer-benchmarked incremental interest, all derived from each customer's own already-computed rates, never re-derived constants. Regulatory capital relief from decreases is **always $0 by design** (0% CCF). Economic capital relief reported separately, never blended in. | Reg B adverse-action notice on decreases |
-| L3 | Value-Based Pricing | Priced ≥2pts below own credit-score-band peer median | `None` — repricing response is untested behavior. Reports the zero-elasticity ceiling. | CARD Act (no first-year increase, prospective only, 45-day notice), fair-lending review, champion/challenger test |
-| L4 | Cost-to-Serve Migration | 3+ avoidable calls OR 6+ paper statements in trailing window | Priced: marginal unit cost × avoided volume, + fixed capacity cost **only** where avoided volume crosses a real capacity-band boundary | None — no customer contact, deploy now |
-| L5 | Retention Targeting | Valued/Premier CEV band + (closure-request contact OR spend decline OR priced ≥2pts above peer) | `None` — retention uplift is untested behavior. Reports value-at-risk (today's trailing-12m profit), not recoverable value. | Held-out champion/challenger pilot |
-| L6 | Channel Quality Review | Customers acquired via the bottom-third acquisition channel by net value after CAC | Priced: (best channel mean net value − worst channel mean net value) × worst-channel volume | None — internal budget decision, no customer contact |
+**Valuation was rebuilt** (branch `feature/lever-valuation-rebuild`, spec
+`specs/lever_valuation_rebuild/`). The full method is in
+`docs/LEVER_METHODOLOGY.md`. In outline:
 
-Three of six (L1, L3, L5) can *never* return a priced number in this design —
-that's intentional, not a missing feature. Don't "fix" this by adding a
-heuristic take-up rate; the correct next step is a real champion/challenger
-pilot (see §9).
+- Every lever reports **low / base / high** scenarios, driven only by
+  `engine/config/lever_assumptions.json`, whose SHA-256 is recorded in
+  `run_summary.json` and the bundle manifest.
+- Every component has a value type (revenue, cost_saving, avoided_loss,
+  lost_profit, cost, protected_value) and an evidence basis (measured, or
+  assumption, which means a pilot is required).
+- `priced_value_usd` is now the **base total** for L1, L2, L3, L4 and L6.
+- **L5 stays unpriced.** It is reported as value at risk plus a conditional
+  range and a break-even keep rate, and is never in a total.
+- The portfolio total (`engine/levers/summary.py`) is
+  L1 + L2 + L3 + L4 + L6, year 1.
+
+Each lever module has two valuation functions:
+- `valuation_inputs(...)` computes JSON-safe inputs from the data. A results
+  bundle stores them.
+- `value_scenarios(inputs, a)` is a pure function of those inputs and the
+  assumptions. The engine and the app's what-if explorer both call it.
+
+`audit/audit_lever_estimates.py` checks the engine against the reviewer's
+expected values on the 5k demo and the 100k bundle, with all invariants
+(213/213 pass).
+
+| Code | Name | Population | Valuation (base scenario, see methodology doc) | Gates |
+|---|---|---|---|---|
+| L1 | Rewards & Promo Economics | Routed reward-driven losses (Group 1) + profitable, $0-fee, $100+/yr reward customers (Group 2) | Fee-eligible Group 2 accept / downgrade / close; Group 1 programme saving | Reg Z: 45-day notice, right to reject |
+| L2 | Credit Lines & Unused-Line Cost | DECREASE / REACTIVATION / DEEPEN / INCREASE from 12-month behaviour, plus routed credit-cost losses | Decrease: annualised credit loss + liquidity + SLR freed (measured). Increase: interest on assumed headroom use, net of funding, credit loss and SLR. Reactivation net. Dormant right-sizing behind a flag (off) | Reg B adverse-action notice on decreases |
+| L3 | Value-Based Pricing | Priced at least 2pts below own score-band peer median, or routed; **first-year accounts always excluded** | Revolvers only; year-1 repriced share net of attrition and stayer pay-down; notice cost | CARD Act (no first-year increase, new transactions only, 45-day notice), fair-lending review |
+| L4 | Cost-to-Serve Migration | 3+ avoidable calls OR 6+ paper statements | Trailing-12-cycle avoidable calls and paper statements × deflection / migration × unit saving (Table 11, digital replacement netted), less year-1 outreach. Staffing step in extras only | None |
+| L5 | Retention Targeting | Valued/Premier + (closure request **in the trailing 12 cycles** OR spend decline OR priced at least 2pts above peer) | Unpriced. Value at risk; conditional value kept less outreach and offer cost; break-even keep rate; historical leave rates (Table 22) | Pilot |
+| L6 | Channel Quality Review | Customers acquired via the bottom-third channels | Budget-neutral shift of future acquisition spend from the worst to the best channel by NEP per CAC dollar; 3-year build | None |
 
 ## 6. Bug-fix history (engine side)
 
@@ -405,8 +426,16 @@ negative-control profile actually varies (`generator/run.py:CONTROL_MECHANISM`
 value_ratio <= driver_ratio * (1 + slack)
 ```
 
-i.e. the lever's priced value must have fallen *at least as fast* as the
-portfolio quantity (`driver()`) it claims to act on. If a lever's dollar value
+i.e. the lever's value must have fallen *at least as fast* as the
+portfolio quantity (`driver()`) it claims to act on. Since the valuation
+rebuild, the value side reads `SizeResult.gate_value_usd`. This is the base
+value of only the components the driver measures:
+- L2: the decrease side, because its idle-limit driver doesn't measure
+  increases on stretched accounts.
+- L1, L3, L4: the full base total.
+
+The pass rule is unchanged. This change was approved because comparing L2's
+total, which moves in both directions, flipped L2 to a scope-mismatch FAIL. If a lever's dollar value
 stayed high while its claimed cause nearly vanished, that's evidence the
 finding is a generator artifact, not a real pattern, and the gate reports FAIL.
 

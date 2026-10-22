@@ -1,4 +1,92 @@
-# STATUS: Pre-computed results bundle
+# STATUS: Lever valuation rebuild (branch `feature/lever-valuation-rebuild`)
+
+This branch implements `specs/lever_valuation_rebuild/SPEC_lever_valuation_rebuild.md`
+(Part A) and is followed on the same branch by per-lever pages (Part B). It
+is not merged to `main`; merging happens only after review and
+certification. The full method is in `docs/LEVER_METHODOLOGY.md`.
+
+## Part A: valuation rebuild (done)
+
+| Stage | Commit | What |
+|---|---|---|
+| A1 audit | (report only) | Located sizing, its consumers and the gate. The reference reproduces `expected_values.json` exactly on our fixtures |
+| A2 | `2c24685` | `engine/config/lever_assumptions.json`, its loader, and the extended `SizeResult` |
+| A3 | `a067fac` | Corrected L1–L6 valuation; the gate reads the driver-linked value |
+| A4 | `4aad7c5`, `88101dc` | `audit/audit_lever_estimates.py`; bundle schema v2 brought forward for the 100k fixture; the L4 tolerance rule |
+| A5 | `08d73ce` | Population fixes (L3 first-year, L5 12-cycle closure signal); regenerated expectations |
+| A6 | `a4ccf68` | Portfolio summary in `run_summary.json`; the leakage register carries scenarios; minimal scenario display |
+| A7 | this commit | `docs/LEVER_METHODOLOGY.md`, ARCHITECTURE.md, this file |
+
+**Acceptance, as run:** `python audit/audit_lever_estimates.py` gives
+**213/213 checks passing**, on the 5k demo (full pipeline, Tier 1) and the
+100k v2 bundle (Case A).
+- L1, L2, L3, L5 and L6 are within 0.5% of the reference in every scenario,
+  component and extra.
+- L4 is within ±15%, judged on gross for totals.
+- All invariants pass, every assumption moves the output, and the gate
+  verdict is the same under low, base and high.
+
+**Corrected values, base scenario** (portfolio total = L1+L2+L3+L4+L6;
+L5 shown separately):
+
+| | 5k demo (Tier 1) | 100k bundle (Case A) |
+|---|---:|---:|
+| L1 | $52,111 | $997,815 |
+| L2 | $34,990 | $676,637 |
+| L3 (year 1) | $2,108 | $20,968 |
+| L4 (year 1) | $5,178 | $104,516 |
+| L6 (year 1) | $3,407 | $63,686 |
+| **Portfolio total, low / base / high** | **$55k / $98k / $133k** | **$1.01M / $1.86M / $2.56M** |
+| L5 value at risk (not in total) | $392,703 | $9,212,532 |
+| L5 conditional net, base (not in total) | −$313 | $8,346 |
+
+For comparison, the pre-rebuild 5k figures were: L4 $62,829, L6 $276,937,
+and L1/L3 with no priced value at all.
+
+**Decisions taken with the user:**
+1. **Negative-control gate input.** The gate compares each driver with
+   `gate_value_usd`, the base value of only the components that driver
+   measures. For L2 that's the decrease side; for L1, L3 and L4 it's the
+   full base total. The pass rule is unchanged. The full corrected L2 total
+   moves in both directions, so comparing it with L2's one-directional
+   idle-limit driver flipped L2 to a scope-mismatch FAIL (0.79 against
+   0.21). With this change L2 passes at 0.07. 5k demo against control: L1–L4
+   PASS, L5/L6 INCONCLUSIVE, the same as before the rebuild.
+2. **L4 acceptance tolerance.** L4 totals are judged against ±15% of the
+   gross amounts being netted, and components are still judged at ±15% each.
+   L4's low total is a near-cancelling net, so a ±15% band on the net would
+   reject an in-band 7–8% difference in savings.
+3. **The "Try it" button** keeps the 50k pre-computed bundle, which will be
+   re-exported in the new schema. The 5k live run is still available by
+   uploading `samples/demo_portfolio.zip`.
+
+**Implementation notes:**
+- Avoidable calls are counted as account-cycles whose recorded primary
+  reason is avoidable. Summing every call in those months would add about 9%.
+- L4 unit costs are read from Table 11, which matches the config today; the
+  config values are a fallback only.
+- The trailing-12-cycle window has 6–10% less avoidable volume than the
+  reference's full history scaled by 12/36.
+- Historical leave rates on the 5k demo: 7.1% a year for Valued/Premier, and
+  13.7% within 12 months after a closure-request contact. The configured base
+  is 10%, and neither observed rate overwrites config.
+- The population-fix deltas are in
+  `specs/lever_valuation_rebuild/POPULATION_FIX_DELTAS.md`.
+
+**Out of scope, logged here only (spec section 8):**
+- Loan NEP carries no ECL or capital charge, so it is an upper bound.
+- ML treatment fairness fails in 5 metros on the 100k run.
+- The demo cost-pool staffing bands are scaled for a 5–8k book (relevant to
+  L4's staffing step).
+- The L6 channel gap is planted by the generator, so finding it shows the
+  engine can detect it; it is not a business finding.
+- Found in passing: the Downloads page takes about 34s on the 100k bundle,
+  because it builds the full-ledger CSV before anyone clicks. This was
+  already the case before this branch.
+
+---
+
+# Previous: Pre-computed results bundle
 
 Built so the hosted Streamlit app (2 GB instance) can show a large portfolio
 without re-running the engine on it or accepting a multi-gigabyte upload.
