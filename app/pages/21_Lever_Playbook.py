@@ -47,26 +47,33 @@ away. Treating vulnerability as a cost-cutting opportunity is exactly the
 kind of finding this system is built to never produce.
 """)
 
-with st.expander("Why are some levers priced and others say 'None'?"):
+with st.expander("How is each lever valued, and what does 'assumption-based' mean?"):
     st.markdown("""
-Every lever's value falls into one of two honest categories:
+Every lever (except L5) is valued as a **low / base / high** range, built
+from named components. Each component carries two labels:
 
-- **Priced** — a real dollar figure, calculated from data that already
-  exists (what customers already did). Line management's expected-loss
-  savings is priced this way: it uses the same risk model the bank already
-  trusts, just applied to a smaller credit line.
-- **None, with unpriced context** — used whenever the true value depends on
-  how a customer would *respond* to something we've never actually done to
-  them (would they accept a new fee? would a retention call change their
-  mind? would they spend more at a higher rate?). No historical dataset can
-  honestly answer a question about a treatment that was never tried. Rather
-  than guess, the system reports **`None`** for the priced value and gives
-  you context instead — like the size of the opportunity, or the value at
-  risk — clearly labeled as context, not a forecast.
+- **Value type** — what kind of money it is: a cost saving, revenue,
+  expected loss avoided, capital or liquidity relief, or a one-off cost.
+- **Basis** — where the number comes from:
+  - **Measured** — calculated entirely from data that already exists (what
+    customers already did). Line decreases are valued this way: expected
+    loss avoided uses the same risk model the bank already trusts, just
+    applied to a smaller line.
+  - **Assumption** — depends on how customers would *respond* to something
+    never tried on them (would they accept a fee? use a higher line? stay
+    after a call?). These response rates are stated openly in one
+    configuration file, never hidden in code, and the low/high range shows
+    how much the answer moves with them. Any lever with an assumption-based
+    component is marked **pilot required**.
 
-The only way to turn a `None` into a real number is to actually run the
+**L5 (retention) is never priced.** Its value at risk is a fact; what
+outreach would keep is shown only as a conditional estimate with a
+break-even test, and it is never added to a portfolio total.
+
+The only way to turn an assumption into a measured number is to run the
 test: a **champion/challenger pilot**, where a small group gets the new
 treatment and a control group doesn't, and you measure the real difference.
+The full method per lever is in `docs/LEVER_METHODOLOGY.md`.
 """)
 
 with st.expander("What do 'Fast', 'Slow', and 'Pilot required' mean?"):
@@ -108,15 +115,15 @@ LEVERS = [
                       "high avoidable-call volume or persistent paper "
                       "statement delivery, whether or not they're currently "
                       "a loss.",
-        "sizing": "Priced. The key detail: servicing costs are stepped, not "
-                 "smooth - a call center runs on headcount bands, so "
-                 "avoiding calls only saves real cash once enough volume is "
-                 "avoided to cross a staffing threshold. Below that, only "
-                 "the marginal per-call cost (the actual variable expense, "
-                 "not the full allocated cost) is counted as savings. This "
-                 "is deliberately conservative - claiming the full unit "
-                 "cost of an avoided call is a mistake a real CFO would "
-                 "correctly reject.",
+        "sizing": "Priced, low / base / high, assumption-based (pilot required). "
+                  "Annual avoidable calls (billing, rewards, rate) and paper "
+                  "statements over the trailing 12 cycles, times the assumed share "
+                  "customers actually move, times the NET saving: a deflected call "
+                  "still costs digital sessions, a migrated statement still costs an "
+                  "e-statement (unit costs from the cost pools). Year 1 pays a one-"
+                  "off outreach cost. A staffing (capacity) step is shown for "
+                  "information only and never counted - the demo bands are scaled for"
+                  " a small book.",
         "gate_detail": "None - no customer permission needed, nothing about "
                        "their account terms changes.",
         "analog": "Every large bank runs 'digital deflection' programs for "
@@ -124,7 +131,7 @@ LEVERS = [
                  "fastest-to-prove cost lever in retail banking.",
     },
     {
-        "code": "L2", "icon": "📈", "name": "Line Management by Value",
+        "code": "L2", "icon": "📈", "name": "Credit Lines & Unused-Line Cost",
         "speed": "Fast (decreases) / Moderate (increases)",
         "gate": "Reg B adverse action notice on any decrease",
         "problem": "A credit line can be wrong in either direction: far more "
@@ -150,17 +157,16 @@ LEVERS = [
                       "candidate), DEEPEN RELATIONSHIP (an active, valuable "
                       "pay-in-full customer - explicitly NOT touched), and "
                       "INCREASE (genuinely stretched, good standing).",
-        "sizing": "Priced. Decreases are sized on expected-loss avoided "
-                 "(recomputing loss exposure at a lower limit, using the "
-                 "SAME risk model the bank already trusts) - never on "
-                 "capital relief, because under US rules an undrawn card "
-                 "line is unconditionally cancellable and carries a 0% "
-                 "capital charge already (12 CFR 217.33(b)(1)). Trimming an "
-                 "idle line frees no regulatory capital, full stop - any "
-                 "vendor claiming otherwise for a US issuer is wrong. "
-                 "Increases are sized against what a similar-risk peer "
-                 "typically uses, not a prediction of this specific "
-                 "customer's future behavior.",
+        "sizing": "Priced, low / base / high. Decreases: expected credit loss avoided"
+                  " on the limit cut (lifetime PD annualised over the card's life) "
+                  "plus the liquidity (LCR) and, under the SLR, leverage capital the "
+                  "unused line no longer carries - measured, scaled by the share of "
+                  "decreases implemented. Risk-based capital relief is $0 by design "
+                  "(0% CCF on cancellable lines). Increases: interest on the share of"
+                  " new headroom customers are assumed to use, less funding, credit "
+                  "loss and SLR cost. Reactivation: an assumed success rate, less "
+                  "campaign cost. Increase and reactivation are assumption-based "
+                  "(pilot required).",
         "gate_detail": "A decrease legally requires sending the customer an "
                        "adverse action notice (Reg B) explaining why. "
                        "Increases require no notice.",
@@ -181,14 +187,14 @@ LEVERS = [
                       "what it cost to acquire them - then flags accounts "
                       "acquired through the weakest-performing channels for "
                       "a spend-reallocation review.",
-        "sizing": "Priced, but explicitly correlational, not causal: it's a "
-                 "backward-looking comparison of channels already run, not "
-                 "a promise that shifting volume to a better channel would "
-                 "reproduce the same result at the same cost. This is a "
-                 "deliberate scope decision - a true prediction of 'how "
-                 "many customers a given channel WOULD deliver' is exactly "
-                 "the kind of untested-treatment question this system "
-                 "refuses to invent an answer to.",
+        "sizing": "Priced, low / base / high, assumption-based (pilot required), at "
+                  "CHANNEL level. A budget-neutral shift of part of the worst "
+                  "channel's annual acquisition spend (by NEP per acquisition dollar)"
+                  " to the best channel - only FUTURE acquisitions change, never the "
+                  "existing book. The best channel is assumed to cost more at the "
+                  "margin and bring somewhat weaker customers; a multi-year build and"
+                  " a break-even quality are shown. Backward-looking and "
+                  "correlational, not a promise.",
         "gate_detail": "None - this is a media/sourcing budget decision, "
                        "not something any individual customer experiences.",
         "analog": "Marketing attribution and channel-quality analysis is "
@@ -209,12 +215,13 @@ LEVERS = [
                       "more important group: profitable customers taking "
                       "meaningful reward value every year while paying no "
                       "annual fee at all - an opportunity, not a loss.",
-        "sizing": "None, by design. Whether a customer would accept a new "
-                 "fee versus close the account is a behavioral response to "
-                 "a change we haven't made yet - a textbook untested-"
-                 "treatment question. What IS reported: the dollar value of "
-                 "reward cost currently being delivered for free, as "
-                 "context for a fee decision, never as a revenue forecast.",
+        "sizing": "Priced, low / base / high, assumption-based (pilot required). "
+                  "Profitable, fee-free customers whose reward cost covers a proposed"
+                  " fee by a set multiple are offered it: an assumed share accept and"
+                  " pay, some downgrade to a cheaper reward tier, some close and take"
+                  " their card profit with them. Routed reward-driven loss-makers get"
+                  " a programme-level reward cost reduction. A closure-risk view "
+                  "shows the result if closers leave the bank entirely.",
         "gate_detail": "Reg Z requires 45 days' written notice before "
                        "introducing or increasing a fee, and gives the "
                        "customer the right to reject it (usually by closing "
@@ -239,13 +246,12 @@ LEVERS = [
                       "peers are charged. Deliberately built from signals "
                       "the bank can actually see - never a hidden trait the "
                       "system has no legitimate way to know.",
-        "sizing": "None, by design - retention uplift from an intervention "
-                 "is precisely a causal question about a treatment never "
-                 "applied, and no historical dataset answers that "
-                 "honestly. What's reported instead is VALUE AT RISK: what "
-                 "these customers are worth today, if nothing changes - a "
-                 "fact about the present, not a prediction of what an "
-                 "intervention would recover.",
+        "sizing": "Unpriced - never in a portfolio total. VALUE AT RISK (what these "
+                  "customers are worth today) is a fact; on top of it a CONDITIONAL "
+                  "estimate shows what outreach would keep under assumed leave and "
+                  "keep rates, net of contact and offer costs, and the break-even "
+                  "keep rate the programme needs. Historical leave rates are shown "
+                  "next to the assumption for comparison.",
         "gate_detail": "No regulatory gate - the caution here is purely "
                        "about honesty in what can be claimed, not "
                        "compliance.",
@@ -268,14 +274,14 @@ LEVERS = [
                       "and product tier who are being charged a "
                       "meaningfully higher rate today - not only the ones "
                       "already showing a loss.",
-        "sizing": "None, by design - repricing value depends entirely on "
-                 "how customers respond (would they revolve less, would "
-                 "they leave), which is a causal question this system will "
-                 "not invent an answer to. The context figure shown is a "
-                 "ZERO-ELASTICITY CEILING: what the pricing gap is worth "
-                 "if literally every customer stayed and paid it - "
-                 "explicitly the maximum possible number, not a realistic "
-                 "one.",
+        "sizing": "Priced, low / base / high, assumption-based (pilot required). Only"
+                  " REVOLVING balance earns the gap, and the CARD Act lets a new rate"
+                  " apply to new transactions only, so year 1 counts just the share "
+                  "of balance repriced within the year, net of leavers (who take "
+                  "their card profit) and stayers who pay down; each account costs a "
+                  "notice. Pay-in-full customers are flagged but not targeted; first-"
+                  "year accounts are excluded. A steady-state figure shows the value "
+                  "once all balances turn over.",
         "gate_detail": "The most regulated lever here: CARD Act bars any "
                        "rate increase in a customer's first year, requires "
                        "45 days' notice, applies only to future charges "

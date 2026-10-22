@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from app.lib import charts as C
 from engine.levers import summary as LSUMMARY
 from app.lib import customer_workup as CW
+from app.lib import lever_ui as UI
+from app.lib import nav
 
 
 st.set_page_config(page_title="Strategy Overview", page_icon="🎯", layout="wide")
@@ -24,14 +26,14 @@ sizes = result["sizes"]
 worklists = result["worklists"]
 levers = result["levers"]
 
-LEVER_META = {
+LEVER_META = {  # one-liners, notices and sizing now live on each lever page
     "L1": {"name": "Rewards & Promo Economics", "icon": "🎁",
           "one_liner": "Which customers take out more in rewards than the "
                       "relationship puts in — and whether the fix is charging "
                       "for value already delivered.",
           "sequencing": "Permission-heavy", "notice": "45 days + right to reject (Reg Z)",
           "speed": "Slow — needs a fee-change notice and a pilot"},
-    "L2": {"name": "Line Management by Value", "icon": "📈",
+    "L2": {"name": "Credit Lines & Unused-Line Cost", "icon": "📈",
           "one_liner": "Limits move in both directions: trimmed where a line "
                       "sits idle, raised where a good customer would use more.",
           "sequencing": "Fast, decrease side; moderate, increase side",
@@ -136,54 +138,46 @@ else:
                 f"**{'n/a' if be is None else f'{be:.0%}'}** of would-be leavers.")
 
 st.divider()
-st.header("Strategy by lever")
-
-for code in seq_order:
-    meta = LEVER_META[code]
-    lever = levers[code]
-    size = sizes[code]
-    wl = worklists[code]
-    with st.expander(f"{meta['icon']}  **{code} — {meta['name']}**  "
-                     f"({len(wl):,} customers in scope)", expanded=(code in ("L4", "L2"))):
-        st.markdown(meta["one_liner"])
-        colA, colB, colC = st.columns(3)
-        colA.metric("Population", f"{len(wl):,} customers")
-        if size.has_scenarios and code != "L5":
-            colB.metric("Base value", f"${size.scenarios['base']['total_usd']:,.0f}/yr",
-                        help=f"Low ${size.scenarios['low']['total_usd']:,.0f} - high "
-                             f"${size.scenarios['high']['total_usd']:,.0f}")
-        elif size.is_priced:
-            colB.metric("Priced value (pre-rebuild)", f"${size.priced_value_usd:,.0f}/yr")
+st.header("All six levers at a glance")
+st.caption("Each lever has its own page with the method, assumptions, a what-if explorer, "
+           "the regulation and a customer drill-down. L5 is value at risk, never in the total.")
+glance_rows = []
+for code in ["L1", "L2", "L3", "L4", "L5", "L6"]:
+    meta, sz, wl = LEVER_META[code], sizes[code], worklists[code]
+    acts = ", ".join(f"{a} {n:,}" for a, n in wl["action"].value_counts().items())
+    row = {"Lever": f"{meta['icon']} {code} {meta['name']}", "Customers": len(wl),
+           "Recommended actions": acts, "Readiness": meta["speed"]}
+    if sz.has_scenarios:
+        comps = sz.scenarios["base"]["components"].values()
+        lo, ba, hi = (sz.scenarios[x]["total_usd"] for x in ("low", "base", "high"))
+        if code == "L5":
+            row["Base value"] = f"Value at risk ${sz.unpriced_context_usd:,.0f} (not in total)"
+            row["Low - high"] = f"conditional ${lo:,.0f} – ${hi:,.0f}"
         else:
-            colB.metric("Priced value", "None — by design", help=size.basis)
-        colC.metric("Speed to deploy", meta["speed"].split("—")[0].strip())
-
-        if size.unpriced_context_usd is not None:
-            st.info(f"**Value at risk (unpriced):** ${size.unpriced_context_usd:,.0f}/yr — {size.caveat}")
-        elif size.caveat:
-            st.caption(size.caveat)
-
-        st.markdown(f"**Compliance gate:** {meta['notice']}")
-        if lever.gates:
-            for g in lever.gates:
-                st.markdown(f"- {g}")
-
-        st.markdown("**Basis for sizing:**")
-        st.caption(size.basis)
-
-        st.markdown("**Sample worklist (top 10 by value at stake):**")
-        if len(wl):
-            sort_col = "trailing_12m_net_economic_profit" if \
-                "trailing_12m_net_economic_profit" in wl.columns else wl.columns[-1]
-            st.dataframe(wl.sort_values(sort_col).head(10) if sort_col in wl.columns
-                        else wl.head(10), width="stretch")
-        else:
-            st.caption("No customers currently in scope for this lever.")
+            row["Base value"] = f"${ba:,.0f}"
+            row["Low - high"] = f"${lo:,.0f} – ${hi:,.0f}"
+        row["Value types"] = ", ".join(sorted({c["value_type"] for c in comps}))
+        row["Evidence"] = ("assumption-based, pilot required"
+                           if any(c["basis"] == "assumption" for c in comps) else "measured")
+    else:
+        row["Base value"] = "pre-rebuild valuation"
+        row["Low - high"] = row["Value types"] = row["Evidence"] = ""
+    glance_rows.append(row)
+st.dataframe(pd.DataFrame(glance_rows)[["Lever", "Customers", "Recommended actions", "Base value",
+                                        "Low - high", "Value types", "Evidence", "Readiness"]],
+             hide_index=True, width="stretch")
+link_cols = st.columns(6)
+for col, code in zip(link_cols, ["L1", "L2", "L3", "L4", "L5", "L6"]):
+    path = nav.lever_page(code)
+    with col:
+        if path:
+            UI.page_link(path, label=f"{code} page", icon=LEVER_META[code]["icon"])
 
 st.divider()
-st.header("Customer drill-down")
-st.caption("Pick a customer to see their full relationship economics and every "
-          "lever action recommended for them.")
+st.header("Customer lookup, across every lever")
+st.caption("Pick a customer to see their full relationship economics and every lever "
+           "action recommended for them. For why a customer is in a lever and how their "
+           "value is calculated, use that lever page's drill-down.")
 
 cust_options = cv["Masked Customer Number"].tolist()
 picked = st.selectbox("Masked Customer Number", options=cust_options)
