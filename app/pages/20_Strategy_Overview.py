@@ -26,8 +26,8 @@ ACTIVITY_LABELS = {
     "card_issuance": "Card issuance",
 }
 
-st.set_page_config(page_title="Levers & Strategy", page_icon="🎯", layout="wide")
-st.title("🎯 Levers & Strategy")
+st.set_page_config(page_title="Strategy Overview", page_icon="🎯", layout="wide")
+st.title("🎯 Strategy Overview")
 
 if "result" not in st.session_state:
     st.warning("Run an analysis from the **Home** page first.")

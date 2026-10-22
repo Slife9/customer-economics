@@ -6,6 +6,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from app.lib import charts as C
+from app.lib.sections import ml_credit_limit
 
 st.set_page_config(page_title="Governance & Fairness", page_icon="🛡️", layout="wide")
 st.title("🛡️ Governance & Fairness")
@@ -98,3 +99,8 @@ if len(supp):
               f"never flagged, never scored, never actioned.")
 else:
     st.caption("No customers were suppressed in this portfolio.")
+
+st.divider()
+# Moved here from the former ML Credit Limit page (now a tab of the L2 page),
+# so all fairness results sit together.
+ml_credit_limit.render_fairness(result)

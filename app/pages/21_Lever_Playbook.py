@@ -1,6 +1,6 @@
 """A reference page, independent of whatever portfolio is loaded: what each
 lever is, why it's built the way it is, and the real-world banking and
-regulatory context behind it. The Levers & Strategy page shows this quarter's
+regulatory context behind it. The Strategy Overview and lever pages show this quarter's
 live numbers; this page explains the machinery underneath them.
 """
 from __future__ import annotations
@@ -298,5 +298,5 @@ for lever in LEVERS:
 
 st.divider()
 st.caption("For this quarter's actual numbers against these definitions, see "
-          "**Levers & Strategy**. This page is the reference; that page is "
-          "the report.")
+          "**Strategy Overview** and each lever's own page. This page is the "
+          "reference; those pages are the report.")

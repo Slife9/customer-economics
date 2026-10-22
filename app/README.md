@@ -28,7 +28,7 @@ governance/negative-control gate.
    bundle with `--compare-to` and load it (`samples/negative_control_portfolio.zip`
    is the matching control for the raw `demo_portfolio.zip`).
 
-The **ML Credit Limit** page needs a trained model bundle to populate -
+The **ML second opinion** tab of the L2 page needs a trained model bundle to populate -
 `engine/ml/artifacts/credit_limit_model_bundle.joblib` is already committed,
 so no extra step is needed to try it. To retrain (e.g. after a feature
 change), run `python -m engine.ml.train_credit_limit_model` - see
@@ -50,44 +50,41 @@ negative control gate's "zero planted defects" assertion.
 
 ## Pages
 
+The sidebar is grouped (`app/Home.py` is the entrypoint and only builds the
+navigation; the page registry is `app/lib/nav.py`):
+
+**Overview**
 - **Home** — upload, run, executive summary (KPIs, revenue/cost waterfall,
   CEV band distribution, the card-only-vs-relationship-view finding).
 - **Portfolio Economics** — the three measured-not-assumed quantities, cost
   waterfall, product mix, NEP by segment and score band, full customer table.
-- **Levers & Strategy** — the sequencing roadmap, a strategy card per lever
-  (population, priced value or an explicit "None, by design" with unpriced
-  context, gates, sample worklist), and a customer drill-down showing every
-  lever action recommended for one customer plus their full relationship
-  waterfall and acquisition-cost payback status.
-- **Acquisition Cost** — a lifetime view, deliberately separate from CEV:
-  whether what it cost to acquire each customer has actually been earned back
-  yet, and how long that took. Portfolio summary, payback-status and
-  months-to-recover charts, a per-channel breakdown (complements L6), and a
-  filterable customer-level table. Needs `Table23_Acquisition.csv` with an
-  `Acquisition Cost USD` column to populate; degrades to an explanatory
-  message without it.
-- **Liquidity** — another diagnostic kept separate from CEV: the opportunity
-  cost of holding the HQLA the US LCR rule (12 CFR 249) requires against each
-  customer's unused credit line. Portfolio summary (undrawn exposure, required
-  HQLA, annual cost, count needing individual assessment), a by-segment chart
-  and table, and a filterable customer-level table. Policy inputs (outflow
-  rate by segment, yield gap) live in `engine/config/liquidity_policy.json`.
-- **ML Credit Limit** — CES's first real machine-learning diagnostic: a
-  replica of the sibling `credit-limit-recommendation-system` repo's
-  capability, trained offline on this repo's own generator output
-  (`python -m engine.ml.train_credit_limit_model`), scored live against the
-  committed bundle. Forecasts (risk, spend, peak balance) feed a ported
-  pressure-score/stress-flag/9-step-waterfall rules engine for one of seven
-  actions and a recommended limit — the model never sets a dollar figure.
-  Shows L2's existing action alongside the ML action (two independent
-  engines, agreement is a sanity check not a requirement), a dedicated
-  fairness check on the ML treatment, and the same misleading-aggregate
-  caveat on its money figures the sibling repo states about its own. Full
-  detail in `engine/ml/MODEL_CARD.md`.
+
+**Strategies**
+- **Strategy Overview** (formerly Levers & Strategy) — all six levers at a
+  glance with base value and low–high range, the sequencing roadmap, and a
+  customer lookup across every lever.
+- **L1–L6 lever pages** — one page per lever (what it does, who is in scope,
+  what it could be worth, assumptions, what-if explorer, how it's calculated,
+  regulation, and a customer drill-down with admin review notes).
+  - **L2 Credit Lines & Unused-Line Cost** also holds what used to be the
+    **Liquidity** page (regulatory liquidity cost of unused lines, 12 CFR 249,
+    policy inputs in `engine/config/liquidity_policy.json`) and the
+    **ML Credit Limit** page (CES's machine-learning second opinion, trained
+    offline with `python -m engine.ml.train_credit_limit_model`, plus the
+    L2-vs-ML agreement view). Full ML detail in `engine/ml/MODEL_CARD.md`.
+  - **L6 Channel Quality Review** also holds what used to be the
+    **Acquisition Cost** page (CAC payback, a lifetime view kept separate from
+    CEV; needs `Table23_Acquisition.csv` with `Acquisition Cost USD`).
+
+**Governance & Outputs**
 - **Governance & Fairness** — the negative-control gate chart and table, the
-  four-fifths test on both score and treatment, and the suppression breakdown.
+  four-fifths test on score and treatment, the ML treatment fairness check
+  (moved here from the ML page), and the suppression breakdown.
 - **Downloads** — the five outputs (score file, worklist, leakage register,
   governance pack, ledger) as CSV/JSON.
+
+**Reference**
+- **Lever Playbook** — what each lever is, how it is sized, and its gates.
 
 ## Regenerating the sample zips
 

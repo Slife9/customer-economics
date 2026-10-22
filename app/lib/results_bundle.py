@@ -255,7 +255,7 @@ def load_bundle_from_bytes(data: bytes, file_name: str
     ml_fairness = None
     if "ml_proxy_method" in fairness_meta:
         # Only `proxy_method`, `treatment_fairness` and `treatment_any_failure`
-        # are ever read by a page (25_ML_Credit_Limit.py) - `score_fairness`
+        # are ever read by a page (the L2 page's ML tab and Governance & Fairness) - `score_fairness`
         # is numerically identical to the non-ML score_fairness above (both
         # score every customer by cev_band, independent of any worklist) and
         # is not carried twice; see STATUS.md's documented limitations.
