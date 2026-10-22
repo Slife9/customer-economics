@@ -22,6 +22,16 @@ from engine.core.contract import DataContractViolation
 # leverage_capital_policy.case_a_slr_category_iii.json for the policy itself.
 LEVERAGE_POLICY_NAME = "case_a_slr_category_iii"
 
+@st.cache_resource(show_spinner=False, max_entries=1)
+def _shared_sample_bundle(path: str, mtime_ns: int):
+    """One copy of the bundled sample for every session on this server. A
+    bundle is read-only and no page mutates a result, so sessions can share
+    it; loaded per session, each visitor's 'Try it' held its own ~550 MB copy.
+    mtime_ns is in the key so a re-exported sample file is picked up."""
+    p = Path(path)
+    return RB.load_bundle_from_bytes(p.read_bytes(), p.name)
+
+
 st.set_page_config(page_title="ProfitInsight — Customer Economics System",
                   page_icon="💳", layout="wide")
 
@@ -56,8 +66,12 @@ with st.sidebar:
     st.caption("For a portfolio too large to upload or re-analyse on this "
               "instance — export one locally with "
               "`python -m engine.export_bundle`, then load the bundle here.")
+    # The key changes after each successful load, so Streamlit drops the
+    # uploaded zip (~180 MB at 100k customers) instead of holding it in memory
+    # next to the result built from it for the rest of the session.
     bundle_zip = st.file_uploader(
-        "Load pre-computed results (.zip)", type="zip", key="bundle_zip")
+        "Load pre-computed results (.zip)", type="zip",
+        key=f"bundle_zip_{st.session_state.get('bundle_loads', 0)}")
     load_bundle_clicked = st.button(
         "Load bundle", width="stretch", disabled=bundle_zip is None)
 
@@ -72,8 +86,8 @@ if sample_clicked:
         st.session_state.pop("result", None)
         st.session_state.pop("control_result", None)
         PR._cached_pipeline.clear()
-        result, bundle_meta, gate_report = RB.load_bundle_from_bytes(
-            sample_bundle_path.read_bytes(), sample_bundle_path.name)
+        result, bundle_meta, gate_report = _shared_sample_bundle(
+            str(sample_bundle_path), sample_bundle_path.stat().st_mtime_ns)
         st.session_state["result"] = result
         st.session_state["result_root"] = f"<bundle: {sample_bundle_path.name}>"
         st.session_state["demo_label"] = f"{bundle_meta.portfolio_label} (pre-computed)"
@@ -123,6 +137,10 @@ if load_bundle_clicked and bundle_zip is not None:
         except RB.BundleValidationError as e:
             st.error(f"**Could not load this bundle — refusing to load.**\n\n{e}")
             st.stop()
+    # Rerun with a fresh uploader key (see above) before rendering anything
+    # heavy, so the uploaded zip is released first.
+    st.session_state["bundle_loads"] = st.session_state.get("bundle_loads", 0) + 1
+    st.rerun()
 
 if "result" not in st.session_state:
     st.info("👈 Upload a zipped portfolio in the sidebar and click **Run analysis** "

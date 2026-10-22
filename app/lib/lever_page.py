@@ -18,6 +18,7 @@ contributions sum to the components and steps equal them).
 from __future__ import annotations
 
 import io
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
@@ -215,6 +216,29 @@ def render_whatif(spec: LeverSpec, result: dict, size) -> None:
                  hide_index=True, width="stretch")
 
 
+def value_text(step: str, v) -> str:
+    """A trace/step value in its own unit: most steps are dollars, but a few
+    are a rate, a ratio or a customer count and must not wear a '$'."""
+    if v is None or (isinstance(v, float) and v != v):
+        return ""
+    s = step.lower()
+    if re.search(r"(?<![a-z])rate(?![a-z])", s):  # 'keep rate', 'keep_rate'; not 'migrated'
+        return f"{v:.1%}"
+    if "per cac dollar" in s:
+        return f"{v:,.2f}x"
+    if re.search(r"\bcustomers\b", s) and "mean" not in s:
+        return f"{v:,.1f}" if v % 1 else f"{v:,.0f}"
+    return f"-${-v:,.2f}" if v < 0 else f"${v:,.2f}"
+
+
+def _steps_table(rows: list, first: str, inputs_label: str) -> pd.DataFrame:
+    df = pd.DataFrame(rows)
+    df["value"] = [value_text(c, v) for c, v in zip(df["component"], df["value"])]
+    # Value second, so it is never pushed off-screen by the long formulas.
+    return df[["component", "value", "formula", "substituted"]].rename(columns={
+        "component": first, "value": "Value", "formula": "Formula", "substituted": inputs_label})
+
+
 def render_calculation(spec: LeverSpec, result: dict, size) -> None:
     with st.expander("How it's calculated - every formula with this portfolio's numbers"):
         if not size.has_scenarios:
@@ -224,10 +248,8 @@ def render_calculation(spec: LeverSpec, result: dict, size) -> None:
         if not steps:
             st.caption("Not computable for this portfolio - see the value section for why.")
             return
-        st.dataframe(pd.DataFrame(steps).rename(columns={
-            "component": "Component", "formula": "Formula", "substituted": "With this portfolio's numbers",
-            "value": "Value (base)"}).style.format({"Value (base)": "${:,.2f}"}),
-            hide_index=True, width="stretch")
+        st.dataframe(_steps_table(steps, "Component", "With this portfolio's numbers"),
+                     hide_index=True, width="stretch")
         st.caption(f"Base total = sum of components = **${size.scenarios['base']['total_usd']:,.2f}**. "
                    f"Each row is computed by the engine; `audit/audit_lever_estimates.py` checks that "
                    f"these steps equal the engine's components.")
@@ -405,10 +427,8 @@ def render_customer(spec: LeverSpec, result: dict, size, cid: str) -> None:
             st.info(f"This customer's trace needs a field this results bundle does not carry "
                     f"({e}). Re-export the bundle with the current engine.")
     if trace is not None:
-        st.dataframe(pd.DataFrame(trace).rename(columns={
-            "component": "Step", "formula": "Formula", "substituted": "With this customer's inputs",
-            "value": "Value"}).style.format({"Value": "${:,.2f}"}, na_rep=""),
-            hide_index=True, width="stretch")
+        st.dataframe(_steps_table(trace, "Step", "With this customer's inputs"),
+                     hide_index=True, width="stretch")
     elif not size.has_scenarios:
         UI.pre_rebuild_notice(size)
 
