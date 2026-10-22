@@ -1,0 +1,474 @@
+{
+ "fixture_100k_bundle": {
+  "L1": {
+   "low": {
+    "components": {
+     "fee_revenue": 396150.0,
+     "downgrade_reward_saving": 444486.21,
+     "closure_card_profit_lost": -226771.03,
+     "group1_programme_saving": 66599.45
+    },
+    "total": 680464.62,
+    "total_if_closers_leave_bank": -584976.11,
+    "offered_fee": 8340.0
+   },
+   "base": {
+    "components": {
+     "fee_revenue": 514995.0,
+     "downgrade_reward_saving": 463006.47,
+     "closure_card_profit_lost": -113385.52,
+     "group1_programme_saving": 133198.9
+    },
+    "total": 997814.85,
+    "total_if_closers_leave_bank": 365094.48,
+    "offered_fee": 8340.0
+   },
+   "high": {
+    "components": {
+     "fee_revenue": 633840.0,
+     "downgrade_reward_saving": 333364.66,
+     "closure_card_profit_lost": -56692.76,
+     "group1_programme_saving": 199798.34
+    },
+    "total": 1110310.24,
+    "total_if_closers_leave_bank": 793950.06,
+    "offered_fee": 8340.0
+   }
+  },
+  "L2": {
+   "low": {
+    "components": {
+     "decrease_credit_loss_avoided": 86993.74,
+     "decrease_liquidity_avoided": 86720.09,
+     "decrease_slr_capital_freed": 18099.67,
+     "increase_interest": 278565.72,
+     "increase_funding_cost": -60295.01,
+     "increase_extra_credit_loss": -31543.08,
+     "increase_extra_slr_capital": -3177.88,
+     "reactivation_net": -10090.45
+    },
+    "total": 365272.81,
+    "dormant_rightsizing": 69266.53,
+    "total_with_dormant_rightsizing": 434539.34
+   },
+   "base": {
+    "components": {
+     "decrease_credit_loss_avoided": 173987.49,
+     "decrease_liquidity_avoided": 115626.79,
+     "decrease_slr_capital_freed": 24132.9,
+     "increase_interest": 487490.02,
+     "increase_funding_cost": -105516.27,
+     "increase_extra_credit_loss": -82800.58,
+     "increase_extra_slr_capital": -2582.03,
+     "reactivation_net": 66299.1
+    },
+    "total": 676637.4,
+    "dormant_rightsizing": 143198.43,
+    "total_with_dormant_rightsizing": 819835.84
+   },
+   "high": {
+    "components": {
+     "decrease_credit_loss_avoided": 391471.84,
+     "decrease_liquidity_avoided": 130080.14,
+     "decrease_slr_capital_freed": 27149.51,
+     "increase_interest": 696414.31,
+     "increase_funding_cost": -150737.53,
+     "increase_extra_credit_loss": -236573.1,
+     "increase_extra_slr_capital": -1986.18,
+     "reactivation_net": 160945.17
+    },
+    "total": 1016764.16,
+    "dormant_rightsizing": 231364.49,
+    "total_with_dormant_rightsizing": 1248128.65
+   }
+  },
+  "L3": {
+   "low": {
+    "components": {
+     "extra_interest": 11596.02,
+     "card_profit_lost": -3174.94,
+     "notice_cost": -1744.0
+    },
+    "total": 6677.08,
+    "steady_state": 33734.45,
+    "total_if_leavers_leave_bank": -55475.13,
+    "targeted": 872.0,
+    "flagged": 3556.0
+   },
+   "base": {
+    "components": {
+     "extra_interest": 23533.09,
+     "card_profit_lost": -1693.3,
+     "notice_cost": -872.0
+    },
+    "total": 20967.79,
+    "steady_state": 44500.89,
+    "total_if_leavers_leave_bank": -12180.05,
+    "targeted": 872.0,
+    "flagged": 3556.0
+   },
+   "high": {
+    "components": {
+     "extra_interest": 36288.71,
+     "card_profit_lost": -846.65,
+     "notice_cost": -436.0
+    },
+    "total": 35006.06,
+    "steady_state": 50558.37,
+    "total_if_leavers_leave_bank": 18432.14,
+    "targeted": 872.0,
+    "flagged": 3556.0
+   }
+  },
+  "L4": {
+   "low": {
+    "components": {
+     "calls_to_self_service": 21958.8,
+     "paper_to_electronic": 57854.59,
+     "outreach_cost_year1": -57437.0
+    },
+    "total": 22376.39,
+    "from_year2": 79813.39,
+    "annual_avoidable_calls": 63318.33,
+    "annual_paper_statements": 328812.67
+   },
+   "base": {
+    "components": {
+     "calls_to_self_service": 40688.36,
+     "paper_to_electronic": 102096.33,
+     "outreach_cost_year1": -28718.5
+    },
+    "total": 114066.19,
+    "from_year2": 142784.69,
+    "annual_avoidable_calls": 63318.33,
+    "annual_paper_statements": 328812.67
+   },
+   "high": {
+    "components": {
+     "calls_to_self_service": 61355.46,
+     "paper_to_electronic": 150875.69,
+     "outreach_cost_year1": -14359.25
+    },
+    "total": 197871.91,
+    "from_year2": 212231.16,
+    "annual_avoidable_calls": 63318.33,
+    "annual_paper_statements": 328812.67
+   }
+  },
+  "L5": {
+   "low": {
+    "components": {
+     "value_kept": 64487.72,
+     "outreach_cost": -117270.0,
+     "offer_cost": -175905.0
+    },
+    "net_conditional": -228687.28,
+    "breakeven_keep_rate": 0.45,
+    "value_at_risk": 9212531.61,
+    "customers": 7818.0
+   },
+   "base": {
+    "components": {
+     "value_kept": 184250.63,
+     "outreach_cost": -78180.0,
+     "offer_cost": -97725.0
+    },
+    "net_conditional": 8345.63,
+    "breakeven_keep_rate": 0.19,
+    "value_at_risk": 9212531.61,
+    "customers": 7818.0
+   },
+   "high": {
+    "components": {
+     "value_kept": 331651.14,
+     "outreach_cost": -39090.0,
+     "offer_cost": -39090.0
+    },
+    "net_conditional": 253471.14,
+    "breakeven_keep_rate": 0.07,
+    "value_at_risk": 9212531.61,
+    "customers": 7818.0
+   }
+  },
+  "L6": {
+   "low": {
+    "components": {
+     "profit_lost_worst_channel": -199397.61,
+     "profit_gained_best_channel": 144438.25
+    },
+    "total": -54959.35,
+    "after_n_years": -152039.56,
+    "worst": "aggregator",
+    "best": "digital",
+    "customers_lost": 454.4,
+    "customers_gained": 350.64,
+    "breakeven_quality": 0.97
+   },
+   "base": {
+    "components": {
+     "profit_lost_worst_channel": -199397.61,
+     "profit_gained_best_channel": 263083.96
+    },
+    "total": 63686.35,
+    "after_n_years": 176181.92,
+    "worst": "aggregator",
+    "best": "digital",
+    "customers_lost": 454.4,
+    "customers_gained": 525.97,
+    "breakeven_quality": 0.64
+   },
+   "high": {
+    "components": {
+     "profit_lost_worst_channel": -199397.61,
+     "profit_gained_best_channel": 412680.72
+    },
+    "total": 213283.11,
+    "after_n_years": 590026.4,
+    "worst": "aggregator",
+    "best": "digital",
+    "customers_lost": 454.4,
+    "customers_gained": 701.29,
+    "breakeven_quality": 0.48
+   }
+  }
+ },
+ "fixture_5k_demo": {
+  "L1": {
+   "low": {
+    "components": {
+     "fee_revenue": 18572.5,
+     "downgrade_reward_saving": 22510.27,
+     "closure_card_profit_lost": -9383.42,
+     "group1_programme_saving": 4605.27
+    },
+    "total": 36304.62,
+    "total_if_closers_leave_bank": -21492.67,
+    "offered_fee": 391.0
+   },
+   "base": {
+    "components": {
+     "fee_revenue": 24144.25,
+     "downgrade_reward_saving": 23448.19,
+     "closure_card_profit_lost": -4691.71,
+     "group1_programme_saving": 9210.54
+    },
+    "total": 52111.28,
+    "total_if_closers_leave_bank": 23212.63,
+    "offered_fee": 391.0
+   },
+   "high": {
+    "components": {
+     "fee_revenue": 29716.0,
+     "downgrade_reward_saving": 16882.7,
+     "closure_card_profit_lost": -2345.85,
+     "group1_programme_saving": 13815.81
+    },
+    "total": 58068.66,
+    "total_if_closers_leave_bank": 43619.34,
+    "offered_fee": 391.0
+   }
+  },
+  "L2": {
+   "low": {
+    "components": {
+     "decrease_credit_loss_avoided": 4457.53,
+     "decrease_liquidity_avoided": 5265.45,
+     "decrease_slr_capital_freed": 0.0,
+     "increase_interest": 14413.24,
+     "increase_funding_cost": -3024.27,
+     "increase_extra_credit_loss": -1654.71,
+     "increase_extra_slr_capital": -0.0,
+     "reactivation_net": -376.22
+    },
+    "total": 19081.01,
+    "dormant_rightsizing": 2831.75,
+    "total_with_dormant_rightsizing": 21912.76
+   },
+   "base": {
+    "components": {
+     "decrease_credit_loss_avoided": 8915.06,
+     "decrease_liquidity_avoided": 7020.6,
+     "decrease_slr_capital_freed": 0.0,
+     "increase_interest": 25223.16,
+     "increase_funding_cost": -5292.47,
+     "increase_extra_credit_loss": -4343.63,
+     "increase_extra_slr_capital": -0.0,
+     "reactivation_net": 3467.57
+    },
+    "total": 34990.29,
+    "dormant_rightsizing": 5854.22,
+    "total_with_dormant_rightsizing": 40844.52
+   },
+   "high": {
+    "components": {
+     "decrease_credit_loss_avoided": 20058.88,
+     "decrease_liquidity_avoided": 7898.17,
+     "decrease_slr_capital_freed": 0.0,
+     "increase_interest": 36033.09,
+     "increase_funding_cost": -7560.67,
+     "increase_extra_credit_loss": -12410.36,
+     "increase_extra_slr_capital": -0.0,
+     "reactivation_net": 8240.95
+    },
+    "total": 52260.06,
+    "dormant_rightsizing": 9458.62,
+    "total_with_dormant_rightsizing": 61718.68
+   }
+  },
+  "L3": {
+   "low": {
+    "components": {
+     "extra_interest": 701.6,
+     "card_profit_lost": 1366.54,
+     "notice_cost": -90.0
+    },
+    "total": 1978.13,
+    "steady_state": 3615.19,
+    "total_if_leavers_leave_bank": -1533.73,
+    "targeted": 45.0,
+    "flagged": 179.0
+   },
+   "base": {
+    "components": {
+     "extra_interest": 1423.83,
+     "card_profit_lost": 728.82,
+     "notice_cost": -45.0
+    },
+    "total": 2107.65,
+    "steady_state": 3531.48,
+    "total_if_leavers_leave_bank": 234.65,
+    "targeted": 45.0,
+    "flagged": 179.0
+   },
+   "high": {
+    "components": {
+     "extra_interest": 2195.59,
+     "card_profit_lost": 364.41,
+     "notice_cost": -22.5
+    },
+    "total": 2537.5,
+    "steady_state": 3478.46,
+    "total_if_leavers_leave_bank": 1601.0,
+    "targeted": 45.0,
+    "flagged": 179.0
+   }
+  },
+  "L4": {
+   "low": {
+    "components": {
+     "calls_to_self_service": 1095.89,
+     "paper_to_electronic": 2872.27,
+     "outreach_cost_year1": -2779.0
+    },
+    "total": 1189.15,
+    "from_year2": 3968.15,
+    "annual_avoidable_calls": 3160.0,
+    "annual_paper_statements": 16324.33
+   },
+   "base": {
+    "components": {
+     "calls_to_self_service": 2030.62,
+     "paper_to_electronic": 5068.71,
+     "outreach_cost_year1": -1389.5
+    },
+    "total": 5709.82,
+    "from_year2": 7099.32,
+    "annual_avoidable_calls": 3160.0,
+    "annual_paper_statements": 16324.33
+   },
+   "high": {
+    "components": {
+     "calls_to_self_service": 3062.04,
+     "paper_to_electronic": 7490.42,
+     "outreach_cost_year1": -694.75
+    },
+    "total": 9857.71,
+    "from_year2": 10552.46,
+    "annual_avoidable_calls": 3160.0,
+    "annual_paper_statements": 16324.33
+   }
+  },
+  "L5": {
+   "low": {
+    "components": {
+     "value_kept": 2748.92,
+     "outreach_cost": -5445.0,
+     "offer_cost": -8167.5
+    },
+    "net_conditional": -10863.58,
+    "breakeven_keep_rate": 0.5,
+    "value_at_risk": 392702.5,
+    "customers": 363.0
+   },
+   "base": {
+    "components": {
+     "value_kept": 7854.05,
+     "outreach_cost": -3630.0,
+     "offer_cost": -4537.5
+    },
+    "net_conditional": -313.45,
+    "breakeven_keep_rate": 0.21,
+    "value_at_risk": 392702.5,
+    "customers": 363.0
+   },
+   "high": {
+    "components": {
+     "value_kept": 14137.29,
+     "outreach_cost": -1815.0,
+     "offer_cost": -1815.0
+    },
+    "net_conditional": 10507.29,
+    "breakeven_keep_rate": 0.08,
+    "value_at_risk": 392702.5,
+    "customers": 363.0
+   }
+  },
+  "L6": {
+   "low": {
+    "components": {
+     "profit_lost_worst_channel": -10274.66,
+     "profit_gained_best_channel": 7511.55
+    },
+    "total": -2763.11,
+    "after_n_years": -7643.87,
+    "worst": "aggregator",
+    "best": "digital",
+    "customers_lost": 23.6,
+    "customers_gained": 18.2,
+    "breakeven_quality": 0.96
+   },
+   "base": {
+    "components": {
+     "profit_lost_worst_channel": -10274.66,
+     "profit_gained_best_channel": 13681.75
+    },
+    "total": 3407.09,
+    "after_n_years": 9425.37,
+    "worst": "aggregator",
+    "best": "digital",
+    "customers_lost": 23.6,
+    "customers_gained": 27.3,
+    "breakeven_quality": 0.64
+   },
+   "high": {
+    "components": {
+     "profit_lost_worst_channel": -10274.66,
+     "profit_gained_best_channel": 21461.57
+    },
+    "total": 11186.91,
+    "after_n_years": 30947.47,
+    "worst": "aggregator",
+    "best": "digital",
+    "customers_lost": 23.6,
+    "customers_gained": 36.4,
+    "breakeven_quality": 0.48
+   }
+  }
+ },
+ "_provenance": {
+  "computed_by": "specs/lever_valuation_rebuild/reference_lever_estimates.py",
+  "on": "post-population-fix pipeline outputs (Stage A5)",
+  "fixture_5k_demo": "generator/out/demo, full pipeline, default leverage regime",
+  "fixture_100k_bundle": "bundle_100k_v2.zip, schema v2, case_a_slr_category_iii"
+ }
+}

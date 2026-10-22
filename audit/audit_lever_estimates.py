@@ -299,7 +299,9 @@ def gate_across_scenarios(demo: dict):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundle-100k", default=str(DEFAULT_BUNDLE_100K))
-    ap.add_argument("--expected", default=str(SPEC_DIR / "expected_values.json"))
+    ap.add_argument("--expected", default=str(SPEC_DIR / "expected_values_after_population_fixes.json"),
+                    help="defaults to the post-Stage-A5 expectations; pass expected_values.json "
+                         "for the reviewer's original (pre-population-fix) targets")
     ap.add_argument("--skip-100k", action="store_true")
     args = ap.parse_args()
 

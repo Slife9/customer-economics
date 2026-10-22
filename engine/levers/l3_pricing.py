@@ -93,9 +93,12 @@ class L3Pricing(Lever):
         cv = pop.frame
         peer_apr = cv.groupby("Credit Score Band")["latest_charged_apr"].transform("median")
         gap = peer_apr - cv["latest_charged_apr"]
-        eligible = (gap >= PRICING_GAP_POINTS) & (cv["Customer Tenure Years"] * 12
-                                                  >= FIRST_YEAR_MONTHS)
-        out = cv[eligible | (cv["routed_lever"] == "L3")].copy()
+        # CARD Act first-year protection applies to EVERY candidate, including
+        # routed loss-makers - previously a routed account in its first year
+        # slipped in via the `| routed` branch (population fix, spec 4.3).
+        past_first_year = cv["Customer Tenure Years"] * 12 >= FIRST_YEAR_MONTHS
+        out = cv[((gap >= PRICING_GAP_POINTS) | (cv["routed_lever"] == "L3"))
+                 & past_first_year].copy()
         out["peer_median_apr"] = peer_apr[out.index]
         out["pricing_gap_points"] = gap[out.index]
         return out

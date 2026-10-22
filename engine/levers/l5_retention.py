@@ -156,7 +156,12 @@ class L5Retention(Lever):
         self._cv = cv
         high_value = cv["cev_band"].astype(str).isin(HIGH_VALUE_BANDS)
 
-        closure_signal = (self.drivers.groupby("Masked Customer Number")["Primary Call Reason"]
+        # A closure-request contact counts only if it happened in the trailing
+        # 12 cycles - a call three years ago from a customer still here is not
+        # a current warning sign (population fix, spec 4.5).
+        recent_cycles = sorted(self.drivers["Cycle Month"].unique())[-FOLLOW_UP_CYCLES:]
+        recent = self.drivers[self.drivers["Cycle Month"].isin(recent_cycles)]
+        closure_signal = (recent.groupby("Masked Customer Number")["Primary Call Reason"]
                           .apply(lambda s: (s == "closure_request").any())
                           .rename("closure_request_signal"))
         cv = cv.merge(closure_signal, on="Masked Customer Number", how="left")
