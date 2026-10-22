@@ -31,6 +31,7 @@ from .levers.l3_pricing import L3Pricing
 from .levers.l4_cost_to_serve import L4CostToServe
 from .levers.l5_retention import L5Retention
 from .levers.l6_crosssell import L6CrossSell
+from .levers import assumptions as LEVER_ASSUME
 from .governance import fairness as FAIR
 from .governance import negative_control as NEGCTL
 
@@ -66,7 +67,14 @@ def _spend_decline(tx: pd.DataFrame) -> pd.DataFrame:
     return declined.rename("spend_declined").reset_index()
 
 
-def build_pipeline(data_dir: Path, leverage_policy_name: str = LEV.DEFAULT_POLICY_NAME):
+def build_pipeline(data_dir: Path, leverage_policy_name: str = LEV.DEFAULT_POLICY_NAME,
+                   lever_assumptions: dict | None = None):
+    """`lever_assumptions` overrides engine/config/lever_assumptions.json -
+    used by the acceptance audit's sensitivity test; the app never passes it."""
+    if lever_assumptions is None:
+        lever_assumptions, lever_assumptions_sha = LEVER_ASSUME.load()
+    else:
+        lever_assumptions_sha = "in-memory override (not the configured file)"
     portfolio = load_portfolio(data_dir)
     led = LEDGER.build(portfolio)
     cv = CV.build(led, portfolio)
@@ -108,15 +116,19 @@ def build_pipeline(data_dir: Path, leverage_policy_name: str = LEV.DEFAULT_POLIC
     tx = portfolio["Table5_Transaction.csv"]
     pools = portfolio["Table11_Cost_Pools.csv"]
     spend_decline = _spend_decline(tx)
+    attrition = portfolio.get("Table22_Attrition_Events.csv")
+    n_cycles = int(led["card"]["Cycle Month"].nunique())
 
     levers = {
         "L1": L1Rewards(),
         "L2": L2Lines(),
         "L3": L3Pricing(),
         "L4": L4CostToServe(drivers, pools),
-        "L5": L5Retention(drivers, spend_decline),
-        "L6": L6CrossSell(acquisition, accounts),
+        "L5": L5Retention(drivers, spend_decline, accounts, attrition),
+        "L6": L6CrossSell(acquisition, accounts, n_cycles),
     }
+    for code, lever in levers.items():
+        lever.assumptions = lever_assumptions[code]
 
     populations, sizes, worklists = {}, {}, {}
     for code, lever in levers.items():
@@ -150,6 +162,9 @@ def build_pipeline(data_dir: Path, leverage_policy_name: str = LEV.DEFAULT_POLIC
         "leverage_warnings": leverage_warnings, "leverage_audit": leverage_audit,
         "ml_available": ml_available, "ml_policy": ml_policy,
         "ml_policy_warnings": ml_policy_warnings, "ml_fairness": ml_fairness,
+        "lever_assumptions": lever_assumptions,
+        "lever_assumptions_sha256": lever_assumptions_sha,
+        "n_cycles": n_cycles,
     }
 
 

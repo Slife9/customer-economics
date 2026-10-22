@@ -1,19 +1,99 @@
 """L1 - Rewards and promo economics.
 
 The strongest play is usually not cutting rewards, it is charging for them
-(concept spec section 6). Cutting a program's earn rate is a behavioral
-question (would the customer spend less, would they leave?) that this
-dataset cannot answer - Type C, forbidden. Charging a fee aligned to value
-already delivered is not a behavioral question at all; it is a statement
-about what is happening today. That is the only part of L1 sized here.
+(concept spec section 6). Population and worklist are unchanged by the
+valuation rebuild; valuation follows SPEC_lever_valuation_rebuild.md 4.1:
+
+  Group 1  REVIEW_REWARD_PROGRAM_COST (routed loss-makers): a programme-level
+           reward cost reduction.
+  Group 2  PILOT_ALIGNED_ANNUAL_FEE (profitable, fee-free, reward-heavy).
+           Fee-eligible = reward_expense >= min_reward_multiple_of_fee x fee.
+           Of the eligible, some accept the fee, some downgrade to a cheaper
+           reward tier, some close the card.
+
+Every response share is a business assumption (lever_assumptions.json) - the
+whole lever is assumption-based and needs a champion/challenger pilot.
 """
 from __future__ import annotations
+import numpy as np
 import pandas as pd
 
-from .base import Lever, SizeResult
+from .base import Lever, SizeResult, component, scenario
+from . import assumptions as ASSUME
 from ..core.suppression import SuppressedPopulation
 
 OPPORTUNITY_REWARD_VALUE_FLOOR = 100.0
+K = "Masked Customer Number"
+
+METHOD_NOTE = (
+    "Fee-eligible Group 2 customers (reward cost at least the configured "
+    "multiple of the proposed annual fee) are offered the fee: the share who "
+    "accept pay it, the share who downgrade cut their reward cost, and the "
+    "share who close take their card profit with them. Group 1 (routed "
+    "reward-driven loss-makers) gets a programme-level reward cost reduction. "
+    "All response shares are assumptions - pilot required.")
+
+
+def valuation_inputs(cv: pd.DataFrame, wl: pd.DataFrame) -> dict:
+    w = wl.merge(cv[[K, "card_net"]], on=K, how="left")
+    g1 = w[w["action"] == "REVIEW_REWARD_PROGRAM_COST"]
+    g2 = w[w["action"] == "PILOT_ALIGNED_ANNUAL_FEE"]
+    return {
+        "group1_customers": int(len(g1)),
+        "group1_reward_expense_sum": float(g1["reward_expense"].sum()),
+        "group2_customers": int(len(g2)),
+        # Per-customer arrays (not aggregates) because the eligibility
+        # threshold itself depends on two assumptions (fee, multiple).
+        "group2_reward_expense": [float(v) for v in g2["reward_expense"]],
+        "group2_card_net": [float(v) for v in g2["card_net"]],
+        "group2_relationship_nep": [float(v) for v in g2["trailing_12m_net_economic_profit"]],
+    }
+
+
+def _mean(a: np.ndarray) -> float:
+    return float(a.mean()) if len(a) else 0.0
+
+
+def value_scenarios(inputs: dict, a: dict) -> dict:
+    fee = float(a["annual_fee_usd"])
+    threshold = float(a["min_reward_multiple_of_fee"]) * fee
+    re = np.asarray(inputs["group2_reward_expense"], dtype=float)
+    cn = np.asarray(inputs["group2_card_net"], dtype=float)
+    nep = np.asarray(inputs["group2_relationship_nep"], dtype=float)
+    elig = re >= threshold
+    n = int(elig.sum())
+    out = {}
+    for s in ASSUME.SCENARIOS:
+        acc = ASSUME.pick(a["accept_share"], s)
+        dn = ASSUME.pick(a["downgrade_share"], s)
+        cl = ASSUME.pick(a["close_share"], s)
+        cut = ASSUME.pick(a["downgrade_reward_reduction"], s)
+        g1cut = ASSUME.pick(a["group1_reward_reduction"], s)
+        comp = {
+            "fee_revenue": component(n * acc * fee, "revenue", "assumption"),
+            "downgrade_reward_saving": component(
+                n * dn * cut * _mean(re[elig]), "cost_saving", "assumption"),
+            "closure_card_profit_lost": component(
+                -n * cl * _mean(cn[elig]), "lost_profit", "assumption"),
+            "group1_programme_saving": component(
+                g1cut * inputs["group1_reward_expense_sum"], "cost_saving", "assumption"),
+        }
+        sc = scenario(comp)
+        relationship_loss = -n * cl * _mean(nep[elig])
+        sc["extras"] = {
+            "annual_fee_usd": fee,
+            "fee_eligibility_threshold_usd": threshold,
+            # Named as in expected_values.json: the NUMBER of customers who
+            # are offered the fee (fee-eligible Group 2), not the fee amount.
+            "offered_fee": n,
+            "group2_not_offered": int(len(re) - n),
+            "total_if_closers_leave_bank": (sc["total_usd"]
+                                            - comp["closure_card_profit_lost"]["value_usd"]
+                                            + relationship_loss),
+            "closers": n * cl,
+        }
+        out[s] = sc
+    return out
 
 
 class L1Rewards(Lever):
@@ -35,21 +115,20 @@ class L1Rewards(Lever):
         return out
 
     def size(self, population: pd.DataFrame) -> SizeResult:
-        opp = population[population["l1_reason"] == "fee_free_high_reward_opportunity"]
-        unpriced = float(opp["reward_expense"].sum())
+        a = self.lever_assumptions()
+        inputs = valuation_inputs(population, self.worklist(population))
+        scen = value_scenarios(inputs, a)
+        base = scen["base"]
         return SizeResult(
-            priced_value_usd=None,
-            basis="Charging for value already delivered is a policy change; "
-                 "how many customers would accept the new fee vs. close the "
-                 "account is a behavioral response to an untried treatment "
-                 "(concept spec section 7) and cannot be sized from this data.",
-            unpriced_context_usd=unpriced,
-            caveat=f"{len(opp)} profitable customers currently take reward "
-                   f"value with no annual fee, totalling ${unpriced:,.0f}/yr "
-                   f"in accrued reward cost the relationship never recovers. "
-                   f"That figure is context for a fee decision, not a revenue "
-                   f"forecast - actual capture depends on take-up under a "
-                   f"champion/challenger test.")
+            priced_value_usd=round(base["total_usd"], 2),
+            basis=METHOD_NOTE,
+            caveat=(f"Assumption-based, pilot required. "
+                    f"{base['extras']['offered_fee']} fee-eligible customers; "
+                    f"if closers leave the bank entirely (not just the card) the "
+                    f"base total is ${base['extras']['total_if_closers_leave_bank']:,.0f}."),
+            unpriced_context_usd=None,
+            scenarios=scen, assumptions_used=a, method_note=METHOD_NOTE,
+            inputs=inputs, gate_value_usd=base["total_usd"])
 
     def worklist(self, population: pd.DataFrame) -> pd.DataFrame:
         wl = population.copy()

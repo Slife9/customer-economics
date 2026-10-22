@@ -38,9 +38,19 @@ class GateResult:
 
 
 def _lever_value(lever, population) -> Optional[float]:
+    """The value side of the gate: the base-scenario value of only the
+    components the lever's driver() actually measures (SizeResult.
+    gate_value_usd). Since the lever valuation rebuild a lever's total can
+    move in both directions - L2's total blends idle-line decreases (what its
+    idle-limit driver measures) with increases on stretched accounts (which
+    it does not) - so comparing the whole total against a one-directional
+    driver would report driver/value scope mismatch as circularity. Approved
+    change to the gate's INPUT; the pass rule in check() is unchanged.
+    Falls back to the pre-rebuild single figure for a SizeResult without it."""
     r = lever.size(population)
-    v = r.priced_value_usd if r.is_priced else r.unpriced_context_usd
-    return v
+    if r.gate_value_usd is not None:
+        return r.gate_value_usd
+    return r.priced_value_usd if r.is_priced else r.unpriced_context_usd
 
 
 def check(demo_lever, control_lever, mechanism_varied: bool,

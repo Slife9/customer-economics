@@ -2,20 +2,79 @@
 
 The gap this lever addresses opens because risk drifts after origination
 while the rate does not (concept spec section 6). Population is any account
-priced meaningfully below its own current-risk peer cohort - not just the
-ones already loss-making, since a mispriced account that hasn't tipped into
-loss yet is still the same finding.
+priced meaningfully below its own current-risk peer cohort.
 
-Sizing is deliberately capped at a naive, zero-elasticity estimate. The real
-value of repricing depends on how customers respond - attrition, revolve
-behavior - and that is a causal question about a treatment never applied
-(section 7). This lever always returns priced_value_usd=None for exactly
-that reason; the naive ceiling is reported as context only.
+Valuation (SPEC_lever_valuation_rebuild.md 4.3): the CARD Act only lets a
+new rate apply to NEW transactions, so only REVOLVING balance generates
+extra interest - and only the share of it repriced within year 1. Pay-in-
+full transactors are flagged but not targeted (no interest to gain).
+Accounts in their first year are excluded (CARD Act first-year protection).
+Attrition, balance reduction among stayers and the repriced share are all
+assumptions - pilot required.
 """
 from __future__ import annotations
 import pandas as pd
 
-from .base import Lever, SizeResult
+from .base import Lever, SizeResult, component, scenario
+from . import assumptions as ASSUME
+
+K = "Masked Customer Number"
+
+METHOD_NOTE = (
+    "Targets revolvers only (revolving balance = latest purchase balance x "
+    "(1 - pay-in-full share) > 0). Full-year value = sum of (pricing gap x "
+    "revolving balance); year 1 counts only the share of balance repriced "
+    "under new-transactions-only rules, net of leavers and of stayers who "
+    "pay down. Leavers take their card profit; each targeted account costs a "
+    "notice. First-year accounts are excluded (CARD Act).")
+
+
+def valuation_inputs(cv: pd.DataFrame, wl: pd.DataFrame) -> dict:
+    w = wl.merge(cv, on=K, how="left")
+    w = w[~w["first_year_protected"].astype(bool)]
+    rev = w["latest_purchase_balance"] * (1 - w["transactor_share_12m"])
+    gap = w["target_apr"] - w["current_apr"]
+    r = w[rev > 0]
+    return {
+        "flagged": int(len(w)),
+        "first_year_protected_excluded": int(len(wl) - len(w)),
+        "targeted": int(len(r)),
+        "full_year_gap_value_usd": float((gap[rev > 0] / 100 * rev[rev > 0]).sum()),
+        "targeted_revolving_balance_usd": float(rev[rev > 0].sum()),
+        "targeted_card_net_mean": float(r["card_net"].mean()) if len(r) else 0.0,
+        "targeted_relationship_nep_mean": float(
+            r["trailing_12m_net_economic_profit"].mean()) if len(r) else 0.0,
+    }
+
+
+def value_scenarios(inputs: dict, a: dict) -> dict:
+    n = inputs["targeted"]
+    full = inputs["full_year_gap_value_usd"]
+    out = {}
+    for s in ASSUME.SCENARIOS:
+        rep = ASSUME.pick(a["year1_balance_repriced"], s)
+        att = ASSUME.pick(a["attrition"], s)
+        red = ASSUME.pick(a["balance_reduction_stayers"], s)
+        cost = ASSUME.pick(a["notice_cost_usd"], s)
+        lost = -n * att * inputs["targeted_card_net_mean"]
+        ops = -n * cost
+        y1 = full * rep * (1 - att) * (1 - red)
+        comp = {
+            "extra_interest": component(y1, "revenue", "assumption"),
+            "card_profit_lost": component(lost, "lost_profit", "assumption"),
+            "notice_cost": component(ops, "cost", "measured"),
+        }
+        sc = scenario(comp)
+        sc["extras"] = {
+            "steady_state": full * (1 - att) * (1 - red) + lost + ops,
+            "total_if_leavers_leave_bank": y1 - n * att * inputs["targeted_relationship_nep_mean"] + ops,
+            "targeted": n, "flagged": inputs["flagged"],
+            "first_year_protected_excluded": inputs["first_year_protected_excluded"],
+            "leavers": n * att,
+        }
+        out[s] = sc
+    return out
+
 
 PRICING_GAP_POINTS = 2.0
 FIRST_YEAR_MONTHS = 12
@@ -42,18 +101,20 @@ class L3Pricing(Lever):
         return out
 
     def size(self, population: pd.DataFrame) -> SizeResult:
-        naive = float((population["pricing_gap_points"] / 100.0 / 12.0
-                      * population["latest_purchase_balance"] * 12).sum())
+        a = self.lever_assumptions()
+        inputs = valuation_inputs(population, self.worklist(population))
+        scen = value_scenarios(inputs, a)
+        base = scen["base"]
         return SizeResult(
-            priced_value_usd=None,
-            basis="repricing value depends on how customers respond - "
-                 "attrition and revolve behavior under a new rate - which is "
-                 "a causal question about a treatment never applied (concept "
-                 "spec section 7). Not sizeable from historical data alone.",
-            unpriced_context_usd=round(naive, 2),
-            caveat=f"${naive:,.0f}/yr is the zero-elasticity ceiling: what the "
-                   f"gap is worth if every customer stayed and paid it. Real "
-                   f"value requires a champion/challenger test.")
+            priced_value_usd=round(base["total_usd"], 2),
+            basis=METHOD_NOTE,
+            caveat=(f"Assumption-based, pilot required. {inputs['targeted']} of "
+                    f"{inputs['flagged']} flagged accounts revolve and are targeted. "
+                    f"Steady state (all balances repriced): "
+                    f"${base['extras']['steady_state']:,.0f}/yr."),
+            unpriced_context_usd=None,
+            scenarios=scen, assumptions_used=a, method_note=METHOD_NOTE,
+            inputs=inputs, gate_value_usd=base["total_usd"])
 
     def worklist(self, population: pd.DataFrame) -> pd.DataFrame:
         wl = population.copy()

@@ -43,7 +43,151 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .base import Lever, SizeResult
+from .base import Lever, SizeResult, component, scenario
+from . import assumptions as ASSUME
+
+K = "Masked Customer Number"
+DECREASE_COMPONENTS = ("decrease_credit_loss_avoided", "decrease_liquidity_avoided",
+                       "decrease_slr_capital_freed")
+
+METHOD_NOTE = (
+    "Decreases: expected credit loss avoided on the limit cut (lifetime PD "
+    "annualised over the card life), plus the liquidity (LCR) and SLR "
+    "carrying cost the cut frees, scaled by the share of decreases actually "
+    "implemented. Increases: interest on the share of the new headroom the "
+    "customer is assumed to use, less its funding cost, annualised credit "
+    "loss and SLR capital. Reactivation: the assumed share of dormant "
+    "customers who become typical active card holders, less campaign cost. "
+    "Deepen-relationship actions are worth $0 by construction. Dormant-line "
+    "right-sizing is reported separately and only added when enabled.")
+
+
+def _per_undrawn_dollar(df: pd.DataFrame, col: str) -> pd.Series:
+    """Each customer's own $ cost per $ of undrawn exposure - derived from the
+    already-computed liquidity / leverage diagnostics, never a re-read policy
+    constant. Customers with no rate on file contribute $0, not a guess."""
+    ok = (df["avg_undrawn_12m"] > 0) & df[col].notna()
+    return (df[col] / df["avg_undrawn_12m"]).where(ok, 0.0)
+
+
+def decrease_target_limit(df: pd.DataFrame) -> pd.Series:
+    """The engine's existing decrease rule (unchanged by the rebuild): cover
+    the peak balance observed AND the actual annual spend, with headroom."""
+    return np.maximum(df["peak_utilization_12m"] * df["current_limit"] * 1.5,
+                      df["trailing_12m_spend"] * 1.10).clip(lower=300)
+
+
+def valuation_inputs(cv: pd.DataFrame, wl: pd.DataFrame) -> dict:
+    pop = wl[[K, "action"]].merge(cv, on=K, how="left")
+    dec = pop[pop["action"] == "DECREASE_LIMIT"]
+    inc = pop[pop["action"] == "INCREASE_LIMIT"]
+    dorm = pop[pop["action"] == "REACTIVATION_CAMPAIGN"]
+
+    cut = (dec["current_limit"] - decrease_target_limit(dec)).clip(lower=0)
+    cards = cv[cv["holds_card"]]
+    drawn = (cards["latest_utilization"] * cards["current_limit"]).sum()
+    funding_rate = float(cards["funding_cost"].sum() / drawn) if drawn else 0.0
+    active = cv[cv["holds_card"] & (cv["months_inactive_12m"] == 0)]["card_net"]
+
+    # Increase-side terms are linear in increase_pct and headroom_used, so
+    # they are stored as sums over current_limit and scaled in
+    # value_scenarios() - exact, and lets the what-if explorer move both.
+    lev_inc = _per_undrawn_dollar(inc, "leverage_capital_cost")
+
+    carrying = []
+    for action, g in pop.groupby("action", sort=False):
+        liq = float(g["annual_liquidity_cost"].fillna(0).sum())
+        slr = float(g["leverage_capital_cost"].fillna(0).sum())
+        cn = float(g["card_net"].sum())
+        carrying.append({
+            "action": action, "customers": int(len(g)),
+            "unused_lines_usd": float(g["avg_undrawn_12m"].sum()),
+            "required_hqla_usd": float(g["required_hqla"].fillna(0).sum()),
+            "liquidity_cost_usd": liq, "slr_cost_usd": slr,
+            "card_net_usd": cn, "card_net_after_carrying_cost_usd": cn - liq - slr,
+        })
+
+    return {
+        "decrease_customers": int(len(dec)),
+        "decrease_limit_cut_usd": float(cut.sum()),
+        "decrease_lifetime_expected_loss_usd": float(
+            (cut * dec["pd_lifetime"] * dec["lgd"] * dec["behavioral_ccf"]).sum()),
+        "decrease_liquidity_cost_usd": float(
+            (cut * _per_undrawn_dollar(dec, "annual_liquidity_cost")).sum()),
+        "decrease_slr_cost_usd": float(
+            (cut * _per_undrawn_dollar(dec, "leverage_capital_cost")).sum()),
+        "increase_customers": int(len(inc)),
+        "increase_sum_current_limit": float(inc["current_limit"].sum()),
+        "increase_sum_limit_x_apr_x_revolve": float(
+            (inc["current_limit"] * inc["latest_charged_apr"] / 100
+             * (1 - inc["transactor_share_12m"])).sum()),
+        "increase_sum_limit_x_pd_x_lgd": float(
+            (inc["current_limit"] * inc["pd_lifetime"] * inc["lgd"]).sum()),
+        "increase_sum_limit_x_slr_rate": float((inc["current_limit"] * lev_inc).sum()),
+        "funding_rate": funding_rate,
+        "reactivation_customers": int(len(dorm)),
+        "active_card_net_mean": float(active.mean()) if len(active) else 0.0,
+        "dormant_card_net_mean": float(dorm["card_net"].mean()) if len(dorm) else 0.0,
+        "dormant_carrying_cost_usd": float(
+            (dorm["annual_liquidity_cost"].fillna(0) + dorm["leverage_capital_cost"].fillna(0)).sum()),
+        "deepen_customers": int((pop["action"] == "DEEPEN_RELATIONSHIP_NO_LIMIT_CHANGE").sum()),
+        "leverage_regime": str(cv["leverage_regime"].iloc[0]) if len(cv) else "",
+        "carrying_cost_by_group": carrying,
+    }
+
+
+def value_scenarios(inputs: dict, a: dict) -> dict:
+    pct = float(a["increase_pct"])
+    enabled = bool(a.get("dormant_rightsizing_enabled", False))
+    out = {}
+    for s in ASSUME.SCENARIOS:
+        impl = ASSUME.pick(a["decrease_implemented"], s)
+        life = ASSUME.pick(a["card_life_years"], s)
+        use = ASSUME.pick(a["headroom_used"], s)
+        react = ASSUME.pick(a["reactivation_rate"], s)
+        camp = ASSUME.pick(a["campaign_cost_usd"], s)
+        n_dorm = inputs["reactivation_customers"]
+        comp = {
+            "decrease_credit_loss_avoided": component(
+                inputs["decrease_lifetime_expected_loss_usd"] * impl / life,
+                "avoided_loss", "measured"),
+            "decrease_liquidity_avoided": component(
+                inputs["decrease_liquidity_cost_usd"] * impl, "cost_saving", "measured"),
+            "decrease_slr_capital_freed": component(
+                inputs["decrease_slr_cost_usd"] * impl, "cost_saving", "measured"),
+            "increase_interest": component(
+                pct * use * inputs["increase_sum_limit_x_apr_x_revolve"], "revenue", "assumption"),
+            "increase_funding_cost": component(
+                -pct * use * inputs["increase_sum_current_limit"] * inputs["funding_rate"],
+                "cost", "assumption"),
+            "increase_extra_credit_loss": component(
+                -pct * use * inputs["increase_sum_limit_x_pd_x_lgd"] / life,
+                "avoided_loss", "assumption"),
+            "increase_extra_slr_capital": component(
+                -pct * (1 - use) * inputs["increase_sum_limit_x_slr_rate"], "cost", "assumption"),
+            "reactivation_net": component(
+                n_dorm * react * (inputs["active_card_net_mean"] - inputs["dormant_card_net_mean"])
+                - n_dorm * camp, "revenue", "assumption"),
+        }
+        rightsizing = (inputs["dormant_carrying_cost_usd"] * (1 - react)
+                       * ASSUME.pick(a["dormant_rightsize_implemented"], s)
+                       * ASSUME.pick(a["dormant_rightsize_reduction"], s))
+        total_excl = sum(c["value_usd"] for c in comp.values())
+        if enabled:
+            comp["dormant_rightsizing"] = component(rightsizing, "cost_saving", "assumption")
+        sc = scenario(comp)
+        sc["extras"] = {
+            "dormant_rightsizing": rightsizing,
+            "dormant_rightsizing_enabled": enabled,
+            "total_with_dormant_rightsizing": total_excl + rightsizing,
+            "total_without_dormant_rightsizing": total_excl,
+            "carrying_cost_by_group": inputs["carrying_cost_by_group"],
+            "funding_rate": inputs["funding_rate"],
+            "leverage_regime": inputs["leverage_regime"],
+        }
+        out[s] = sc
+    return out
+
 
 MIN_SEASONING_MONTHS = 12
 IDLE_AVG_UTIL_CEILING = 0.10
@@ -83,6 +227,9 @@ class L2Lines(Lever):
         stretched = ((cv["peak_utilization_12m"] >= STRETCHED_PEAK_UTIL_FLOOR)
                     & good_standing & (cv["Credit Score"] >= 660))
         routed = cv["routed_lever"] == "L2"
+        # The full customer view - valuation needs portfolio-wide figures
+        # (funding rate, typical active card holder) not just this population.
+        self._cv = pop.frame
 
         cv["l2_action"] = np.select(
             [dormant, idle_light_use, active_transactor, stretched, routed],
@@ -91,94 +238,31 @@ class L2Lines(Lever):
         return cv[cv["l2_action"] != ""].copy()
 
     def size(self, population: pd.DataFrame) -> SizeResult:
-        dec = population[population["l2_action"].isin(["DECREASE", "DECREASE_RISK_EXPOSURE"])]
-        inc = population[population["l2_action"] == "INCREASE"]
-        engage = population[population["l2_action"].isin(["ENGAGE", "GROW_ENGAGEMENT"])]
-
-        # Target limit for a genuine trim: cover the peak balance actually
-        # observed AND the actual annual spend cycled through it, with
-        # headroom - never just the latest snapshot.
-        target_limit_dec = np.maximum(
-            dec["peak_utilization_12m"] * dec["current_limit"] * 1.5,
-            dec["trailing_12m_spend"] * 1.10).clip(lower=300)
-        limit_cut = (dec["current_limit"] - target_limit_dec).clip(lower=0)
-        el_avoided = float((limit_cut * dec["pd_lifetime"] * dec["lgd"]
-                           * dec["behavioral_ccf"]).sum())
-        econ_capital_relief = float((limit_cut * dec["behavioral_ccf"] * 0.08).sum())
-
-        # Liquidity cost avoided (LCR, 12 CFR 249 - a real, separate-from-
-        # capital rule; see engine/core/customer_view.py's
-        # _compute_liquidity_cost). Derived from each customer's OWN already-
-        # computed rate ($ liquidity cost per $ of undrawn exposure), not a
-        # re-read policy constant, so this can never drift from the Liquidity
-        # page's own numbers. Customers under individual assessment (no rate
-        # on file) or with no undrawn history contribute $0, not a guess.
-        has_liq_rate = (dec["avg_undrawn_12m"] > 0) & dec["annual_liquidity_cost"].notna()
-        cost_per_undrawn_dollar = (dec["annual_liquidity_cost"] / dec["avg_undrawn_12m"]).where(
-            has_liq_rate, 0.0)
-        liquidity_cost_avoided = float((limit_cut * cost_per_undrawn_dollar).sum())
-
-        # Leverage capital freed on a decrease / consumed on an increase
-        # (REGULATORY_RULEBOOK.md M-02: crediting cuts without charging
-        # increases would bias recommendations toward cuts). Both derived
-        # from each customer's OWN already-computed leverage_capital_cost
-        # per dollar of undrawn exposure - never a re-read policy constant -
-        # so this can never drift from the Leverage Diagnostic page's own
-        # numbers. Always $0 under the Tier 1 regime (R-01): unused lines
-        # aren't charged there, so there is nothing to free or consume.
-        has_lev_rate = (dec["avg_undrawn_12m"] > 0) & dec["leverage_capital_cost"].notna()
-        lev_cost_per_undrawn_dollar_dec = (
-            dec["leverage_capital_cost"] / dec["avg_undrawn_12m"]).where(has_lev_rate, 0.0)
-        leverage_capital_freed = float((limit_cut * lev_cost_per_undrawn_dollar_dec).sum())
-
-        peer_util = population.groupby("Credit Score Band")["peak_utilization_12m"].transform("median")
-        headroom_gain = (peer_util - inc["peak_utilization_12m"]).clip(lower=0) * inc["current_limit"]
-        incremental_interest = float((headroom_gain * inc["latest_charged_apr"] / 100.0).sum())
-
-        has_lev_rate_inc = (inc["avg_undrawn_12m"] > 0) & inc["leverage_capital_cost"].notna()
-        lev_cost_per_undrawn_dollar_inc = (
-            inc["leverage_capital_cost"] / inc["avg_undrawn_12m"]).where(has_lev_rate_inc, 0.0)
-        leverage_capital_consumed = float((headroom_gain * lev_cost_per_undrawn_dollar_inc).sum())
-
-        priced = (el_avoided + incremental_interest + liquidity_cost_avoided
-                 + leverage_capital_freed - leverage_capital_consumed)
-        current_engage_revenue = float(engage["card_revenue"].sum())
-        engage_liquidity_cost = float(engage["annual_liquidity_cost"].fillna(0.0).sum())
-        leverage_regime = population["leverage_regime"].iloc[0] if len(population) else "TIER1"
-        leverage_note = (
-            f"Leverage capital freed by decreases: ${leverage_capital_freed:,.0f}/yr; "
-            f"consumed by increases: ${leverage_capital_consumed:,.0f}/yr (both included "
-            f"in priced value, SLR regime, 12 CFR 217.10, R-04/R-06)."
-            if leverage_regime == "SLR" else
-            f"Leverage capital: not charged. This bank is assessed under the Tier 1 "
-            f"leverage regime, which counts on-balance-sheet assets only (R-01) - "
-            f"decreases free $0 and increases consume $0.")
+        a = self.lever_assumptions()
+        cv = getattr(self, "_cv", population)
+        inputs = valuation_inputs(cv, self.worklist(population))
+        scen = value_scenarios(inputs, a)
+        base = scen["base"]
+        decrease_side = sum(base["components"][c]["value_usd"] for c in DECREASE_COMPONENTS)
+        regime_note = ("SLR regime: unused lines carry leverage capital, so decreases "
+                       "free it and increases consume it."
+                       if inputs["leverage_regime"] == "SLR" else
+                       "Tier 1 regime: unused lines carry no leverage capital (R-01), "
+                       "so the SLR components are $0.")
         return SizeResult(
-            priced_value_usd=round(priced, 2),
-            basis="expected-loss avoided from EAD reduction (same PD/LGD the "
-                 "bank already uses, target limit sized off PEAK utilization "
-                 "and actual trailing spend - never a single snapshot) plus "
-                 "liquidity cost avoided (LCR outflow rate x yield gap on the "
-                 "limit cut, 12 CFR 249) plus leverage capital freed/consumed "
-                 "(SLR regime only, 12 CFR 217.10) plus peer-benchmarked "
-                 "incremental interest on genuinely stretched good-standing accounts",
-            caveat=f"regulatory capital relief from decreases is $0 by design "
-                   f"(0% CCF on cancellable undrawn lines, 12 CFR 217.33(b)(1)). "
-                   f"Economic capital relief (diagnostic only): "
-                   f"${econ_capital_relief:,.0f}. Liquidity cost avoided "
-                   f"(included in priced value, separate regime from capital): "
-                   f"${liquidity_cost_avoided:,.0f}/yr. {leverage_note} "
-                   f"{len(engage)} customers "
-                   f"are flagged for engagement rather than a limit change - "
-                   f"their current combined card revenue of "
-                   f"${current_engage_revenue:,.0f}/yr is reported as context, "
-                   f"not a forecast of what a campaign would recover (that "
-                   f"requires a champion/challenger test, per section 7). That "
-                   f"same cohort is also carrying ${engage_liquidity_cost:,.0f}/yr "
-                   f"in liquidity cost on capacity it isn't using - reactivating "
-                   f"it doesn't just recover revenue, it cuts that drag too, "
-                   f"also contingent on the same pilot (not priced).",
-            unpriced_context_usd=econ_capital_relief)
+            priced_value_usd=round(base["total_usd"], 2),
+            basis=METHOD_NOTE,
+            caveat=(f"Decrease side is measured; increase and reactivation are "
+                    f"assumption-based, pilot required. {regime_note} Dormant-line "
+                    f"right-sizing (base ${base['extras']['dormant_rightsizing']:,.0f}/yr) "
+                    f"is {'INCLUDED' if base['extras']['dormant_rightsizing_enabled'] else 'not included'} "
+                    f"in the total."),
+            unpriced_context_usd=None,
+            scenarios=scen, assumptions_used=a, method_note=METHOD_NOTE,
+            inputs=inputs,
+            # Only the decrease side: L2's driver() measures idle-limit
+            # dollars, which the increase/reactivation components do not act on.
+            gate_value_usd=decrease_side)
 
     def worklist(self, population: pd.DataFrame) -> pd.DataFrame:
         wl = population.copy()
