@@ -1,0 +1,51 @@
+{
+  "_note": "Illustrative assumptions agreed in review. Every value is a business assumption to be replaced by the bank's own policy or pilot evidence. low/base/high are scenarios, not confidence intervals.",
+  "L1": {
+    "annual_fee_usd": 95,
+    "min_reward_multiple_of_fee": 2.0,
+    "accept_share": {"low": 0.50, "base": 0.65, "high": 0.80},
+    "downgrade_share": {"low": 0.30, "base": 0.25, "high": 0.15},
+    "close_share": {"low": 0.20, "base": 0.10, "high": 0.05},
+    "downgrade_reward_reduction": {"low": 0.40, "base": 0.50, "high": 0.60},
+    "group1_reward_reduction": {"low": 0.10, "base": 0.20, "high": 0.30}
+  },
+  "L2": {
+    "increase_pct": 0.20,
+    "decrease_implemented": {"low": 0.60, "base": 0.80, "high": 0.90},
+    "card_life_years": {"low": 3, "base": 2, "high": 1},
+    "headroom_used": {"low": 0.20, "base": 0.35, "high": 0.50},
+    "reactivation_rate": {"low": 0.03, "base": 0.06, "high": 0.10},
+    "campaign_cost_usd": {"low": 3.0, "base": 2.0, "high": 1.0},
+    "dormant_rightsizing_enabled": false,
+    "dormant_rightsize_implemented": {"low": 0.60, "base": 0.80, "high": 0.90},
+    "dormant_rightsize_reduction": {"low": 0.25, "base": 0.40, "high": 0.60}
+  },
+  "L3": {
+    "year1_balance_repriced": {"low": 0.30, "base": 0.50, "high": 0.70},
+    "attrition": {"low": 0.15, "base": 0.08, "high": 0.04},
+    "balance_reduction_stayers": {"low": 0.20, "base": 0.10, "high": 0.05},
+    "notice_cost_usd": {"low": 2.0, "base": 1.0, "high": 0.5}
+  },
+  "L4": {
+    "unit_costs": {"call": 2.10, "digital_session": 0.03, "paper_statement": 0.72, "electronic_statement": 0.03},
+    "sessions_per_deflected_call": 2,
+    "call_deflection": {"low": 0.20, "base": 0.35, "high": 0.50},
+    "paper_migration": {"low": 0.30, "base": 0.50, "high": 0.70},
+    "excluded_share": {"low": 0.15, "base": 0.10, "high": 0.05},
+    "outreach_cost_usd": {"low": 1.0, "base": 0.5, "high": 0.25}
+  },
+  "L5": {
+    "leave_rate": {"low": 0.07, "base": 0.10, "high": 0.12},
+    "keep_rate": {"low": 0.10, "base": 0.20, "high": 0.30},
+    "outreach_cost_usd": {"low": 15, "base": 10, "high": 5},
+    "offer_takeup": {"low": 0.30, "base": 0.25, "high": 0.20},
+    "offer_cost_usd": {"low": 75, "base": 50, "high": 25}
+  },
+  "L6": {
+    "budget_shift_share": 0.40,
+    "marginal_cac_multiplier": {"low": 3.0, "base": 2.0, "high": 1.5},
+    "incremental_quality": {"low": 0.70, "base": 0.85, "high": 1.00},
+    "annual_attrition": 0.08,
+    "build_years": 3
+  }
+}
