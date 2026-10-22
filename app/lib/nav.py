@@ -27,7 +27,7 @@ LEVER_PAGES = {
     "L5": ("pages/35_L5_Retention.py", "L5 Retention Targeting", "🛟", "l5-retention"),
     "L6": ("pages/36_L6_Channel_Quality.py", "L6 Channel Quality Review", "🧭", "l6-channel-quality"),
 }
-BUILT_LEVER_PAGES = ("L2", "L6")
+BUILT_LEVER_PAGES = ("L1", "L2", "L6")
 
 
 def lever_page(code: str) -> str | None:
