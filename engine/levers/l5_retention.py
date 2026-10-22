@@ -175,6 +175,9 @@ class L5Retention(Lever):
         at_risk = high_value & (cv["closure_request_signal"] | cv["spend_declined"]
                                 | priced_above_peer)
         out = cv[at_risk].copy()
+        # Additive columns for the drill-down (population unchanged).
+        out["peer_median_apr"] = peer_apr[at_risk]
+        out["priced_above_peer"] = priced_above_peer[at_risk]
         out["risk_signals"] = out.apply(lambda r: ", ".join(filter(None, [
             "closure_request_contact" if r["closure_request_signal"] else "",
             "spend_declining" if r["spend_declined"] else "",
@@ -213,7 +216,9 @@ class L5Retention(Lever):
         wl["action"] = "RETENTION_OUTREACH"
         wl["reason"] = wl["risk_signals"]
         return wl[["Masked Customer Number", "action", "reason",
-                  "trailing_12m_net_economic_profit", "cev_band"]].rename(
+                  "trailing_12m_net_economic_profit", "cev_band",
+                  "closure_request_signal", "spend_declined", "priced_above_peer",
+                  "peer_median_apr"]].rename(
             columns={"trailing_12m_net_economic_profit": "value_at_risk_usd"})
 
     def driver(self, customer_view: pd.DataFrame) -> float:
@@ -223,3 +228,107 @@ class L5Retention(Lever):
         raise NotImplementedError(
             "L5 has no driver: retention is not a mechanism this dataset's "
             "negative control varies. The gate should report L5 inconclusive.")
+
+
+# ---------------------------------------------------------------------------
+# Explanations for the customer drill-down. Additive only: same thresholds
+# and formulas as population()/value_scenarios(); the audit checks that
+# customer contributions sum to the components and steps equal them. Every
+# per-customer figure is an EXPECTED value under the assumptions - L5 stays
+# unpriced and is never part of a portfolio total.
+
+def selection_rules(row) -> dict:
+    band = str(row.get("cev_band"))
+    hv = {"rule": "High-value customer", "threshold": "CEV band Valued or Premier",
+          "actual": band, "met": band in HIGH_VALUE_BANDS}
+    gap = row.get("latest_charged_apr", float("nan")) - row.get("peer_median_apr", float("nan"))
+    sets = {
+        "At risk: closure-request contact": [hv, {
+            "rule": "Closure-request contact in the trailing 12 cycles", "threshold": "yes",
+            "actual": "yes" if bool(row.get("closure_request_signal")) else "no",
+            "met": bool(row.get("closure_request_signal"))}],
+        "At risk: spend declining": [hv, {
+            "rule": "Spend, last 3 months vs the prior 3",
+            "threshold": f"fallen to <= {1 - SPEND_DECLINE_THRESHOLD:.0%}",
+            "actual": "yes" if bool(row.get("spend_declined")) else "no",
+            "met": bool(row.get("spend_declined"))}],
+        "At risk: priced above peers": [hv, {
+            "rule": "Charged APR above the credit-score-band median",
+            "threshold": f">= {RATE_ABOVE_PEER_POINTS:.1f} pts above",
+            "actual": "n/a" if pd.isna(gap) else
+                      f"{row['latest_charged_apr']:.2f}% vs {row['peer_median_apr']:.2f}% ({gap:+.2f} pts)",
+            "met": bool(row.get("priced_above_peer"))}],
+    }
+    matched = next((k for k, r in sets.items() if all(x["met"] for x in r)), None)
+    return {"matched": matched, "rule_sets": sets,
+            "precedence": "A high-value customer with ANY one signal is at risk; the matched set is "
+                          "the first signal found (the reason column lists every signal)."}
+
+
+def customer_contributions(rows: pd.DataFrame, inputs: dict, a: dict,
+                           scenario: str = "base") -> pd.DataFrame:
+    leave = ASSUME.pick(a["leave_rate"], scenario)
+    keep = ASSUME.pick(a["keep_rate"], scenario)
+    out = pd.DataFrame(index=rows.index)
+    out["value_kept"] = leave * keep * rows["value_at_risk_usd"].fillna(0.0)
+    out["outreach_cost"] = -float(ASSUME.pick(a["outreach_cost_usd"], scenario))
+    out["offer_cost"] = -float(ASSUME.pick(a["offer_takeup"], scenario)
+                               * ASSUME.pick(a["offer_cost_usd"], scenario))
+    out["total"] = out.sum(axis=1)
+    return out
+
+
+def customer_trace(row, inputs: dict, a: dict, scenario: str = "base") -> list:
+    c = customer_contributions(pd.DataFrame([row]), inputs, a, scenario).iloc[0]
+    leave = ASSUME.pick(a["leave_rate"], scenario)
+    keep = ASSUME.pick(a["keep_rate"], scenario)
+    take = ASSUME.pick(a["offer_takeup"], scenario)
+    offer = ASSUME.pick(a["offer_cost_usd"], scenario)
+    out_c = ASSUME.pick(a["outreach_cost_usd"], scenario)
+    v = float(row["value_at_risk_usd"])
+    be = (out_c + take * offer) / (leave * v) if leave * v > 0 else float("nan")
+    return [
+        {"component": "value at risk (this customer)", "formula": "trailing-12m NEP - a fact, not a forecast",
+         "substituted": "", "value": v},
+        {"component": "value_kept", "formula": "leave_rate x keep_rate x value at risk",
+         "substituted": f"{leave} x {keep} x ${v:,.2f}", "value": c["value_kept"]},
+        {"component": "outreach_cost", "formula": "one outreach contact", "substituted": f"-${out_c}",
+         "value": c["outreach_cost"]},
+        {"component": "offer_cost", "formula": "offer_takeup x offer_cost",
+         "substituted": f"-{take} x ${offer}", "value": c["offer_cost"]},
+        {"component": "CONDITIONAL NET (expected value, base assumptions - not in any total)",
+         "formula": "sum of the above three", "substituted": "", "value": c["total"]},
+        {"component": "break-even keep rate for this customer",
+         "formula": "(outreach + takeup x offer) / (leave_rate x value at risk)",
+         "substituted": f"(${out_c} + {take} x ${offer}) / ({leave} x ${v:,.2f})", "value": be},
+    ]
+
+
+def calculation_steps(inputs: dict, a: dict, scenario: str = "base") -> list:
+    n, v = inputs["customers"], inputs["mean_value_at_risk_usd"]
+    leave = ASSUME.pick(a["leave_rate"], scenario)
+    keep = ASSUME.pick(a["keep_rate"], scenario)
+    take = ASSUME.pick(a["offer_takeup"], scenario)
+    offer = ASSUME.pick(a["offer_cost_usd"], scenario)
+    out_c = ASSUME.pick(a["outreach_cost_usd"], scenario)
+    return [
+        {"component": "value_kept", "formula": "n x leave_rate x keep_rate x mean value at risk",
+         "substituted": f"{n:,} x {leave} x {keep} x ${v:,.2f}", "value": n * leave * keep * v},
+        {"component": "outreach_cost", "formula": "-n x outreach_cost_usd",
+         "substituted": f"-{n:,} x ${out_c}", "value": -n * out_c},
+        {"component": "offer_cost", "formula": "-n x offer_takeup x offer_cost_usd",
+         "substituted": f"-{n:,} x {take} x ${offer}", "value": -n * take * offer},
+        {"component": "breakeven_keep_rate",
+         "formula": "(outreach + takeup x offer) / (leave_rate x mean value at risk)",
+         "substituted": f"(${out_c} + {take} x ${offer}) / ({leave} x ${v:,.2f})",
+         "value": (out_c + take * offer) / (leave * v) if leave * v else float("nan")},
+    ]
+
+
+def breakeven_table(inputs: dict, a: dict, leave_rates=(0.05, 0.07, 0.10, 0.12, 0.15)) -> list:
+    """Break-even keep rate at a range of leave rates, base costs."""
+    v = inputs["mean_value_at_risk_usd"]
+    cost = (ASSUME.pick(a["outreach_cost_usd"], "base")
+            + ASSUME.pick(a["offer_takeup"], "base") * ASSUME.pick(a["offer_cost_usd"], "base"))
+    return [{"leave_rate": lr, "cost_per_contact_usd": cost,
+             "breakeven_keep_rate": cost / (lr * v) if lr * v else None} for lr in leave_rates]
