@@ -73,14 +73,29 @@ def score_file(customer_view: pd.DataFrame, suppressed_customers: pd.DataFrame,
 
 
 def leakage_register(worklists: dict[str, pd.DataFrame], sizes: dict[str, "SizeResult"]) -> pd.DataFrame:
+    """One row per lever. Since the lever valuation rebuild it carries the
+    low/base/high scenario totals, the value types present, and whether any
+    component rests on an assumption (pilot required). priced_value_usd is
+    the BASE total; L5 stays unpriced (value at risk only, never a total).
+    A pre-rebuild SizeResult (schema-v1 bundle) leaves the scenario columns
+    empty and is labelled as such."""
     rows = []
     for code, size in sizes.items():
         wl = worklists.get(code)
+        scen = size.scenarios or {}
+        comps = [c for sc in scen.values() for c in sc["components"].values()]
         rows.append({
             "lever": code,
             "population_count": len(wl) if wl is not None else 0,
+            "valuation": ("corrected (lever rebuild)" if scen else "pre-rebuild valuation"),
+            "low_total_usd": scen.get("low", {}).get("total_usd"),
+            "base_total_usd": scen.get("base", {}).get("total_usd"),
+            "high_total_usd": scen.get("high", {}).get("total_usd"),
             "priced_value_usd": size.priced_value_usd,
             "unpriced_context_usd": size.unpriced_context_usd,
+            "in_portfolio_total": code != "L5" and size.is_priced,
+            "value_types": ", ".join(sorted({c["value_type"] for c in comps})),
+            "assumption_based_pilot_required": any(c["basis"] == "assumption" for c in comps),
             "basis": size.basis,
             "caveat": size.caveat,
             "owner": {"L1": "Cards Product", "L2": "Credit Risk", "L3": "Pricing",

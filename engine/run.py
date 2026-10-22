@@ -32,6 +32,7 @@ from .levers.l4_cost_to_serve import L4CostToServe
 from .levers.l5_retention import L5Retention
 from .levers.l6_crosssell import L6CrossSell
 from .levers import assumptions as LEVER_ASSUME
+from .levers import summary as LEVER_SUMMARY
 from .governance import fairness as FAIR
 from .governance import negative_control as NEGCTL
 
@@ -215,6 +216,9 @@ def run(data_dir: Path, out_dir: Path, compare_to: Path | None = None,
         "fairness_treatment_any_failure": result["fairness"]["treatment_any_failure"],
         "negative_control_gate": gate_report.to_dict("records") if len(gate_report) else None,
         "leverage_audit": result["leverage_audit"],
+        "lever_assumptions_sha256": result["lever_assumptions_sha256"],
+        "portfolio_lever_summary": LEVER_SUMMARY.portfolio_summary(result["sizes"]),
+        "lever_scenarios": {code: s.scenarios for code, s in result["sizes"].items()},
     }
     (out_dir / "run_summary.json").write_text(json.dumps(summary, indent=2, default=str))
     return summary

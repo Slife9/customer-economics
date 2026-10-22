@@ -8,6 +8,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from app.lib import charts as C
+from engine.levers import summary as LSUMMARY
 from app.lib.results_bundle import BundleTableUnavailable
 from engine.core import ledger as ENGINE_LEDGER
 
@@ -101,43 +102,53 @@ leakage_df = pd.DataFrame([{
 st.plotly_chart(C.leakage_bar(leakage_df), width="stretch")
 
 st.divider()
-st.subheader("Portfolio opportunity range — if every lever were applied")
-st.caption("A single 'total opportunity' number would blend four things that "
-          "are not the same kind of number - a diagnostic capital figure, an "
-          "opportunity ceiling, and value at risk cannot honestly be added "
-          "together. This is a range, not a point estimate, and the pieces "
-          "left out of it are called out explicitly below rather than folded in.")
-
-priced_total = sum(s.priced_value_usd or 0 for s in sizes.values())
-# The high end adds ONLY the two unpriced figures that are legitimately the
-# same kind of thing as priced revenue - an opportunity ceiling assuming full,
-# frictionless capture (L1, L3). L5's value-at-risk is a potential LOSS if we
-# do nothing, not new revenue if we act, and L2's diagnostic capital figure is
-# capital efficiency, not P&L revenue - neither belongs in a revenue range.
-l1_ceiling = sizes["L1"].unpriced_context_usd or 0
-l3_ceiling = sizes["L3"].unpriced_context_usd or 0
-optimistic_ceiling = priced_total + l1_ceiling + l3_ceiling
-
-r1, r2 = st.columns(2)
-r1.metric("Low end — deployable now, no pilot needed", f"${priced_total:,.0f}/yr",
-         help="Sum of L2 + L4 + L6's priced values. Calculated from what "
-             "customers already did; does not depend on how anyone responds "
-             "to a change we haven't made yet.")
-r2.metric("High end — optimistic ceiling if L1 and L3 pilots succeed completely",
-         f"${optimistic_ceiling:,.0f}/yr",
-         help="Low end plus L1's and L3's opportunity ceilings, which both "
-             "assume every customer accepts the change with zero pushback - "
-             "a best case, not a forecast. Real value depends entirely on "
-             "the champion/challenger pilot results.")
-st.caption(f"**Realistically, expect something between these two numbers, "
-          f"closer to the low end** until L1 and L3 have real pilot data. "
-          f"Two more figures matter but are deliberately NOT part of this "
-          f"range: **L5's ${sizes['L5'].unpriced_context_usd or 0:,.0f}** is "
-          f"value **at risk** if nothing changes — a potential loss to avoid, "
-          f"not revenue to add. **L2's ${sizes['L2'].unpriced_context_usd or 0:,.0f}** "
-          f"is economic capital efficiency, a different kind of value than "
-          f"P&L revenue, tracked separately by design (concept spec section 7: "
-          f"never blend regulatory and economic capital into one figure).")
+st.subheader("Portfolio opportunity: base scenario, with the low-high range")
+summary = LSUMMARY.portfolio_summary(sizes)
+if not summary["levers_in_total"]:
+    st.warning("These results come from a **pre-rebuild valuation** (an older results "
+               "bundle), so no low/base/high scenarios are available. Re-export the "
+               "bundle with the current engine to see the corrected lever values.")
+else:
+    t = {sc: summary["scenarios"][sc]["total_usd"] for sc in ("low", "base", "high")}
+    r1, r2, r3 = st.columns(3)
+    r1.metric("Base total, year 1", f"${t['base']:,.0f}/yr",
+              help="L1 + L2 + L3 (year 1) + L4 (year 1) + L6 (year 1), base scenario. "
+                   "L5 is never part of this total.")
+    r2.metric("Low - high range", f"${t['low']:,.0f} - ${t['high']:,.0f}")
+    by_basis = summary["scenarios"]["base"]["by_basis"]
+    r3.metric("Of the base, assumption-based", f"${by_basis.get('assumption', 0):,.0f}",
+              help="Components that depend on a customer response not yet observed - "
+                   "these need a pilot before anyone relies on them.")
+    rows = []
+    for code in ("L1", "L2", "L3", "L4", "L6"):
+        sz = sizes[code]
+        if not sz.has_scenarios:
+            rows.append({"Lever": code, "Base": None, "Low": None, "High": None,
+                         "Value types": "", "Evidence": sz.basis})
+            continue
+        comps = sz.scenarios["base"]["components"].values()
+        rows.append({
+            "Lever": code,
+            "Base": sz.scenarios["base"]["total_usd"],
+            "Low": sz.scenarios["low"]["total_usd"],
+            "High": sz.scenarios["high"]["total_usd"],
+            "Value types": ", ".join(sorted({c["value_type"] for c in comps})),
+            "Evidence": ("assumption-based, pilot required"
+                         if any(c["basis"] == "assumption" for c in comps) else "measured"),
+        })
+    st.dataframe(pd.DataFrame(rows).style.format(
+        {c: "${:,.0f}" for c in ("Base", "Low", "High")}, na_rep="-"),
+        width="stretch", hide_index=True)
+    l5 = summary.get("L5_separately")
+    if l5:
+        be = l5["breakeven_keep_rate_base"]
+        cond = l5["conditional_net_usd"]
+        st.info(f"**L5 Retention is not in the total.** Value at risk: "
+                f"**${l5['value_at_risk_usd']:,.0f}** (trailing-12-month profit of at-risk "
+                f"customers). A retention programme's conditional net is "
+                f"${cond['low']:,.0f} / ${cond['base']:,.0f} / ${cond['high']:,.0f} "
+                f"(low / base / high) and breaks even only if it keeps at least "
+                f"**{'n/a' if be is None else f'{be:.0%}'}** of would-be leavers.")
 
 st.divider()
 st.header("Strategy by lever")
@@ -152,14 +163,20 @@ for code in seq_order:
         st.markdown(meta["one_liner"])
         colA, colB, colC = st.columns(3)
         colA.metric("Population", f"{len(wl):,} customers")
-        if size.is_priced:
-            colB.metric("Priced value", f"${size.priced_value_usd:,.0f}/yr")
+        if size.has_scenarios and code != "L5":
+            colB.metric("Base value", f"${size.scenarios['base']['total_usd']:,.0f}/yr",
+                        help=f"Low ${size.scenarios['low']['total_usd']:,.0f} - high "
+                             f"${size.scenarios['high']['total_usd']:,.0f}")
+        elif size.is_priced:
+            colB.metric("Priced value (pre-rebuild)", f"${size.priced_value_usd:,.0f}/yr")
         else:
             colB.metric("Priced value", "None — by design", help=size.basis)
         colC.metric("Speed to deploy", meta["speed"].split("—")[0].strip())
 
         if size.unpriced_context_usd is not None:
-            st.info(f"**Unpriced context:** ${size.unpriced_context_usd:,.0f}/yr — {size.caveat}")
+            st.info(f"**Value at risk (unpriced):** ${size.unpriced_context_usd:,.0f}/yr — {size.caveat}")
+        elif size.caveat:
+            st.caption(size.caveat)
 
         st.markdown(f"**Compliance gate:** {meta['notice']}")
         if lever.gates:
