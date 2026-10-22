@@ -19,7 +19,10 @@ Compares the ENGINE's scenario outputs (not the spec's reference script)
 with the expected values. Tolerance: +/-0.5% for L1, L2, L3, L5, L6 totals,
 components and numeric extras; +/-15% for L4 (the engine windows the
 trailing 12 cycles where the reference scales the full history by 12/36 -
-the difference is explained in the output). Counts are compared exactly.
+the difference is explained in the output). L4 TOTALS are judged against
+15% of the gross amounts being netted, because the low-scenario total is a
+near-cancelling net (agreed with the reviewer); L4 components are still
+checked at +/-15% each. Counts are compared exactly.
 """
 from __future__ import annotations
 import argparse
@@ -89,8 +92,22 @@ def compare_fixture(label: str, sizes: dict, expected: dict):
             tk = "net_conditional" if code == "L5" else "total"
             got = engine_headline(code, g)
             r = rel(got, e[tk])
-            check(f"{label} {code} {sc} total", r <= tol,
-                  f"engine {got:,.2f} vs expected {e[tk]:,.2f}, {r:.3%} (tol {tol:.1%})")
+            if code == "L4":
+                # L4's total is a NET of savings minus outreach cost; in the
+                # low scenario the two nearly cancel, so a relative tolerance
+                # on the net magnifies a small, in-band difference in the
+                # savings. Judge the total against +/-15% of the GROSS amounts
+                # being netted (sum of the expected components' absolute
+                # values) - agreed with the reviewer; each component is still
+                # checked at +/-15% on its own below.
+                gross = sum(abs(v) for v in e["components"].values())
+                gap = abs(got - e[tk])
+                check(f"{label} {code} {sc} total", gap <= tol * gross,
+                      f"engine {got:,.2f} vs expected {e[tk]:,.2f}: gap ${gap:,.0f} vs "
+                      f"allowance ${tol * gross:,.0f} (15% of gross ${gross:,.0f}); {r:.1%} of net")
+            else:
+                check(f"{label} {code} {sc} total", r <= tol,
+                      f"engine {got:,.2f} vs expected {e[tk]:,.2f}, {r:.3%} (tol {tol:.1%})")
             for cname, ev in e["components"].items():
                 gv = g["components"].get(cname, {}).get("value_usd")
                 if gv is None:
