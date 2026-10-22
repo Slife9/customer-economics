@@ -208,3 +208,109 @@ class L6CrossSell(Lever):
             return 0.0
         return float(ranked["mean_net_value_after_cac"].iloc[0]
                     - ranked["mean_net_value_after_cac"].iloc[-1])
+
+
+# ---------------------------------------------------------------------------
+# Explanations for the customer drill-down. Additive only. L6 is valued at
+# CHANNEL level, so there is deliberately no customer_contributions(): the
+# trace shows the customer's own inputs against their channel's averages.
+
+def population_channel_ranking(cv: pd.DataFrame) -> pd.DataFrame:
+    """The ranking population() uses to pick the bottom-third channels -
+    mean trailing-12m NEP minus mean acquisition cost, per channel - rebuilt
+    from the customer view so it is available in bundle mode too."""
+    c = cv[cv["acquisition_channel"].notna()].copy()
+    c["acquisition_channel"] = c["acquisition_channel"].astype(str)
+    g = c.groupby("acquisition_channel").agg(
+        customers=(K, "size"), mean_nep=("trailing_12m_net_economic_profit", "mean"),
+        mean_cac=("acquisition_cost_usd", "mean"))
+    g["mean_net_value_after_cac"] = g["mean_nep"] - g["mean_cac"].fillna(0)
+    g = g.sort_values("mean_net_value_after_cac", ascending=False)
+    n_bottom = max(len(g) // 3, 1)
+    g["bottom_third"] = False
+    g.iloc[-n_bottom:, g.columns.get_loc("bottom_third")] = True
+    return g
+
+
+def selection_rules(row, ranking: pd.DataFrame | None = None) -> list:
+    ch = str(row.get("acquisition_channel"))
+    rules = [{"rule": "Acquired through a known channel", "threshold": "channel on file",
+              "actual": ch, "met": ch not in ("None", "nan", "")}]
+    if ranking is not None and ch in ranking.index:
+        bottom = ranking.index[ranking["bottom_third"]].tolist()
+        r = ranking.loc[ch]
+        rules.append({
+            "rule": "Channel is in the bottom third by mean (NEP - acquisition cost)",
+            "threshold": "bottom third: " + ", ".join(bottom),
+            "actual": f"{ch}: ${r['mean_net_value_after_cac']:,.0f} per customer "
+                      f"(rank {list(ranking.index).index(ch) + 1} of {len(ranking)})",
+            "met": bool(r["bottom_third"])})
+    return rules
+
+
+def customer_trace(row, inputs: dict, a: dict, scenario: str = "base") -> list:
+    """No per-customer value exists for L6 - the shift is valued per channel.
+    Shows this customer's inputs against the channel averages instead."""
+    ch = str(row.get("acquisition_channel"))
+    by = {r["channel"]: r for r in inputs.get("channels", [])}
+    steps = [{"component": "This customer's trailing-12m NEP", "formula": "observed",
+              "substituted": "", "value": float(row.get("trailing_12m_net_economic_profit", 0.0))},
+             {"component": "This customer's acquisition cost", "formula": "observed (Table 23)",
+              "substituted": "", "value": float(row["acquisition_cost_usd"])
+              if pd.notna(row.get("acquisition_cost_usd")) else float("nan")}]
+    if ch in by:
+        r = by[ch]
+        steps += [
+            {"component": f"Channel '{ch}' mean NEP (customers acquired in the window)",
+             "formula": "mean over in-window acquisitions", "substituted": f"n = {r['customers_in_window']}",
+             "value": r["mean_trailing_12m_nep_usd"]},
+            {"component": f"Channel '{ch}' mean CAC", "formula": "mean over in-window acquisitions",
+             "substituted": "", "value": r["mean_cac_usd"]},
+            {"component": f"Channel '{ch}' NEP per CAC dollar", "formula": "mean NEP / mean CAC",
+             "substituted": f"${r['mean_trailing_12m_nep_usd']:,.2f} / ${r['mean_cac_usd']:,.2f}",
+             "value": r["nep_per_cac_dollar"]},
+        ]
+        role = ("WORST channel - budget would move away from it" if ch == inputs.get("worst") else
+                "BEST channel - budget would move to it" if ch == inputs.get("best") else
+                "neither the worst nor the best channel - not directly affected by the shift")
+        steps.append({"component": "Role in the budget-neutral shift", "formula": role,
+                      "substituted": "", "value": float("nan")})
+    else:
+        steps.append({"component": "Channel valuation",
+                      "formula": "this channel has no in-window acquisitions with a cost on file",
+                      "substituted": "", "value": float("nan")})
+    steps.append({"component": "Per-customer contribution",
+                  "formula": "none - L6 is valued at channel level (future acquisitions), "
+                             "never per existing customer", "substituted": "", "value": float("nan")})
+    return steps
+
+
+def calculation_steps(inputs: dict, a: dict, scenario: str = "base") -> list:
+    if not inputs.get("available"):
+        return []
+    by = {r["channel"]: r for r in inputs["channels"]}
+    w, b = by[inputs["worst"]], by[inputs["best"]]
+    share = float(a["budget_shift_share"])
+    mult = ASSUME.pick(a["marginal_cac_multiplier"], scenario)
+    q = ASSUME.pick(a["incremental_quality"], scenario)
+    shifted = share * w["annual_acquisition_spend_usd"]
+    lost_n = shifted / w["mean_cac_usd"]
+    gained_n = shifted / (b["mean_cac_usd"] * mult)
+    return [
+        {"component": "budget shifted per year",
+         "formula": "budget_shift_share x worst channel's annual acquisition spend",
+         "substituted": f"{share} x ${w['annual_acquisition_spend_usd']:,.2f} ({inputs['worst']})",
+         "value": shifted},
+        {"component": "customers not acquired in the worst channel", "formula": "shifted / CAC_worst",
+         "substituted": f"${shifted:,.2f} / ${w['mean_cac_usd']:,.2f}", "value": lost_n},
+        {"component": "profit_lost_worst_channel", "formula": "-customers lost x NEP_worst",
+         "substituted": f"-{lost_n:,.2f} x ${w['mean_trailing_12m_nep_usd']:,.2f}",
+         "value": -lost_n * w["mean_trailing_12m_nep_usd"]},
+        {"component": "customers gained in the best channel",
+         "formula": "shifted / (CAC_best x marginal_cac_multiplier)",
+         "substituted": f"${shifted:,.2f} / (${b['mean_cac_usd']:,.2f} x {mult})", "value": gained_n},
+        {"component": "profit_gained_best_channel",
+         "formula": "customers gained x NEP_best x incremental_quality",
+         "substituted": f"{gained_n:,.2f} x ${b['mean_trailing_12m_nep_usd']:,.2f} x {q}",
+         "value": gained_n * b["mean_trailing_12m_nep_usd"] * q},
+    ]

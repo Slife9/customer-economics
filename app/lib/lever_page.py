@@ -72,6 +72,7 @@ class LeverSpec:
     extras: Callable | None = None         # (size, result) -> None
     change: Callable | None = None         # (row, size, assumptions) -> None
     customer_extra: Callable | None = None  # (row, result) -> None, e.g. L2's ML comparison
+    rules: Callable | None = None          # (row, result) -> rules; default module.selection_rules(row)
     unpriced: bool = False                 # L5
     notices: list = field(default_factory=list)
 
@@ -369,7 +370,7 @@ def render_customer(spec: LeverSpec, result: dict, size, cid: str) -> None:
     CW.render_relationship(result, cid)
 
     st.markdown("**Why this customer is here**")
-    _rules_table(spec.module.selection_rules(row))
+    _rules_table(spec.rules(row, result) if spec.rules else spec.module.selection_rules(row))
 
     st.markdown(f"**Recommended action:** `{row['action']}` - {row.get('reason', '')}")
     if spec.change:
