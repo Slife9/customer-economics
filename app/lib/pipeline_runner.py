@@ -59,7 +59,10 @@ def _find_portfolio_root(extracted_dir: Path) -> Path:
     return hits[0].parent
 
 
-@st.cache_resource(show_spinner=False)
+# max_entries bounds memory: each cached result holds a full customer view,
+# ledger and six lever worklists, so an unbounded cache grows with every
+# upload or regime switch until the instance runs out of RAM.
+@st.cache_resource(show_spinner=False, max_entries=2)
 def _cached_pipeline(portfolio_root_str: str, _cache_key: str, leverage_policy_name: str):
     portfolio_root = Path(portfolio_root_str)
     return build_pipeline(portfolio_root, leverage_policy_name)

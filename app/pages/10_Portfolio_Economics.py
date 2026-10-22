@@ -29,7 +29,8 @@ cv = result["customer_view"]
 # drill-down below) reconciled to every cv-derived chart on this page,
 # exactly as charts.py:revenue_cost_waterfall's own docstring requires.
 led = result["ledger"]["card"]
-led = led[led["Masked Customer Number"].isin(cv["Masked Customer Number"])]
+led = led.loc[led["Masked Customer Number"].isin(cv["Masked Customer Number"]),
+              ["Masked Customer Number"] + C.WATERFALL_COLUMNS]
 measured = result["ledger"]["measured"]
 
 # A pre-computed results bundle never carries the raw transaction table (see

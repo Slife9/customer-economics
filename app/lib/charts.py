@@ -14,6 +14,14 @@ LEVER_COLORS = {
 }
 
 
+# Every ledger column revenue_cost_waterfall reads. Pages that filter the
+# ledger first take only these, not all ~40 columns: a full-width filtered
+# copy of the 100k ledger is ~730 MB on its own.
+WATERFALL_COLUMNS = ["Cycle Month", "interest_revenue", "interchange_revenue", "fee_revenue",
+                     "reward_expense", "funding_cost", "credit_cost", "cost_to_serve",
+                     "capital_cost"]
+
+
 def revenue_cost_waterfall(ledger_card: pd.DataFrame, trailing_months: int = 12) -> go.Figure:
     """Trailing N months only, matching the customer view's own window - the
     executive KPI (trailing-12mo NEP) and this chart must reconcile to the

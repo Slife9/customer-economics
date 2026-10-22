@@ -29,6 +29,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -101,7 +102,13 @@ def _read_json(zf: zipfile.ZipFile, path: str) -> Any:
 
 
 def _read_table(zf: zipfile.ZipFile, path: str) -> pd.DataFrame:
-    return pd.read_parquet(io.BytesIO(zf.read(path)), engine="pyarrow")
+    # self_destruct + split_blocks hand each column to pandas and free its
+    # Arrow buffer as the conversion goes, instead of holding the whole Arrow
+    # table and its pandas copy at once - the difference between fitting and
+    # not fitting the 100k ledger on a 2 GB instance. Same data and dtypes as
+    # pd.read_parquet (both restore from the file's pandas metadata).
+    table = pq.read_table(io.BytesIO(zf.read(path)))
+    return table.to_pandas(self_destruct=True, split_blocks=True)
 
 
 def _validate(zf: zipfile.ZipFile, manifest: dict) -> None:
@@ -274,6 +281,9 @@ def load_bundle_from_bytes(data: bytes, file_name: str
                   if manifest.get("has_negative_control_gate") else None)
 
     portfolio = BundlePortfolioStub(manifest.get("portfolio_label", file_name))
+    # Arrow's allocator keeps buffers freed during the reads above for reuse;
+    # hand them back to the OS (about 800 MB on the 100k bundle).
+    pa.default_memory_pool().release_unused()
 
     result = {
         "portfolio": portfolio,

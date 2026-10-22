@@ -158,7 +158,7 @@ cv = result["customer_view"]
 # reconciled to the headline NEP metric below, exactly as
 # charts.py:revenue_cost_waterfall's own docstring requires.
 led = result["ledger"]["card"]
-led = led[led["Masked Customer Number"].isin(cv["Masked Customer Number"])]
+led = led.loc[led["Masked Customer Number"].isin(cv["Masked Customer Number"]), C.WATERFALL_COLUMNS]
 
 st.success(f"Loaded **{st.session_state['demo_label']}** — "
           f"{cv['Masked Customer Number'].nunique():,} customers, "

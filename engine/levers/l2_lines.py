@@ -602,7 +602,7 @@ def customer_trace(row, inputs: dict, a: dict, scenario: str = "base") -> list:
             "formula": ("reactivation_rate x (mean card_net of active card holders - this "
                         "customer's card_net) - campaign_cost"),
             "substituted": (f"{react} x (${inputs['active_card_net_mean']:,.2f} - "
-                            f"${row['card_net']:,.2f}) - ${camp}"),
+                            f"({'-' if row['card_net'] < 0 else ''}${abs(row['card_net']):,.2f})) - ${camp}"),
             "value": c["reactivation_net"]})
     else:
         steps.append({"component": "deepen relationship", "formula": "no limit change: $0 by construction",
