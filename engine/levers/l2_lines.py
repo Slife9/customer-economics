@@ -198,6 +198,7 @@ DORMANT_INACTIVE_SHARE_FLOOR = 0.50
 ACTIVE_TRANSACTOR_SHARE_FLOOR = 0.50
 IDLE_LIMIT_FLOOR = 1000.0
 STRETCHED_PEAK_UTIL_FLOOR = 0.75
+STRETCHED_MIN_CREDIT_SCORE = 660
 
 
 class L2Lines(Lever):
@@ -225,7 +226,7 @@ class L2Lines(Lever):
                           & ~dormant & (cv["current_limit"] > IDLE_LIMIT_FLOOR))
         active_transactor = seasoned & good_standing & low_ending_balance & heavy_spend_full_pay
         stretched = ((cv["peak_utilization_12m"] >= STRETCHED_PEAK_UTIL_FLOOR)
-                    & good_standing & (cv["Credit Score"] >= 660))
+                    & good_standing & (cv["Credit Score"] >= STRETCHED_MIN_CREDIT_SCORE))
         routed = cv["routed_lever"] == "L2"
         # The full customer view - valuation needs portfolio-wide figures
         # (funding rate, typical active card holder) not just this population.
@@ -333,3 +334,279 @@ class L2Lines(Lever):
         idle_amount = ((IDLE_PEAK_UTIL_CEILING - cv["peak_utilization_12m"]).clip(lower=0)
                       * cv["current_limit"])
         return float(idle_amount.mean())
+
+
+# ---------------------------------------------------------------------------
+# Explanations for the customer drill-down. Additive only: they read the same
+# module constants and formulas as population() and value_scenarios(), and
+# audit/audit_lever_estimates.py checks that customer contributions sum to
+# the portfolio components and that calculation steps equal them.
+
+def _rule(rule: str, threshold: str, actual: str, met) -> dict:
+    return {"rule": rule, "threshold": threshold, "actual": actual, "met": bool(met)}
+
+
+def _pct(v) -> str:
+    return "n/a" if pd.isna(v) else f"{v:.0%}"
+
+
+def _usd(v) -> str:
+    return "n/a" if pd.isna(v) else f"${v:,.0f}"
+
+
+def selection_rules(row) -> dict:
+    """Every L2 rule set for one customer (a customer-view row), in the
+    precedence order population() applies them; `matched` is the first set
+    that is fully met - the one that put the customer in their group."""
+    seasoned = _rule("Account seasoned", f">= {MIN_SEASONING_MONTHS} months",
+                     f"{row['account_age_months']:.0f} months",
+                     row["account_age_months"] >= MIN_SEASONING_MONTHS)
+    standing = _rule("Good standing", "0 days past due",
+                     f"{row['latest_days_past_due']:.0f} days", row["latest_days_past_due"] == 0)
+    avg_u = _rule("Average utilisation, 12 months", f"<= {IDLE_AVG_UTIL_CEILING:.0%}",
+                  _pct(row["avg_utilization_12m"]),
+                  row["avg_utilization_12m"] <= IDLE_AVG_UTIL_CEILING)
+    peak_u = _rule("Peak utilisation, 12 months", f"<= {IDLE_PEAK_UTIL_CEILING:.0%}",
+                   _pct(row["peak_utilization_12m"]),
+                   row["peak_utilization_12m"] <= IDLE_PEAK_UTIL_CEILING)
+    limit = _rule("Credit limit", f"> {_usd(IDLE_LIMIT_FLOOR)}", _usd(row["current_limit"]),
+                  row["current_limit"] > IDLE_LIMIT_FLOOR)
+    spend = row["spend_to_limit_ratio"]
+    sets = {
+        "REACTIVATION_CAMPAIGN (dormant)": [
+            seasoned, standing, avg_u, peak_u,
+            _rule("12-month spend / limit", f"<= {DORMANT_SPEND_TO_LIMIT_CEILING:.0%}", _pct(spend),
+                  spend <= DORMANT_SPEND_TO_LIMIT_CEILING),
+            _rule("Share of months inactive", f">= {DORMANT_INACTIVE_SHARE_FLOOR:.0%}",
+                  _pct(row["inactive_share_12m"]),
+                  row["inactive_share_12m"] >= DORMANT_INACTIVE_SHARE_FLOOR),
+            limit],
+        "DECREASE_LIMIT (idle, light use)": [
+            seasoned, standing, avg_u, peak_u,
+            _rule("12-month spend / limit", f"<= {IDLE_SPEND_TO_LIMIT_CEILING:.0%}", _pct(spend),
+                  spend <= IDLE_SPEND_TO_LIMIT_CEILING),
+            limit],
+        "DEEPEN_RELATIONSHIP_NO_LIMIT_CHANGE (active transactor)": [
+            seasoned, standing, avg_u, peak_u,
+            _rule("12-month spend / limit", f"> {IDLE_SPEND_TO_LIMIT_CEILING:.0%}", _pct(spend),
+                  spend > IDLE_SPEND_TO_LIMIT_CEILING),
+            _rule("Share of months paid in full", f">= {ACTIVE_TRANSACTOR_SHARE_FLOOR:.0%}",
+                  _pct(row["transactor_share_12m"]),
+                  row["transactor_share_12m"] >= ACTIVE_TRANSACTOR_SHARE_FLOOR)],
+        "INCREASE_LIMIT (stretched, good standing)": [
+            _rule("Peak utilisation, 12 months", f">= {STRETCHED_PEAK_UTIL_FLOOR:.0%}",
+                  _pct(row["peak_utilization_12m"]),
+                  row["peak_utilization_12m"] >= STRETCHED_PEAK_UTIL_FLOOR),
+            standing,
+            _rule("Credit score", f">= {STRETCHED_MIN_CREDIT_SCORE}", f"{row['Credit Score']:.0f}",
+                  row["Credit Score"] >= STRETCHED_MIN_CREDIT_SCORE)],
+        "DECREASE_LIMIT (routed credit-cost loss)": [
+            _rule("Routed to L2 (credit cost dominates a below-cost relationship, priced in "
+                  "line with peers)", "routed_lever = L2", str(row.get("routed_lever")),
+                  row.get("routed_lever") == "L2")],
+    }
+    matched = next((k for k, rules in sets.items() if all(r["met"] for r in rules)), None)
+    return {"matched": matched, "rule_sets": sets,
+            "precedence": ("Rule sets are tested top to bottom; the first fully met set "
+                           "decides the group (dormant is tested before idle, so a dormant "
+                           "line is never also treated as an idle decrease).")}
+
+
+def proposed_change(row, a: dict) -> dict:
+    action = row["action"]
+    if action == "DECREASE_LIMIT":
+        target = float(decrease_target_limit(pd.DataFrame([row])).iloc[0])
+        return {"current_limit": float(row["current_limit"]),
+                "proposed_limit": min(float(row["current_limit"]), target),
+                "rule": "max(peak utilisation x limit x 1.5, 12-month spend x 1.10), floor $300"}
+    if action == "INCREASE_LIMIT":
+        return {"current_limit": float(row["current_limit"]),
+                "proposed_limit": float(row["current_limit"]) * (1 + float(a["increase_pct"])),
+                "rule": f"current limit + {float(a['increase_pct']):.0%}"}
+    return {"current_limit": float(row["current_limit"]),
+            "proposed_limit": float(row["current_limit"]), "rule": "no limit change"}
+
+
+def customer_contributions(rows: pd.DataFrame, inputs: dict, a: dict,
+                           scenario: str = "base") -> pd.DataFrame:
+    """Expected contribution of each worklist customer to each component under
+    one scenario. `rows` = the L2 worklist merged with the customer view.
+    Summed over customers they equal the portfolio components exactly."""
+    impl = ASSUME.pick(a["decrease_implemented"], scenario)
+    life = ASSUME.pick(a["card_life_years"], scenario)
+    use = ASSUME.pick(a["headroom_used"], scenario)
+    react = ASSUME.pick(a["reactivation_rate"], scenario)
+    camp = ASSUME.pick(a["campaign_cost_usd"], scenario)
+    pct = float(a["increase_pct"])
+    out = pd.DataFrame(index=rows.index)
+    dec = rows["action"] == "DECREASE_LIMIT"
+    inc = rows["action"] == "INCREASE_LIMIT"
+    dorm = rows["action"] == "REACTIVATION_CAMPAIGN"
+    cut = (rows["current_limit"] - decrease_target_limit(rows)).clip(lower=0).where(dec, 0.0)
+    liq_rate = _per_undrawn_dollar(rows, "annual_liquidity_cost")
+    slr_rate = _per_undrawn_dollar(rows, "leverage_capital_cost")
+    out["decrease_credit_loss_avoided"] = (cut * rows["pd_lifetime"] * rows["lgd"]
+                                           * rows["behavioral_ccf"] * impl / life)
+    out["decrease_liquidity_avoided"] = cut * liq_rate * impl
+    out["decrease_slr_capital_freed"] = cut * slr_rate * impl
+    added = (rows["current_limit"] * pct).where(inc, 0.0)
+    bal = added * use
+    out["increase_interest"] = (bal * rows["latest_charged_apr"] / 100
+                                * (1 - rows["transactor_share_12m"]))
+    out["increase_funding_cost"] = -bal * inputs["funding_rate"]
+    out["increase_extra_credit_loss"] = -bal * rows["pd_lifetime"] / life * rows["lgd"]
+    out["increase_extra_slr_capital"] = -(added - bal) * slr_rate
+    out["reactivation_net"] = ((react * (inputs["active_card_net_mean"] - rows["card_net"])
+                                - camp).where(dorm, 0.0))
+    if a.get("dormant_rightsizing_enabled", False):
+        carry = rows["annual_liquidity_cost"].fillna(0) + rows["leverage_capital_cost"].fillna(0)
+        out["dormant_rightsizing"] = (carry * (1 - react)
+                                      * ASSUME.pick(a["dormant_rightsize_implemented"], scenario)
+                                      * ASSUME.pick(a["dormant_rightsize_reduction"], scenario)
+                                      ).where(dorm, 0.0)
+    out = out.fillna(0.0)
+    out["total"] = out.sum(axis=1)
+    return out
+
+
+def calculation_steps(inputs: dict, a: dict, scenario: str = "base") -> list:
+    """Each component with the portfolio's numbers substituted, so the total
+    can be reproduced by hand. The audit checks `value` equals the engine's
+    component from value_scenarios()."""
+    impl = ASSUME.pick(a["decrease_implemented"], scenario)
+    life = ASSUME.pick(a["card_life_years"], scenario)
+    use = ASSUME.pick(a["headroom_used"], scenario)
+    react = ASSUME.pick(a["reactivation_rate"], scenario)
+    camp = ASSUME.pick(a["campaign_cost_usd"], scenario)
+    pct = float(a["increase_pct"])
+    i = inputs
+    n = i["reactivation_customers"]
+    extra = []
+    if a.get("dormant_rightsizing_enabled", False):
+        ri = ASSUME.pick(a["dormant_rightsize_implemented"], scenario)
+        rr = ASSUME.pick(a["dormant_rightsize_reduction"], scenario)
+        extra.append({
+            "component": "dormant_rightsizing",
+            "formula": ("dormant carrying cost x (1 - reactivation_rate) x "
+                        "dormant_rightsize_implemented x dormant_rightsize_reduction"),
+            "substituted": f"${i['dormant_carrying_cost_usd']:,.2f} x (1 - {react}) x {ri} x {rr}",
+            "value": i["dormant_carrying_cost_usd"] * (1 - react) * ri * rr})
+    return extra + [
+        {"component": "decrease_credit_loss_avoided",
+         "formula": "sum(cut x PD_lifetime x LGD x behavioural CCF) x decrease_implemented / card_life_years",
+         "substituted": f"${i['decrease_lifetime_expected_loss_usd']:,.2f} x {impl} / {life}",
+         "value": i["decrease_lifetime_expected_loss_usd"] * impl / life},
+        {"component": "decrease_liquidity_avoided",
+         "formula": "sum(cut x liquidity cost per undrawn $) x decrease_implemented",
+         "substituted": f"${i['decrease_liquidity_cost_usd']:,.2f} x {impl}",
+         "value": i["decrease_liquidity_cost_usd"] * impl},
+        {"component": "decrease_slr_capital_freed",
+         "formula": "sum(cut x SLR cost per undrawn $) x decrease_implemented",
+         "substituted": f"${i['decrease_slr_cost_usd']:,.2f} x {impl}",
+         "value": i["decrease_slr_cost_usd"] * impl},
+        {"component": "increase_interest",
+         "formula": "increase_pct x headroom_used x sum(limit x APR x (1 - pay-in-full share))",
+         "substituted": f"{pct} x {use} x ${i['increase_sum_limit_x_apr_x_revolve']:,.2f}",
+         "value": pct * use * i["increase_sum_limit_x_apr_x_revolve"]},
+        {"component": "increase_funding_cost",
+         "formula": "-increase_pct x headroom_used x sum(limit) x funding rate",
+         "substituted": (f"-{pct} x {use} x ${i['increase_sum_current_limit']:,.2f} x "
+                         f"{i['funding_rate']:.5f}"),
+         "value": -pct * use * i["increase_sum_current_limit"] * i["funding_rate"]},
+        {"component": "increase_extra_credit_loss",
+         "formula": "-increase_pct x headroom_used x sum(limit x PD_lifetime x LGD) / card_life_years",
+         "substituted": f"-{pct} x {use} x ${i['increase_sum_limit_x_pd_x_lgd']:,.2f} / {life}",
+         "value": -pct * use * i["increase_sum_limit_x_pd_x_lgd"] / life},
+        {"component": "increase_extra_slr_capital",
+         "formula": "-increase_pct x (1 - headroom_used) x sum(limit x SLR cost per undrawn $)",
+         "substituted": f"-{pct} x (1 - {use}) x ${i['increase_sum_limit_x_slr_rate']:,.2f}",
+         "value": -pct * (1 - use) * i["increase_sum_limit_x_slr_rate"]},
+        {"component": "reactivation_net",
+         "formula": ("n x reactivation_rate x (mean card_net of active card holders - "
+                     "mean card_net of dormant) - n x campaign_cost"),
+         "substituted": (f"{n} x {react} x (${i['active_card_net_mean']:,.2f} - "
+                         f"${i['dormant_card_net_mean']:,.2f}) - {n} x ${camp}"),
+         "value": n * react * (i["active_card_net_mean"] - i["dormant_card_net_mean"]) - n * camp},
+    ]
+
+
+def customer_trace(row, inputs: dict, a: dict, scenario: str = "base") -> list:
+    """One customer's contribution, component by component, with their own
+    inputs and the assumptions substituted into the formula. Values come
+    from customer_contributions() on this single row, so the arithmetic is
+    the engine's, not a re-implementation."""
+    one = pd.DataFrame([row])
+    c = customer_contributions(one, inputs, a, scenario).iloc[0]
+    impl = ASSUME.pick(a["decrease_implemented"], scenario)
+    life = ASSUME.pick(a["card_life_years"], scenario)
+    use = ASSUME.pick(a["headroom_used"], scenario)
+    react = ASSUME.pick(a["reactivation_rate"], scenario)
+    camp = ASSUME.pick(a["campaign_cost_usd"], scenario)
+    pct = float(a["increase_pct"])
+    action = row["action"]
+    lim = float(row["current_limit"])
+    steps = []
+    if action == "DECREASE_LIMIT":
+        target = float(decrease_target_limit(one).iloc[0])
+        cut = max(lim - target, 0.0)
+        und = row["avg_undrawn_12m"]
+        liq_rate = float(_per_undrawn_dollar(one, "annual_liquidity_cost").iloc[0])
+        slr_rate = float(_per_undrawn_dollar(one, "leverage_capital_cost").iloc[0])
+        steps += [
+            {"component": "limit cut", "formula": "current limit - target limit",
+             "substituted": f"${lim:,.0f} - ${target:,.0f}", "value": cut},
+            {"component": "decrease_credit_loss_avoided",
+             "formula": "cut x PD_lifetime x LGD x behavioural CCF x decrease_implemented / card_life_years",
+             "substituted": (f"${cut:,.0f} x {row['pd_lifetime']:.4f} x {row['lgd']:.3f} x "
+                             f"{row['behavioral_ccf']:.3f} x {impl} / {life}"),
+             "value": c["decrease_credit_loss_avoided"]},
+            {"component": "decrease_liquidity_avoided",
+             "formula": "cut x (annual liquidity cost / avg undrawn) x decrease_implemented",
+             "substituted": (f"${cut:,.0f} x (${row['annual_liquidity_cost']:,.2f} / "
+                             f"${und:,.0f} = {liq_rate:.5f}) x {impl}"),
+             "value": c["decrease_liquidity_avoided"]},
+            {"component": "decrease_slr_capital_freed",
+             "formula": "cut x (SLR cost / avg undrawn) x decrease_implemented",
+             "substituted": f"${cut:,.0f} x {slr_rate:.5f} x {impl}",
+             "value": c["decrease_slr_capital_freed"]},
+        ]
+    elif action == "INCREASE_LIMIT":
+        added = lim * pct
+        bal = added * use
+        slr_rate = float(_per_undrawn_dollar(one, "leverage_capital_cost").iloc[0])
+        steps += [
+            {"component": "added limit / new balance",
+             "formula": "limit x increase_pct; added limit x headroom_used",
+             "substituted": f"${lim:,.0f} x {pct} = ${added:,.0f}; x {use} = ${bal:,.0f}",
+             "value": bal},
+            {"component": "increase_interest",
+             "formula": "new balance x APR x (1 - pay-in-full share)",
+             "substituted": (f"${bal:,.0f} x {row['latest_charged_apr']:.2f}% x "
+                             f"(1 - {row['transactor_share_12m']:.2f})"),
+             "value": c["increase_interest"]},
+            {"component": "increase_funding_cost", "formula": "-new balance x funding rate",
+             "substituted": f"-${bal:,.0f} x {inputs['funding_rate']:.5f}",
+             "value": c["increase_funding_cost"]},
+            {"component": "increase_extra_credit_loss",
+             "formula": "-new balance x PD_lifetime / card_life_years x LGD",
+             "substituted": f"-${bal:,.0f} x {row['pd_lifetime']:.4f} / {life} x {row['lgd']:.3f}",
+             "value": c["increase_extra_credit_loss"]},
+            {"component": "increase_extra_slr_capital",
+             "formula": "-(added limit - new balance) x SLR cost per undrawn $",
+             "substituted": f"-(${added:,.0f} - ${bal:,.0f}) x {slr_rate:.5f}",
+             "value": c["increase_extra_slr_capital"]},
+        ]
+    elif action == "REACTIVATION_CAMPAIGN":
+        steps.append({
+            "component": "reactivation_net",
+            "formula": ("reactivation_rate x (mean card_net of active card holders - this "
+                        "customer's card_net) - campaign_cost"),
+            "substituted": (f"{react} x (${inputs['active_card_net_mean']:,.2f} - "
+                            f"${row['card_net']:,.2f}) - ${camp}"),
+            "value": c["reactivation_net"]})
+    else:
+        steps.append({"component": "deepen relationship", "formula": "no limit change: $0 by construction",
+                      "substituted": "-", "value": 0.0})
+    steps.append({"component": "TOTAL (expected value, base assumptions)", "formula": "sum of the above components",
+                  "substituted": "", "value": c["total"]})
+    return steps

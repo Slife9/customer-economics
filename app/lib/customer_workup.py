@@ -1,0 +1,403 @@
+"""Customer-level views shared by every lever page's drill-down and by
+Strategy Overview's customer lookup. Moved verbatim from the former Levers &
+Strategy page's customer drill-down (feature/lever-valuation-rebuild), so
+the existing relationship view, CAC payback status and Full Economic Workup
+(monthly P&L, transaction detail, full ledger) are preserved, not
+reimplemented. Only change: wrapped as functions of (result, picked)."""
+from __future__ import annotations
+
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+
+from app.lib.results_bundle import BundleTableUnavailable
+from engine.core import ledger as ENGINE_LEDGER
+
+ACTIVITY_LABELS = {
+    "contact_center_call": "Contact center calls",
+    "collections_contact": "Collections contacts",
+    "branch_visit": "Branch visits",
+    "fraud_alert": "Fraud alerts",
+    "dispute_case": "Disputes raised",
+    "complaint_case": "Complaints handled",
+    "digital_session": "Digital sessions",
+    "payment_processing": "Payments processed",
+    "statement_paper": "Paper statements",
+    "statement_electronic": "Electronic statements",
+    "card_issuance": "Card issuance",
+}
+
+LEVER_ICONS = {"L1": "🎁", "L2": "📈", "L3": "💲", "L4": "⚙️", "L5": "🛟", "L6": "🧭"}
+
+
+def render_relationship(result: dict, picked: str) -> None:
+    """CEV, NEP, segment, products, CAC payback status and the card /
+    deposit / loan relationship waterfall."""
+    cv = result["customer_view"]
+    row = cv[cv["Masked Customer Number"] == picked].iloc[0]
+    p1, p2, p3, p4 = st.columns(4)
+    p1.metric("CEV score", f"{row['cev_score']:.1f}", row["cev_band"])
+    p2.metric("Trailing-12mo NEP", f"${row['trailing_12m_net_economic_profit']:,.0f}")
+    p3.metric("Segment / Score", f"{row['Segment']} / {row['Credit Score Band']}")
+    p4.metric("Products held", int(row["products_held"]))
+
+    cac_status = row.get("cac_payback_status", "Unknown - no acquisition cost data")
+    if cac_status == "Recovered":
+        st.success(
+            f"**Acquisition cost recovered** — ${row['acquisition_cost_usd']:,.0f} spent "
+            f"via {row['acquisition_channel']}, paid back in "
+            f"{row['cac_payback_months']:.0f} months. Lifetime value since acquisition, "
+            f"net of that cost: ${row['cumulative_net_value_since_acquisition']:,.0f}.")
+    elif cac_status == "Not yet recovered":
+        st.warning(
+            f"**Acquisition cost not yet recovered** — ${row['acquisition_cost_usd']:,.0f} "
+            f"spent via {row['acquisition_channel']}; cumulative relationship profit since "
+            f"acquisition is still ${row['cumulative_net_value_since_acquisition']:,.0f} short "
+            f"of break-even. Not a forecast of whether it ever will be.")
+    elif cac_status == "Unknown - predates observation window":
+        st.caption(
+            "Acquisition cost on file "
+            f"(${row['acquisition_cost_usd']:,.0f} via {row['acquisition_channel']}), but this "
+            "account's true open date predates the data window, so when it was actually "
+            "acquired — and therefore whether it has paid back — can't be measured here.")
+    else:
+        st.caption("No acquisition cost data in this upload — payback can't be assessed.")
+
+    fig = go.Figure(go.Waterfall(
+        orientation="v", measure=["relative", "relative", "relative", "total"],
+        x=["Card", "Deposit", "Loan", "Total (trailing 12mo)"],
+        y=[row["card_net"], row["deposit_net_12m"], row["loan_net_12m"],
+          row["trailing_12m_net_economic_profit"]],
+        decreasing={"marker": {"color": "#ef4444"}},
+        increasing={"marker": {"color": "#2563eb"}},
+        totals={"marker": {"color": "#16a34a" if row["trailing_12m_net_economic_profit"] >= 0 else "#dc2626"}},
+        text=[f"${v:,.0f}" for v in [row["card_net"], row["deposit_net_12m"],
+                                     row["loan_net_12m"],
+                                     row["trailing_12m_net_economic_profit"]]],
+        textposition="outside"))
+    fig.update_layout(title="This customer's relationship economics", height=380,
+                      showlegend=False, margin=dict(t=50, b=20))
+    st.plotly_chart(fig, width="stretch")
+
+    if bool(row["relationship_covers_card_loss"]):
+        st.success("This customer loses money on their card alone, but the full "
+                  "relationship is profitable — never recommend exit.")
+
+
+
+def render_actions_across_levers(result: dict, picked: str) -> None:
+    """Suppression status, or every lever action recommended for this customer."""
+    cv = result["customer_view"]
+    worklists = result["worklists"]
+    row = cv[cv["Masked Customer Number"] == picked].iloc[0]
+    if row["Masked Customer Number"] in set(result["suppressed"].suppressed["Masked Customer Number"]):
+        reason = result["suppressed"].suppressed.set_index(
+            "Masked Customer Number").loc[picked, "suppression_reason"]
+        st.warning(f"**Suppressed from every lever: {reason}.** No action is "
+                  f"assigned to this customer regardless of their economics — "
+                  f"high servicing cost driven by vulnerability is an "
+                  f"obligation, not leakage.")
+    else:
+        matches = []
+        for code, wl in worklists.items():
+            if len(wl) and picked in set(wl["Masked Customer Number"]):
+                r = wl[wl["Masked Customer Number"] == picked].iloc[0]
+                matches.append((code, r))
+        if matches:
+            st.markdown("**Recommended actions for this customer:**")
+            for code, r in matches:
+                action = r.get("action", "—")
+                reason = r.get("reason", "—")
+                st.markdown(f"- {LEVER_ICONS.get(code, '')} **{code} · {action}** — {reason}")
+                tactics = r.get("suggested_engagement_tactics", "")
+                if isinstance(tactics, str) and tactics:
+                    st.caption(f"　→ {tactics}")
+        else:
+            if bool(row["is_below_cost"]):
+                st.info(f"Below cost, routed to **{row.get('routed_lever', 'STRUCTURAL')}** "
+                       f"but did not clear that lever's population threshold. "
+                       f"Reason: {row.get('routing_reason', 'n/a')}")
+            else:
+                st.caption("Profitable, and not flagged by any lever's opportunity criteria.")
+
+
+
+def render_full_workup(result: dict, picked: str) -> None:
+    """The Full Economic Workup expander: monthly P&L, cost to serve by
+    activity, transaction detail and the full ledger rows."""
+    # ---------------- Full Economic Workup, for the admin reviewing a recommendation
+    st.divider()
+    with st.expander("📋 Full Economic Workup — for the admin deciding whether to act",
+                     expanded=False):
+        st.caption("Everything the recommendation above was based on: the "
+                  "customer's own transactions, the month-by-month P&L that "
+                  "produced their trailing-12mo number, and the underlying "
+                  "ledger rows - so a decision is never taken on the "
+                  "recommendation's word alone.")
+
+        portfolio = result["portfolio"]
+        led = result["ledger"]["card"]
+        cust_ledger = led[led["Masked Customer Number"] == picked].sort_values("Cycle Month")
+        # A pre-computed results bundle never carries raw portfolio tables
+        # (Table2/Table5/Table11/Table12 - see ARCHITECTURE.md's "Results
+        # bundle" section) to keep bundles small - this degrades the two
+        # tabs that need them below into a clear message rather than a
+        # Python error. A live engine run never raises here, so this tab
+        # behaves exactly as before this feature existed.
+        try:
+            accounts = portfolio["Table2_Card_Account.csv"]
+            cust_accts = set(accounts.loc[
+                accounts["Masked Customer Number"] == picked, "Masked Account Number"])
+            tx_all = portfolio["Table5_Transaction.csv"]
+            cust_tx = tx_all[tx_all["Masked Account Number"].isin(cust_accts)].sort_values(
+                "Cycle Month")
+            portfolio_detail_available = True
+        except BundleTableUnavailable:
+            cust_accts = set()
+            cust_tx = pd.DataFrame()
+            portfolio_detail_available = False
+
+        tab_pl, tab_tx, tab_ledger = st.tabs(
+            ["Monthly P&L", "Transaction Detail", "Full Ledger"])
+
+        with tab_pl:
+            if len(cust_ledger):
+                monthly = cust_ledger.groupby("Cycle Month").agg(
+                    interest_revenue=("interest_revenue", "sum"),
+                    interchange_revenue=("interchange_revenue", "sum"),
+                    fee_revenue=("fee_revenue", "sum"),
+                    reward_expense=("reward_expense", "sum"),
+                    funding_cost=("funding_cost", "sum"),
+                    credit_cost=("credit_cost", "sum"),
+                    cost_to_serve=("cost_to_serve", "sum"),
+                    cost_to_serve_marginal=("cost_to_serve_marginal", "sum"),
+                    cost_to_serve_fixed_allocated=("cost_to_serve_fixed_allocated", "sum"),
+                    capital_cost=("capital_cost", "sum"),
+                    net_economic_profit=("net_economic_profit", "sum"),
+                ).reset_index()
+                monthly["total_revenue"] = (monthly["interest_revenue"]
+                                           + monthly["interchange_revenue"]
+                                           + monthly["fee_revenue"])
+                monthly["total_cost"] = (monthly["reward_expense"] + monthly["funding_cost"]
+                                        + monthly["credit_cost"] + monthly["cost_to_serve"]
+                                        + monthly["capital_cost"])
+
+                fig = go.Figure()
+                fig.add_trace(go.Bar(x=monthly["Cycle Month"], y=monthly["total_revenue"],
+                                     name="Revenue", marker_color="#2563eb"))
+                fig.add_trace(go.Bar(x=monthly["Cycle Month"], y=-monthly["total_cost"],
+                                     name="Cost (incl. risk cost of holding money)",
+                                     marker_color="#ef4444"))
+                fig.add_trace(go.Scatter(x=monthly["Cycle Month"], y=monthly["net_economic_profit"],
+                                        name="Net", mode="lines+markers",
+                                        line=dict(color="#16a34a", width=3)))
+                fig.update_layout(title="Month-on-month revenue, cost, and net",
+                                  barmode="relative", height=380,
+                                  yaxis_title="USD/month", margin=dict(t=50, b=20))
+                st.plotly_chart(fig, width="stretch")
+
+                st.markdown("**Average per month, by individual line item:**")
+                avg_row = monthly.drop(columns=["Cycle Month"]).mean()
+
+                line_items = [
+                    ("Interest revenue", avg_row["interest_revenue"], "Revenue"),
+                    ("Interchange revenue", avg_row["interchange_revenue"], "Revenue"),
+                    ("Fee revenue", avg_row["fee_revenue"], "Revenue"),
+                    ("Reward expense", -avg_row["reward_expense"], "Cost"),
+                    ("Funding cost", -avg_row["funding_cost"], "Cost"),
+                    ("Credit cost", -avg_row["credit_cost"], "Cost"),
+                    ("Cost to serve — caused by this customer",
+                     -avg_row["cost_to_serve_marginal"], "Cost"),
+                    ("Cost to serve — shared overhead allocation",
+                     -avg_row["cost_to_serve_fixed_allocated"], "Cost"),
+                    ("Capital cost", -avg_row["capital_cost"], "Cost"),
+                ]
+                items_df = pd.DataFrame(line_items, columns=["Line item", "Avg $/month", "Kind"])
+
+                fig = go.Figure(go.Bar(
+                    y=items_df["Line item"], x=items_df["Avg $/month"], orientation="h",
+                    marker_color=["#2563eb" if k == "Revenue" else "#ef4444"
+                                 for k in items_df["Kind"]],
+                    text=[f"${v:,.2f}" for v in items_df["Avg $/month"]],
+                    textposition="outside"))
+                fig.update_layout(
+                    title="What makes up the average month, line by line",
+                    xaxis_title="USD/month", height=420,
+                    margin=dict(t=50, b=20, l=10),
+                    yaxis=dict(autorange="reversed"))
+                st.plotly_chart(fig, width="stretch")
+
+                st.dataframe(
+                    items_df.style.format({"Avg $/month": "${:,.2f}"}),
+                    width="stretch", height=320, hide_index=True)
+
+                n1, n2, n3 = st.columns(3)
+                n1.metric("Total revenue / month", f"${avg_row['total_revenue']:,.2f}")
+                n2.metric("Total cost / month", f"-${avg_row['total_cost']:,.2f}")
+                n3.metric("Net economic profit / month", f"${avg_row['net_economic_profit']:,.2f}")
+
+                st.caption("**Cost to serve is split into two rows above** — this is what "
+                          "usually explains a 'dormant card still costs us money' finding. "
+                          "*Caused by this customer* is calls, digital sessions, and "
+                          "disputes this specific account generated, at the true per-unit "
+                          "variable cost — zero for a genuinely unused card. *Shared overhead "
+                          "allocation* is an even split of the call center/digital platform's "
+                          "fixed capacity cost across every active account, whether or not "
+                          "they use it — real, but not caused by this customer, and not "
+                          "something a per-customer action can change.")
+                if avg_row["cost_to_serve_marginal"] < 0.01:
+                    st.caption("This customer generated essentially no service "
+                              "requests of their own - the cost to serve shown "
+                              "above is almost entirely the shared-overhead "
+                              "allocation, not anything they did.")
+
+                # ---- Cost to serve, broken out by the actual activity that
+                # caused it (calls, paper statements, and so on), not just
+                # the marginal/fixed split. Recomputed from the same portfolio-
+                # wide driver volumes and cost-pool bands the ledger itself
+                # used, then sliced to just this customer's own account-cycles
+                # - so it reconciles exactly with the combined figures above.
+                n_months = len(monthly)
+                activity_rows = []
+                # Defensive: a deployment that hasn't yet picked up this
+                # engine function (Streamlit Cloud can lag a redeploy behind
+                # a push - see ARCHITECTURE.md) must degrade to the combined
+                # figures above, never hard-crash the whole page.
+                if not portfolio_detail_available:
+                    st.caption("Per-activity cost detail needs the raw cost-driver "
+                              "tables, which this pre-computed results bundle does "
+                              "not include - showing the combined cost-to-serve "
+                              "figures above only.")
+                elif hasattr(ENGINE_LEDGER, "cost_to_serve_by_activity"):
+                    drv_all = portfolio["Table12_Cost_Drivers.csv"]
+                    pools_all = portfolio["Table11_Cost_Pools.csv"]
+                    by_activity = ENGINE_LEDGER.cost_to_serve_by_activity(drv_all, pools_all)
+                    cust_drv_mask = drv_all["Masked Account Number"].isin(cust_accts)
+
+                    for activity, (marg, fixed) in by_activity.items():
+                        m_sum = float(marg.loc[cust_drv_mask].sum())
+                        f_sum = float(fixed.loc[cust_drv_mask].sum())
+                        if n_months and (abs(m_sum) >= 0.005 or abs(f_sum) >= 0.005):
+                            activity_rows.append({
+                                "Activity": ACTIVITY_LABELS.get(activity, activity),
+                                "Caused by this customer": -m_sum / n_months,
+                                "Shared overhead allocation": -f_sum / n_months,
+                                "Total": -(m_sum + f_sum) / n_months,
+                            })
+                else:
+                    st.caption("Per-activity detail needs a newer engine build than this "
+                              "deployment is currently running - showing the combined "
+                              "figures above only. This resolves itself on the next "
+                              "successful redeploy, no action needed here.")
+
+                st.markdown("**Cost to serve, by activity — what actually drove it:**")
+                if activity_rows:
+                    activity_df = pd.DataFrame(activity_rows).sort_values("Total")
+                    st.dataframe(
+                        activity_df.style.format({c: "${:,.2f}" for c in
+                                                  ["Caused by this customer",
+                                                   "Shared overhead allocation", "Total"]}),
+                        width="stretch", height=min(320, 46 + 36 * len(activity_df)),
+                        hide_index=True)
+                elif hasattr(ENGINE_LEDGER, "cost_to_serve_by_activity"):
+                    st.caption("No activity volume recorded for this customer in any "
+                              "servicing category.")
+
+                # ---- Ledger view: classic in/out, two columns, both sides
+                # positive, net at the bottom - the same average-per-month
+                # figures as above, just read the way a ledger reads.
+                st.markdown("**Ledger view:**")
+                in_rows = [
+                    ("Interest revenue", avg_row["interest_revenue"]),
+                    ("Interchange revenue", avg_row["interchange_revenue"]),
+                    ("Fee revenue", avg_row["fee_revenue"]),
+                ]
+                out_rows = [
+                    ("Reward expense", avg_row["reward_expense"]),
+                    ("Funding cost", avg_row["funding_cost"]),
+                    ("Credit cost", avg_row["credit_cost"]),
+                ]
+                if activity_rows:
+                    for r in activity_rows:
+                        out_rows.append((f"Cost to serve — {r['Activity']}", -r["Total"]))
+                else:
+                    # Degraded mode (see the hasattr guard above) or genuinely
+                    # zero activity either way - fall back to the combined
+                    # figure so the ledger still reconciles to the correct total.
+                    out_rows.append(("Cost to serve", avg_row["cost_to_serve"]))
+                out_rows.append(("Capital cost", avg_row["capital_cost"]))
+
+                total_in = sum(v for _, v in in_rows)
+                total_out = sum(v for _, v in out_rows)
+
+                def _ledger_md(rows: list[tuple[str, float]], total: float, total_label: str) -> str:
+                    lines = ["| Item | $/month |", "| --- | ---: |"]
+                    lines += [f"| {name} | ${val:,.2f} |" for name, val in rows]
+                    lines.append(f"| **{total_label}** | **${total:,.2f}** |")
+                    return "\n".join(lines)
+
+                led_col1, led_col2 = st.columns(2)
+                with led_col1:
+                    st.markdown("📥 **IN — Revenue**")
+                    st.markdown(_ledger_md(in_rows, total_in, "TOTAL IN"))
+                with led_col2:
+                    st.markdown("📤 **OUT — Cost**")
+                    st.markdown(_ledger_md(out_rows, total_out, "TOTAL OUT"))
+
+                st.metric("NET (IN − OUT) / month", f"${total_in - total_out:,.2f}")
+                st.caption("Reconciles exactly to the Net economic profit / month figure "
+                          "above — same numbers, read as a ledger instead of a chart.")
+
+                st.markdown("**Full monthly breakdown:**")
+                st.dataframe(monthly.style.format({c: "${:,.2f}" for c in monthly.columns
+                                                  if c != "Cycle Month"}),
+                            width="stretch", height=320)
+                st.download_button("Download this customer's monthly P&L",
+                                  monthly.to_csv(index=False),
+                                  f"{picked}_monthly_pl.csv", "text/csv")
+            else:
+                st.caption("No card ledger rows for this customer in the trailing window.")
+
+        with tab_tx:
+            if not portfolio_detail_available:
+                st.info("Transaction-level detail is not included in this "
+                       "pre-computed results bundle - re-run the engine on the "
+                       "full portfolio to see individual transactions for this "
+                       "customer.")
+            elif len(cust_tx):
+                cat_col = "Merchant Category" if "Merchant Category" in cust_tx.columns \
+                    else "Merchant Category Description" if "Merchant Category Description" in cust_tx.columns \
+                    else None
+                if cat_col:
+                    by_cat = cust_tx.groupby(cat_col)["Transaction Amount"].sum().sort_values(
+                        ascending=False)
+                    fig2 = go.Figure(go.Bar(x=by_cat.index, y=by_cat.to_numpy(),
+                                           marker_color="#7c3aed",
+                                           text=[f"${v:,.0f}" for v in by_cat.to_numpy()],
+                                           textposition="outside"))
+                    fig2.update_layout(title="Spend by merchant category (full history)",
+                                      height=360, yaxis_title="USD", margin=dict(t=50, b=20))
+                    st.plotly_chart(fig2, width="stretch")
+
+                show_tx_cols = [c for c in [
+                    "Cycle Month", "Transaction Date", "Merchant Category Description",
+                    "Merchant Category Code (MCC)", "Transaction Amount",
+                    "Interchange Earned", "Points Earned", "Cash Advance Indicator",
+                    "Foreign Transaction Indicator", "Disputed Indicator"]
+                    if c in cust_tx.columns]
+                st.dataframe(cust_tx[show_tx_cols], width="stretch", height=380)
+                st.download_button("Download this customer's transactions",
+                                  cust_tx[show_tx_cols].to_csv(index=False),
+                                  f"{picked}_transactions.csv", "text/csv")
+            else:
+                st.caption("No transactions for this customer in the uploaded window.")
+
+        with tab_ledger:
+            st.caption("Every account x cycle row this customer's numbers were "
+                      "built from - the same rows the ledger reconciliation "
+                      "check validates.")
+            st.dataframe(cust_ledger, width="stretch", height=420)
+            st.download_button("Download this customer's full ledger",
+                              cust_ledger.to_csv(index=False),
+                              f"{picked}_ledger.csv", "text/csv")
+

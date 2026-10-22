@@ -192,6 +192,43 @@ def invariants(label: str, sizes: dict):
               y2 <= cts, f"${y2:,.0f} <= ${cts:,.0f}")
 
 
+def explanations(label: str, result: dict):
+    """The drill-down's explanation functions must reconcile to the engine:
+    per-customer contributions sum to each portfolio component, and the
+    calculation steps equal the components (every scenario)."""
+    sec(f"{label}: drill-down explanations reconcile to the engine")
+    for code, mod in MODULES.items():
+        s = result["sizes"][code]
+        if not s.has_scenarios:
+            continue
+        a = s.assumptions_used
+        if hasattr(mod, "customer_contributions"):
+            wl = result["worklists"][code]
+            cv = result["customer_view"]
+            rows = wl.merge(cv[[c for c in cv.columns if c == "Masked Customer Number"
+                                or c not in wl.columns]],
+                            on="Masked Customer Number", how="left")
+            for sc in ASSUME.SCENARIOS:
+                cc = mod.customer_contributions(rows, s.inputs, a, sc)
+                comps = s.scenarios[sc]["components"]
+                per_customer = {k: v for k, v in comps.items() if k in cc.columns}
+                gap = max((abs(cc[k].sum() - v["value_usd"]) for k, v in per_customer.items()),
+                          default=0.0)
+                missing = [k for k in comps if k not in cc.columns]
+                check(f"{label} {code} {sc} customer contributions sum to components",
+                      gap < 0.01 and (not missing or code in ("L6",)),
+                      f"max gap ${gap:,.4f}" + (f"; portfolio-only: {missing}" if missing else ""))
+        if hasattr(mod, "calculation_steps"):
+            for sc in ASSUME.SCENARIOS:
+                steps = {st["component"]: st["value"] for st in mod.calculation_steps(s.inputs, a, sc)}
+                comps = s.scenarios[sc]["components"]
+                gaps = [abs(steps[k] - v["value_usd"]) for k, v in comps.items() if k in steps]
+                absent = [k for k in comps if k not in steps]
+                check(f"{label} {code} {sc} calculation steps equal components",
+                      not absent and max(gaps, default=0.0) < 0.01,
+                      f"max gap ${max(gaps, default=0.0):,.6f}" + (f"; no step for {absent}" if absent else ""))
+
+
 def _leaf_paths(node, prefix=()):
     if isinstance(node, dict) and not any(s in node for s in ASSUME.SCENARIOS):
         for k, v in node.items():
@@ -314,6 +351,7 @@ def main():
     demo = build_pipeline(DEMO_DIR, LEV.DEFAULT_POLICY_NAME)
     compare_fixture("5k", demo["sizes"], expected["fixture_5k_demo"])
     invariants("5k", demo["sizes"])
+    explanations("5k", demo)
     sensitivity("5k", demo["sizes"], A)
     unit_cost_fallback()
     end_to_end_config(A, demo["sizes"])
@@ -335,6 +373,7 @@ def main():
                   meta.leverage_policy_name == "case_a_slr_category_iii", meta.leverage_policy_name)
             compare_fixture("100k", r100["sizes"], expected["fixture_100k_bundle"])
             invariants("100k", r100["sizes"])
+            explanations("100k", r100)
             sensitivity("100k", r100["sizes"], A)
 
     sec("RESULT TABLE")
