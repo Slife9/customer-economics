@@ -141,3 +141,112 @@ class L3Pricing(Lever):
         cv = customer_view
         peer_apr = cv.groupby("Credit Score Band")["latest_charged_apr"].transform("median")
         return float((peer_apr - cv["latest_charged_apr"]).clip(lower=0).mean())
+
+
+# ---------------------------------------------------------------------------
+# Explanations for the customer drill-down. Additive only: same thresholds
+# and formulas as population()/value_scenarios(); the audit checks that
+# customer contributions sum to the components and steps equal them.
+
+def _revolving(rows: pd.DataFrame) -> pd.Series:
+    return rows["latest_purchase_balance"] * (1 - rows["transactor_share_12m"])
+
+
+def selection_rules(row) -> dict:
+    gap = row["target_apr"] - row["current_apr"]
+    tenure_m = row["Customer Tenure Years"] * 12
+    rev = row["latest_purchase_balance"] * (1 - row["transactor_share_12m"])
+    past_first_year = {"rule": "Past the first year (CARD Act)", "threshold": f">= {FIRST_YEAR_MONTHS} months",
+                       "actual": f"{tenure_m:.0f} months", "met": bool(tenure_m >= FIRST_YEAR_MONTHS)}
+    sets = {
+        "Flagged: priced below risk peers": [
+            {"rule": "Charged APR below the median of the same credit-score band",
+             "threshold": f">= {PRICING_GAP_POINTS:.1f} pts below",
+             "actual": f"{row['current_apr']:.2f}% vs peer {row['target_apr']:.2f}% ({gap:+.2f} pts)",
+             "met": bool(gap >= PRICING_GAP_POINTS)}, past_first_year],
+        "Flagged: routed credit-cost loss with a pricing gap": [
+            {"rule": "Routed to L3 (credit cost dominates, priced below peers)",
+             "threshold": "routed_lever = L3", "actual": str(row.get("routed_lever")),
+             "met": row.get("routed_lever") == "L3"}, past_first_year],
+    }
+    matched = next((k for k, r in sets.items() if all(x["met"] for x in r)), None)
+    targeted = {"rule": "Targeted (revolves: interest to gain)", "threshold": "revolving balance > $0",
+                "actual": f"${rev:,.0f} (balance ${row['latest_purchase_balance']:,.0f} x "
+                          f"{1 - row['transactor_share_12m']:.0%} revolving months)",
+                "met": bool(rev > 0)}
+    for k in sets:
+        sets[k] = sets[k] + [targeted]
+    return {"matched": matched, "rule_sets": sets,
+            "precedence": ("Flagged by either set; only flagged accounts that revolve are targeted. "
+                           "A pay-in-full transactor is flagged but has no interest to reprice.")}
+
+
+def customer_contributions(rows: pd.DataFrame, inputs: dict, a: dict,
+                           scenario: str = "base") -> pd.DataFrame:
+    rep = ASSUME.pick(a["year1_balance_repriced"], scenario)
+    att = ASSUME.pick(a["attrition"], scenario)
+    red = ASSUME.pick(a["balance_reduction_stayers"], scenario)
+    cost = ASSUME.pick(a["notice_cost_usd"], scenario)
+    rev = _revolving(rows)
+    tgt = (~rows["first_year_protected"].astype(bool)) & (rev > 0)
+    gap = rows["target_apr"] - rows["current_apr"]
+    out = pd.DataFrame(index=rows.index)
+    out["extra_interest"] = (gap / 100 * rev * rep * (1 - att) * (1 - red)).where(tgt, 0.0)
+    out["card_profit_lost"] = (-att * rows["card_net"]).where(tgt, 0.0)
+    out["notice_cost"] = (-cost) * tgt.astype(float)
+    out = out.fillna(0.0)
+    out["total"] = out.sum(axis=1)
+    return out
+
+
+def customer_trace(row, inputs: dict, a: dict, scenario: str = "base") -> list:
+    one = pd.DataFrame([row])
+    c = customer_contributions(one, inputs, a, scenario).iloc[0]
+    rep = ASSUME.pick(a["year1_balance_repriced"], scenario)
+    att = ASSUME.pick(a["attrition"], scenario)
+    red = ASSUME.pick(a["balance_reduction_stayers"], scenario)
+    cost = ASSUME.pick(a["notice_cost_usd"], scenario)
+    rev = float(_revolving(one).iloc[0])
+    gap = row["target_apr"] - row["current_apr"]
+    if bool(row["first_year_protected"]):
+        return [{"component": "first-year protected", "formula": "CARD Act: no increase in year 1 - excluded",
+                 "substituted": "", "value": 0.0}]
+    if rev <= 0:
+        return [{"component": "flagged, not targeted", "formula": "pays in full - no revolving balance to reprice",
+                 "substituted": "", "value": 0.0}]
+    return [
+        {"component": "revolving balance", "formula": "latest purchase balance x (1 - pay-in-full share)",
+         "substituted": f"${row['latest_purchase_balance']:,.2f} x (1 - {row['transactor_share_12m']:.2f})",
+         "value": rev},
+        {"component": "extra_interest (year 1)",
+         "formula": "gap x revolving balance x year1_balance_repriced x (1 - attrition) x (1 - balance_reduction_stayers)",
+         "substituted": f"{gap:.2f}% x ${rev:,.2f} x {rep} x (1 - {att}) x (1 - {red})",
+         "value": c["extra_interest"]},
+        {"component": "card_profit_lost", "formula": "-attrition x this customer's card_net",
+         "substituted": f"-{att} x ${row['card_net']:,.2f}", "value": c["card_profit_lost"]},
+        {"component": "notice_cost", "formula": "one change-in-terms notice",
+         "substituted": f"-${cost}", "value": c["notice_cost"]},
+        {"component": "TOTAL year 1 (expected value, base assumptions)", "formula": "sum of the above",
+         "substituted": "", "value": c["total"]},
+    ]
+
+
+def calculation_steps(inputs: dict, a: dict, scenario: str = "base") -> list:
+    rep = ASSUME.pick(a["year1_balance_repriced"], scenario)
+    att = ASSUME.pick(a["attrition"], scenario)
+    red = ASSUME.pick(a["balance_reduction_stayers"], scenario)
+    cost = ASSUME.pick(a["notice_cost_usd"], scenario)
+    n, full = inputs["targeted"], inputs["full_year_gap_value_usd"]
+    m_cn = inputs["targeted_card_net_mean"]
+    return [
+        {"component": "full-year gap value (targeted revolvers)",
+         "formula": "sum(pricing gap x revolving balance)",
+         "substituted": f"{n} targeted of {inputs['flagged']} flagged", "value": full},
+        {"component": "extra_interest", "formula": "full x year1_balance_repriced x (1 - attrition) x (1 - balance_reduction_stayers)",
+         "substituted": f"${full:,.2f} x {rep} x (1 - {att}) x (1 - {red})",
+         "value": full * rep * (1 - att) * (1 - red)},
+        {"component": "card_profit_lost", "formula": "-n x attrition x mean card_net (targeted)",
+         "substituted": f"-{n} x {att} x ${m_cn:,.2f}", "value": -n * att * m_cn},
+        {"component": "notice_cost", "formula": "-n x notice_cost_usd",
+         "substituted": f"-{n} x ${cost}", "value": -n * cost},
+    ]
