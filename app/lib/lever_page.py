@@ -106,8 +106,18 @@ def contributions(spec: LeverSpec, result: dict, size) -> pd.DataFrame | None:
     memo = _memo(result)
     key = ("contrib", spec.code)
     if key not in memo:
-        memo[key] = spec.module.customer_contributions(
-            drill_rows(spec, result), size.inputs, size.assumptions_used, "base")
+        try:
+            memo[key] = spec.module.customer_contributions(
+                drill_rows(spec, result), size.inputs, size.assumptions_used, "base")
+        except KeyError as e:
+            # A results bundle exported before this field existed - say so
+            # rather than show a silently wrong per-customer figure.
+            memo[key] = None
+            memo[("missing", spec.code)] = str(e)
+    if memo.get(("missing", spec.code)):
+        st.info(f"Per-customer figures need a field this results bundle does not carry "
+                f"({memo[('missing', spec.code)]}). Re-export the bundle with the current "
+                f"engine to see them; the lever totals above are unaffected.")
     return memo[key]
 
 
@@ -379,17 +389,27 @@ def render_customer(spec: LeverSpec, result: dict, size, cid: str) -> None:
             a = ASSUME.load()[0][spec.code]
             st.caption("This result predates the valuation rebuild, so the proposed change "
                        "below uses the currently configured assumptions.")
-        spec.change(row, size, a)
+        try:
+            spec.change(row, size, a)
+        except KeyError as e:
+            st.info(f"Details of the proposed change need a field this results bundle does "
+                    f"not carry ({e}). Re-export the bundle with the current engine.")
 
     st.markdown("**Calculation trace** - expected value under the base assumptions, "
                 "not a prediction about this customer")
+    trace = None
     if size.has_scenarios:
-        trace = spec.module.customer_trace(row, size.inputs, size.assumptions_used, "base")
+        try:
+            trace = spec.module.customer_trace(row, size.inputs, size.assumptions_used, "base")
+        except KeyError as e:
+            st.info(f"This customer's trace needs a field this results bundle does not carry "
+                    f"({e}). Re-export the bundle with the current engine.")
+    if trace is not None:
         st.dataframe(pd.DataFrame(trace).rename(columns={
             "component": "Step", "formula": "Formula", "substituted": "With this customer's inputs",
             "value": "Value"}).style.format({"Value": "${:,.2f}"}, na_rep=""),
             hide_index=True, width="stretch")
-    else:
+    elif not size.has_scenarios:
         UI.pre_rebuild_notice(size)
 
     hits = _other_levers(result, cid)

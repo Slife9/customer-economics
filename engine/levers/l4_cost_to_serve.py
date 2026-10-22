@@ -53,6 +53,53 @@ def trailing_window(drivers: pd.DataFrame, n: int = TRAILING_CYCLES) -> pd.DataF
     return drivers[drivers["Cycle Month"].isin(cycles)]
 
 
+def customer_trailing_counts(drivers: pd.DataFrame) -> pd.DataFrame:
+    """Per-customer annual avoidable calls and paper statements over the
+    trailing 12 cycles (scaled to 12 months only if fewer cycles exist)."""
+    window = trailing_window(drivers)
+    n = int(window["Cycle Month"].nunique())
+    scale = TRAILING_CYCLES / n if 0 < n < TRAILING_CYCLES else 1.0
+    g = window.groupby("Masked Customer Number").agg(
+        annual_avoidable_calls_t12=("Primary Call Reason",
+                                    lambda s: s.isin(AVOIDABLE_CALL_REASONS).sum()),
+        annual_paper_statements_t12=("Paper Statements Produced", "sum")).reset_index()
+    g[["annual_avoidable_calls_t12", "annual_paper_statements_t12"]] = (
+        g[["annual_avoidable_calls_t12", "annual_paper_statements_t12"]].astype(float) * scale)
+    return g
+
+
+def _pre_rebuild_figure(population: pd.DataFrame, drivers: pd.DataFrame,
+                        pools: pd.DataFrame) -> dict:
+    """The pre-rebuild L4 figure, recomputed exactly as the old size() did
+    (full history, all contact-centre calls, gross unit cost, plus any
+    capacity-step saving) - kept ONLY as the starting point of the page's
+    correction bridge, never as a value."""
+    ids = set(population["Masked Customer Number"].dropna())
+    drv = drivers[drivers["Masked Customer Number"].isin(ids)]
+    marginal_total, step_total, unit = 0.0, 0.0, {}
+    for activity, col in [("contact_center_call", "Contact Center Calls"),
+                          ("statement_paper", "Paper Statements Produced")]:
+        bands = pools[pools["Activity"] == activity]
+        if not len(bands) or col not in drivers.columns:
+            continue
+        total_all = drivers[col].sum()
+        avoidable = drv[col].sum()
+        if avoidable <= 0:
+            continue
+        fixed_before, marginal = _band(total_all, bands)
+        fixed_after, _ = _band(max(total_all - avoidable, 0), bands)
+        unit[activity] = marginal
+        marginal_total += avoidable * marginal
+        if fixed_after < fixed_before:
+            step_total += fixed_before - fixed_after
+    return {"marginal_usd": float(marginal_total), "step_usd": float(step_total),
+            "all_calls_full_history": float(drv["Contact Center Calls"].sum()),
+            "avoidable_calls_full_history": float(
+                drv["Primary Call Reason"].isin(AVOIDABLE_CALL_REASONS).sum()),
+            "paper_full_history": float(drv["Paper Statements Produced"].sum()),
+            "gross_unit_cost": unit}
+
+
 def valuation_inputs(population: pd.DataFrame, drivers: pd.DataFrame,
                      pools: pd.DataFrame, config_unit_costs: dict) -> dict:
     window = trailing_window(drivers)
@@ -93,6 +140,7 @@ def valuation_inputs(population: pd.DataFrame, drivers: pd.DataFrame,
              "fixed_monthly_usd": float(b["Band Fixed Cost USD Monthly"])}
             for _, b in call_bands.iterrows()],
         "population_trailing_12m_cost_to_serve": float(population["cost_to_serve"].sum()),
+        "pre_rebuild": _pre_rebuild_figure(population, drivers, pools),
     }
 
 
@@ -175,7 +223,15 @@ class L4CostToServe(Lever):
         cv["avoidable_calls"] = cv["avoidable_calls"].fillna(0)
         cv["paper_statements"] = cv["paper_statements"].fillna(0)
         migratable = (cv["avoidable_calls"] >= 3) | (cv["paper_statements"] >= 6)
-        return cv[routed | migratable].copy()
+        out = cv[routed | migratable].copy()
+        # Additive (not used by the population rule above, which is
+        # unchanged): each customer's own trailing-12-cycle volumes - the
+        # figures the valuation and the drill-down's per-customer trace use.
+        t12 = customer_trailing_counts(self.drivers)
+        out = out.merge(t12, on="Masked Customer Number", how="left")
+        out[["annual_avoidable_calls_t12", "annual_paper_statements_t12"]] = out[
+            ["annual_avoidable_calls_t12", "annual_paper_statements_t12"]].fillna(0.0)
+        return out
 
     def size(self, population: pd.DataFrame) -> SizeResult:
         a = self.lever_assumptions()
@@ -202,9 +258,10 @@ class L4CostToServe(Lever):
             lambda r: (r["routing_reason"] if r.get("routed_lever") == "L4"
                       else f"{int(r['avoidable_calls'])} avoidable calls, "
                           f"{int(r['paper_statements'])} paper statements "
-                          f"in trailing window"), axis=1)
+                          f"over the full data window"), axis=1)
         return wl[["Masked Customer Number", "action", "reason",
-                  "avoidable_calls", "paper_statements"]]
+                  "avoidable_calls", "paper_statements",
+                  "annual_avoidable_calls_t12", "annual_paper_statements_t12"]]
 
     def driver(self, customer_view: pd.DataFrame) -> float:
         """Total avoidable driver volume portfolio-wide - should shrink under
@@ -213,3 +270,152 @@ class L4CostToServe(Lever):
         avoidable = d["Primary Call Reason"].isin(AVOIDABLE_CALL_REASONS).sum()
         paper = d["Paper Statements Produced"].sum() if "Paper Statements Produced" in d.columns else 0
         return float(avoidable + paper)
+
+
+# ---------------------------------------------------------------------------
+# Explanations for the customer drill-down. Additive only: same thresholds
+# and formulas as population()/value_scenarios(); the audit checks that
+# customer contributions sum to the components and steps equal them.
+
+AVOIDABLE_CALL_THRESHOLD = 3
+PAPER_STATEMENT_THRESHOLD = 6
+
+
+def selection_rules(row) -> dict:
+    calls, paper = row["avoidable_calls"], row["paper_statements"]
+    sets = {
+        "ENABLE_SELF_SERVICE (avoidable calls)": [
+            {"rule": "Avoidable calls (billing / rewards / rate), full data window",
+             "threshold": f">= {AVOIDABLE_CALL_THRESHOLD}", "actual": f"{calls:.0f}",
+             "met": bool(calls >= AVOIDABLE_CALL_THRESHOLD)}],
+        "MIGRATE_TO_DIGITAL_STATEMENTS (paper statements)": [
+            {"rule": "Paper statements, full data window", "threshold": f">= {PAPER_STATEMENT_THRESHOLD}",
+             "actual": f"{paper:.0f}", "met": bool(paper >= PAPER_STATEMENT_THRESHOLD)}],
+        "REVIEW (routed servicing-cost loss)": [
+            {"rule": "Routed to L4 (servicing cost this customer caused dominates a below-cost "
+                     "relationship)", "threshold": "routed_lever = L4",
+             "actual": str(row.get("routed_lever")), "met": row.get("routed_lever") == "L4"}],
+    }
+    matched = next((k for k, r in sets.items() if all(x["met"] for x in r)), None)
+    return {"matched": matched, "rule_sets": sets,
+            "precedence": ("Any one rule set is enough to be in scope. The action follows the "
+                           "first one met: self-service if calls qualify, else digital statements "
+                           "if paper qualifies, else review (routed).")}
+
+
+def _unit_savings(inputs: dict, a: dict) -> tuple:
+    c = inputs["unit_costs"]
+    return (c["call"] - c["digital_session"] * float(a["sessions_per_deflected_call"]),
+            c["paper_statement"] - c["electronic_statement"])
+
+
+def customer_contributions(rows: pd.DataFrame, inputs: dict, a: dict,
+                           scenario: str = "base") -> pd.DataFrame:
+    call_saving, paper_saving = _unit_savings(inputs, a)
+    keep = 1 - ASSUME.pick(a["excluded_share"], scenario)
+    out = pd.DataFrame(index=rows.index)
+    out["calls_to_self_service"] = (rows["annual_avoidable_calls_t12"].fillna(0)
+                                    * ASSUME.pick(a["call_deflection"], scenario) * keep * call_saving)
+    out["paper_to_electronic"] = (rows["annual_paper_statements_t12"].fillna(0)
+                                  * ASSUME.pick(a["paper_migration"], scenario) * keep * paper_saving)
+    out["outreach_cost_year1"] = -float(ASSUME.pick(a["outreach_cost_usd"], scenario))
+    out["total"] = out.sum(axis=1)
+    return out
+
+
+def customer_trace(row, inputs: dict, a: dict, scenario: str = "base") -> list:
+    c = customer_contributions(pd.DataFrame([row]), inputs, a, scenario).iloc[0]
+    call_saving, paper_saving = _unit_savings(inputs, a)
+    u = inputs["unit_costs"]
+    keep = 1 - ASSUME.pick(a["excluded_share"], scenario)
+    return [
+        {"component": "saving per deflected call",
+         "formula": "call cost - digital session cost x sessions per deflected call",
+         "substituted": f"${u['call']:.2f} - ${u['digital_session']:.2f} x {a['sessions_per_deflected_call']}",
+         "value": call_saving},
+        {"component": "calls_to_self_service",
+         "formula": "this customer's avoidable calls (trailing 12 cycles) x call_deflection x "
+                    "(1 - excluded_share) x saving per call",
+         "substituted": (f"{row['annual_avoidable_calls_t12']:.0f} x "
+                         f"{ASSUME.pick(a['call_deflection'], scenario)} x {keep:.2f} x ${call_saving:.2f}"),
+         "value": c["calls_to_self_service"]},
+        {"component": "paper_to_electronic",
+         "formula": "this customer's paper statements (trailing 12 cycles) x paper_migration x "
+                    "(1 - excluded_share) x (paper - e-statement cost)",
+         "substituted": (f"{row['annual_paper_statements_t12']:.0f} x "
+                         f"{ASSUME.pick(a['paper_migration'], scenario)} x {keep:.2f} x ${paper_saving:.2f}"),
+         "value": c["paper_to_electronic"]},
+        {"component": "outreach_cost_year1", "formula": "one outreach per customer, year 1 only",
+         "substituted": f"-${ASSUME.pick(a['outreach_cost_usd'], scenario)}", "value": c["outreach_cost_year1"]},
+        {"component": "TOTAL year 1 (expected value, base assumptions)", "formula": "sum of the above",
+         "substituted": "", "value": c["total"]},
+        {"component": "Staffing step", "formula": "portfolio level only - a lower call volume removes "
+                      "cash only if the whole book crosses a capacity band; never allocated to a customer",
+         "substituted": "", "value": float("nan")},
+    ]
+
+
+def calculation_steps(inputs: dict, a: dict, scenario: str = "base") -> list:
+    call_saving, paper_saving = _unit_savings(inputs, a)
+    keep = 1 - ASSUME.pick(a["excluded_share"], scenario)
+    calls, paper, n = (inputs["annual_avoidable_calls"], inputs["annual_paper_statements"],
+                       inputs["customers"])
+    defl = ASSUME.pick(a["call_deflection"], scenario)
+    migr = ASSUME.pick(a["paper_migration"], scenario)
+    out_c = ASSUME.pick(a["outreach_cost_usd"], scenario)
+    u = inputs["unit_costs"]
+    return [
+        {"component": "saving per deflected call",
+         "formula": "call - digital session x sessions_per_deflected_call (Table 11 unit costs)",
+         "substituted": f"${u['call']:.2f} - ${u['digital_session']:.2f} x {a['sessions_per_deflected_call']}",
+         "value": call_saving},
+        {"component": "saving per migrated statement", "formula": "paper - electronic statement",
+         "substituted": f"${u['paper_statement']:.2f} - ${u['electronic_statement']:.2f}", "value": paper_saving},
+        {"component": "calls_to_self_service",
+         "formula": "annual avoidable calls x call_deflection x (1 - excluded_share) x saving per call",
+         "substituted": f"{calls:,.0f} x {defl} x {keep:.2f} x ${call_saving:.2f}",
+         "value": calls * defl * keep * call_saving},
+        {"component": "paper_to_electronic",
+         "formula": "annual paper statements x paper_migration x (1 - excluded_share) x saving per statement",
+         "substituted": f"{paper:,.0f} x {migr} x {keep:.2f} x ${paper_saving:.2f}",
+         "value": paper * migr * keep * paper_saving},
+        {"component": "outreach_cost_year1", "formula": "-customers x outreach_cost_usd",
+         "substituted": f"-{n:,} x ${out_c}", "value": -n * out_c},
+    ]
+
+
+def correction_bridge(inputs: dict, a: dict, scenario: str = "base") -> list:
+    """From the pre-rebuild system figure to the corrected year-1 value, one
+    correction at a time. Each row is the running figure after that step."""
+    pre = inputs.get("pre_rebuild")
+    if not pre:
+        return []
+    g = pre["gross_unit_cost"]
+    m_call = g.get("contact_center_call", inputs["unit_costs"]["call"])
+    m_paper = g.get("statement_paper", inputs["unit_costs"]["paper_statement"])
+    call_saving, paper_saving = _unit_savings(inputs, a)
+    keep = 1 - ASSUME.pick(a["excluded_share"], scenario)
+    calls, paper = inputs["annual_avoidable_calls"], inputs["annual_paper_statements"]
+    y2 = (calls * ASSUME.pick(a["call_deflection"], scenario) * keep * call_saving
+          + paper * ASSUME.pick(a["paper_migration"], scenario) * keep * paper_saving)
+    y1 = y2 - inputs["customers"] * ASSUME.pick(a["outreach_cost_usd"], scenario)
+    return [
+        {"step": "Pre-rebuild system figure",
+         "what": "all calls and paper statements, 3 years, gross unit cost, plus capacity-step saving",
+         "value": pre["marginal_usd"] + pre["step_usd"]},
+        {"step": "Capacity-step saving moved to extras",
+         "what": "a step saving is never counted in the value", "value": pre["marginal_usd"]},
+        {"step": "Only avoidable calls",
+         "what": f"{pre['all_calls_full_history']:,.0f} -> {pre['avoidable_calls_full_history']:,.0f} calls",
+         "value": pre["avoidable_calls_full_history"] * m_call + pre["paper_full_history"] * m_paper},
+        {"step": "Annual, not 3 years (trailing 12 cycles)",
+         "what": f"{calls:,.0f} avoidable calls, {paper:,.0f} paper statements a year",
+         "value": calls * m_call + paper * m_paper},
+        {"step": "Net of digital replacement cost",
+         "what": f"${call_saving:.2f} per call, ${paper_saving:.2f} per statement",
+         "value": calls * call_saving + paper * paper_saving},
+        {"step": "Only what customers actually move (assumptions)",
+         "what": "x deflection / migration rate x (1 - excluded share) = from year 2", "value": y2},
+        {"step": "Less year-1 outreach = corrected year-1 value",
+         "what": f"-{inputs['customers']:,} customers x outreach cost", "value": y1},
+    ]
