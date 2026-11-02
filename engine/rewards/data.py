@@ -136,6 +136,26 @@ def account_frame(data_dir: Path | str) -> tuple[pd.DataFrame, dict]:
     return t, meta
 
 
+def save_account_frame(t: pd.DataFrame, meta: dict, path: Path | str) -> None:
+    """Write an account frame and its meta to one parquet file, so a large
+    portfolio can be shipped without its raw tables (hundreds of MB)."""
+    import json
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    table = pa.Table.from_pandas(t)
+    md = dict(table.schema.metadata or {})
+    md[b"l1_rewards_meta"] = json.dumps(meta, default=str).encode()
+    pq.write_table(table.replace_schema_metadata(md), path, compression="zstd")
+
+
+def load_account_frame(path: Path | str) -> tuple[pd.DataFrame, dict]:
+    import json
+    import pyarrow.parquet as pq
+    table = pq.read_table(path)
+    meta = json.loads(table.schema.metadata[b"l1_rewards_meta"])
+    return table.to_pandas(), meta
+
+
 def add_totals(t: pd.DataFrame) -> pd.DataFrame:
     t["revenue"] = t[PNL_REVENUE].sum(axis=1)
     t["reward_cost_incl_bonus"] = t["reward"] + t["signup_bonus"]

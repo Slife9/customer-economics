@@ -6,22 +6,23 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rewards_app.lib import state as S  # noqa: E402
 
-st.title("🎁 L1 Rewards Profitability")
+st.title("📂 Load portfolio")
 st.caption("Which reward accounts lose money, why, and what each reward lever would be worth - "
-           "the Reward Profitability Scenario Model v2 run on your portfolio's own data.")
+           "the Reward Profitability Scenario Model v2 run on your portfolio's own data. The bundled "
+           "100,000-customer sample loads automatically; use this page to switch to your own data.")
 
 c1, c2 = st.columns([3, 2])
 with c1:
     st.subheader("Load a portfolio")
     choice = st.radio("Bundled sample", list(S.SAMPLES), index=0)
     if st.button("Load sample", type="primary"):
-        path = S.SAMPLES[choice]
-        if not path.exists():
-            st.error(f"{path.name} is not in samples/ on this install.")
-        else:
-            with st.spinner("Building the account P&L from the engine's ledger…"):
-                S.load(S.extract_zip(path.read_bytes(), path.stem), choice)
-    up = st.file_uploader("…or upload a zipped portfolio (the generator's table CSVs)", type="zip")
+        try:
+            with st.spinner("Loading the account P&L…"):
+                S.load_sample(choice)
+        except FileNotFoundError as e:
+            st.error(str(e))
+    up = st.file_uploader("…or upload a zipped portfolio (the generator's table CSVs). A 100,000-customer "
+                          "portfolio takes several minutes to build.", type="zip")
     if up is not None and st.button("Load upload"):
         try:
             with st.spinner("Validating and building the account P&L…"):
@@ -48,8 +49,8 @@ if S.loaded():
     meta = st.session_state["meta"]
     t = S.frame()
     n = int(t["screened"].sum())
-    st.success(f"Loaded **{st.session_state['label']}** - {meta['accounts']:,} card accounts, "
-               f"{meta['cycles']} cycles ({meta['first']} to {meta['last']}).")
+    st.success(f"Loaded **{st.session_state['label']}** - {meta['accounts']:,} card accounts held by "
+               f"{t['customer'].nunique():,} customers, {meta['cycles']} cycles ({meta['first']} to {meta['last']}).")
     if st.session_state.get("added_tables"):
         st.info("Computed the reward tables this portfolio was missing: "
                 + ", ".join(st.session_state["added_tables"]))
@@ -59,5 +60,5 @@ if S.loaded():
     m2.metric("Their fully loaded card profit, trailing 12m", S.usd(t.loc[t.screened, "fully_loaded_profit"].sum()))
     m3.metric("Their reward cost as % of revenue",
               S.pct(t.loc[t.screened, "reward_cost_incl_bonus"].sum() / t.loc[t.screened, "revenue"].sum()))
-    st.markdown("Next: **Scenario dashboard** for what the levers are worth, or **Segments** for who these "
-                "customers are.")
+    st.markdown("Next: **Overview** for the headline figures, **Scenario dashboard** for what the levers are "
+                "worth, or **Segments** for who these customers are.")

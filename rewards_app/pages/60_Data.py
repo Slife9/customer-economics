@@ -29,11 +29,18 @@ st.subheader("Reconciliation")
 diff = (t["fully_loaded_profit"] + t["signup_bonus"] - t["engine_nep"]).abs().max()
 st.markdown(f"Fully loaded card profit + sign-up bonus = the engine's net economic profit, for every account: "
             f"largest difference **${diff:,.2f}** across {len(t):,} accounts.")
-present = {n: (root / n).exists() for n in ["Table25_MCC_Reference.csv", "Table26_Signup_Bonus.csv",
-                                             "Table27_Bureau_Inquiries.csv", "build_manifest.json"]}
-st.markdown("Tables present: " + ", ".join(f"{'✅' if v else '❌'} {k}" for k, v in present.items()))
-if st.session_state.get("added_tables"):
-    st.caption("Computed at load: " + ", ".join(st.session_state["added_tables"]))
+if S.prebuilt(root):
+    st.markdown(f"This sample is a **prebuilt account frame** (`{root.name}`): the per-account figures above, "
+                f"built from a generator run of the `{meta.get('profile')}` profile with "
+                f"{meta.get('customers', 0):,} customers (seed {meta.get('seed')}) in `{meta.get('data_dir')}`. "
+                f"The raw tables of a 100,000-customer book run to several GB, so they are not shipped; rebuild "
+                f"with `python -m rewards_app.build_sample`.")
+else:
+    present = {n: (root / n).exists() for n in ["Table25_MCC_Reference.csv", "Table26_Signup_Bonus.csv",
+                                                 "Table27_Bureau_Inquiries.csv", "build_manifest.json"]}
+    st.markdown("Tables present: " + ", ".join(f"{'✅' if v else '❌'} {k}" for k, v in present.items()))
+    if st.session_state.get("added_tables"):
+        st.caption("Computed at load: " + ", ".join(st.session_state["added_tables"]))
 
 st.subheader("Model check against the workbook")
 st.markdown("Fed the workbook's own five segments, this system's model reproduces the workbook's Calc sheets "

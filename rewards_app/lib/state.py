@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import io
+import json
 import shutil
 import sys
 import tempfile
@@ -21,9 +22,10 @@ if str(ROOT) not in sys.path:
 from engine.rewards import assumptions as A, data as D, segments as SG, model as M  # noqa: E402
 
 SAMPLES = {
-    "Reward stress book (5,000 customers) - built for this system": ROOT / "samples" / "reward_stress_portfolio.zip",
-    "Standard demo book (5,000 customers)": ROOT / "samples" / "demo_portfolio.zip",
+    "Reward stress book (100,000 customers) - built for this system":
+        ROOT / "samples" / "reward_stress_100k_accounts.parquet",
 }
+DEFAULT_SAMPLE = next(iter(SAMPLES))
 SCRATCH = Path(tempfile.gettempdir()) / "profitinsight_rewards_app"
 NEEDED = ["Table25_MCC_Reference.csv", "Table26_Signup_Bonus.csv", "Table27_Bureau_Inquiries.csv"]
 
@@ -65,13 +67,18 @@ def ensure_reward_tables(root: Path) -> list[str]:
     return missing
 
 
+def prebuilt(root: str | Path) -> bool:
+    """A bundled sample is a prebuilt account frame (.parquet), not a folder."""
+    return str(root).endswith(".parquet")
+
+
 @st.cache_resource(show_spinner=False, max_entries=2)
 def account_frame(root: str, _key: str):
-    return D.account_frame(root)
+    return D.load_account_frame(root) if prebuilt(root) else D.account_frame(root)
 
 
 def load(root: Path, label: str) -> None:
-    added = ensure_reward_tables(root)
+    added = [] if prebuilt(root) else ensure_reward_tables(root)
     t, meta = account_frame(str(root), f"{root}")
     st.session_state["root"] = str(root)
     st.session_state["label"] = label
@@ -79,13 +86,27 @@ def load(root: Path, label: str) -> None:
     st.session_state["meta"] = meta
 
 
+def load_sample(label: str) -> None:
+    path = SAMPLES[label]
+    if not path.exists():
+        raise FileNotFoundError(f"{path.name} is not in samples/ - build it with `python -m rewards_app.build_sample`.")
+    load(path, label)
+
+
 def loaded() -> bool:
     return "root" in st.session_state
 
 
 def require() -> None:
-    if not loaded():
-        st.info("Load a portfolio on the **Load portfolio** page first.")
+    """Every results page works straight away: the bundled sample is loaded
+    the first time a page needs data."""
+    if loaded():
+        return
+    try:
+        with st.spinner("Loading the bundled 100,000-customer sample…"):
+            load_sample(DEFAULT_SAMPLE)
+    except FileNotFoundError as e:
+        st.info(f"Load a portfolio on the **Load portfolio** page first. ({e})")
         st.stop()
 
 
@@ -112,12 +133,19 @@ def scenario() -> str:
 
 # ----------------------------------------------------------------- results
 def frame() -> pd.DataFrame:
-    t, _ = account_frame(st.session_state["root"], st.session_state["root"])
-    return SG.assign(t, cfg())
+    """The segmented account frame, re-segmented only when the portfolio or
+    the thresholds change (segmenting 100k+ accounts takes seconds). Treat
+    as read-only."""
+    key = (st.session_state["root"], json.dumps(cfg()["thresholds"], sort_keys=True))
+    if st.session_state.get("_frame_key") != key:
+        t, _ = account_frame(st.session_state["root"], st.session_state["root"])
+        st.session_state["_frame"] = SG.assign(t, cfg())
+        st.session_state["_frame_key"] = key
+    return st.session_state["_frame"]
 
 
-def run(scn: str | None = None, multiplier: float | None = None):
-    t = frame()
+def run(scn: str | None = None, multiplier: float | None = None, t: pd.DataFrame | None = None):
+    t = frame() if t is None else t
     c = cfg()
     post = M.apply(t, c, A.levers_for(c, scn or scenario()), multiplier)
     return t, post, M.summary(t, post)

@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from rewards_app.lib import state as S  # noqa: E402
+from rewards_app.lib import state as S, style as Y  # noqa: E402
 from engine.rewards.assumptions import SCENARIOS, SEGMENTS  # noqa: E402
 
 st.title("📊 Scenario dashboard")
@@ -67,8 +67,8 @@ fig = go.Figure(go.Bar(x=["Baseline"] + [s.capitalize() for s in SCENARIOS],
                        marker_color=["#94a3b8", "#60a5fa", "#2563eb", "#1e3a8a"],
                        text=[S.usd(comp.loc["Fully loaded card profit", c]) for c in comp.columns],
                        textposition="outside"))
-fig.update_layout(title="Fully loaded card profit of the screened accounts", height=380,
-                  yaxis_title="USD / year", margin=dict(t=50, b=20))
+fig.update_layout(title="Fully loaded card profit of the screened accounts", height=430, margin=dict(t=50, b=20),
+                  yaxis=dict(title="USD / year", range=Y.padded(comp.loc["Fully loaded card profit"].astype(float), 0.15)))
 st.plotly_chart(fig, width="stretch")
 
 # ---------------------------------------------------- selected scenario by segment
@@ -93,11 +93,12 @@ st.caption("Unassigned accounts get no reward lever - the workbook routes them t
            "levers. Their baseline is shown so the total reconciles.")
 
 bar = segdf[segdf["Segment"] != "Total"]
-fig2 = go.Figure(go.Bar(x=bar["Segment"], y=bar["Change in card profit"],
-                        marker_color=["#16a34a" if v >= 0 else "#dc2626" for v in bar["Change in card profit"]],
+fig2 = go.Figure(go.Bar(y=bar["Segment"], x=bar["Change in card profit"], orientation="h",
+                        marker_color=[Y.GREEN if v >= 0 else Y.RED for v in bar["Change in card profit"]],
                         text=[S.usd(v) for v in bar["Change in card profit"]], textposition="outside"))
-fig2.update_layout(title=f"Change in fully loaded card profit by segment - {scn.capitalize()}", height=380,
-                   margin=dict(t=50, b=20))
+fig2.update_layout(title=f"Change in fully loaded card profit by segment - {scn.capitalize()}", height=430,
+                   margin=dict(t=50, b=20, l=10), yaxis=dict(autorange="reversed"),
+                   xaxis=dict(title="USD per year", range=Y.padded(bar["Change in card profit"].astype(float), 0.3)))
 st.plotly_chart(fig2, width="stretch")
 
 # ---------------------------------------------------- stress test

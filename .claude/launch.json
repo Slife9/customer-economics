@@ -40,7 +40,9 @@
         "--server.headless",
         "true",
         "--server.port",
-        "8503"
+        "8503",
+        "--theme.baseFontSize",
+        "18"
       ],
       "port": 8503
     }

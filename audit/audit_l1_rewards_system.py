@@ -1,7 +1,7 @@
 """Acceptance audit for the L1 rewards system (engine/rewards, rewards_app,
 the reward_stress generator profile). A script, like every other file here.
 
-    python audit/audit_l1_rewards_system.py
+    python audit/audit_l1_rewards_system.py [--scale]
 
 1. Workbook reproduction: fed the workbook's own five segments, the model
    reproduces the Reward Profitability Scenario Model v2's Calc sheets
@@ -16,6 +16,9 @@ the reward_stress generator profile). A script, like every other file here.
      unassigned accounts never change; leave probability within [0, cap];
      accounts lost within [0, accounts];
    - every app page renders without an exception.
+2c. The bundled 100,000-customer sample (the app's default, a prebuilt
+   account frame): the same checks, and with --scale, a fresh generator run
+   at the same seed rebuilds it identically (about 30 minutes).
 3. reward_stress profile: the same seed regenerates the bundled sample
    byte for byte, and its segment mix populates every segment.
 Byte-identity of the existing profiles is covered by
@@ -47,6 +50,7 @@ from engine.rewards import assumptions as A, data as D, model as M, segments as 
 SPEC = ROOT / "specs" / "l1_rewards_system"
 SAMPLES = {"reward_stress": ROOT / "samples" / "reward_stress_portfolio.zip",
            "demo": ROOT / "samples" / "demo_portfolio.zip"}
+BIG = ROOT / "samples" / "reward_stress_100k_accounts.parquet"
 RESULTS: list[tuple[str, str]] = []
 
 
@@ -89,7 +93,7 @@ def extract(sample: Path, work: Path) -> Path:
 
 def portfolio_checks(label: str, root: Path, cfg: dict) -> pd.DataFrame:
     print(f"\n2. {label}", flush=True)
-    t, meta = D.account_frame(root)
+    t, meta = D.load_account_frame(root) if root.suffix == ".parquet" else D.account_frame(root)
     diff = float((t["fully_loaded_profit"] + t["signup_bonus"] - t["engine_nep"]).abs().max())
     record(f"{label}: fully loaded + sign-up bonus = engine NEP, every account", diff < 1e-6,
            f"{len(t):,} accounts, largest difference ${diff:.8f}")
@@ -134,7 +138,10 @@ repo, sample = Path(sys.argv[1]), Path(sys.argv[2]); sys.path.insert(0, str(repo
 from streamlit.testing.v1 import AppTest
 from rewards_app.lib import state as S
 from engine.rewards import data as D
-root = S.extract_zip(sample.read_bytes(), sample.stem); added = S.ensure_reward_tables(root); _, meta = D.account_frame(root)
+if sample.suffix == ".parquet":
+    root, added = sample, []; _, meta = D.load_account_frame(root)
+else:
+    root = S.extract_zip(sample.read_bytes(), sample.stem); added = S.ensure_reward_tables(root); _, meta = D.account_frame(root)
 bad = []
 for page in sorted((repo / "rewards_app" / "pages").glob("*.py")):
     at = AppTest.from_file(str(page), default_timeout=300)
@@ -145,10 +152,34 @@ for page in sorted((repo / "rewards_app" / "pages").glob("*.py")):
         bad.append(page.name)
 print("BAD" if bad else "OK", ",".join(bad))
 '''
-    for label, sample in SAMPLES.items():
+    n_pages = len(list((ROOT / "rewards_app" / "pages").glob("*.py")))
+    for label, sample in (SAMPLES | {"100k sample": BIG}).items():
         out = subprocess.run([sys.executable, "-c", code, str(ROOT), str(sample)], capture_output=True, text=True)
         last = out.stdout.strip().splitlines()[-1] if out.stdout.strip() else out.stderr[-300:]
-        record(f"{label}: all 8 app pages render without an exception", last.startswith("OK"), last)
+        record(f"{label}: all {n_pages} app pages render without an exception", last.startswith("OK"), last)
+
+
+def big_sample_checks(cfg: dict, scale: bool, work: Path) -> None:
+    print("\n2c. Bundled 100,000-customer sample (the app's default)", flush=True)
+    t, meta = D.load_account_frame(BIG)
+    record("100k sample: built from >= 100,000 customers of the reward_stress profile",
+           meta.get("customers", 0) >= 100_000 and meta.get("profile") == "reward_stress" and len(t) > 0,
+           f"{meta.get('customers', 0):,} customers generated, {t['customer'].nunique():,} with a card account, "
+           f"{len(t):,} card accounts, {BIG.stat().st_size / 1e6:.1f} MB")
+    portfolio_checks("100k sample", BIG, cfg)
+    if not scale:
+        print("  SKIP  100k sample rebuilds identically from a fresh generator run (pass --scale; ~30 min)")
+        return
+    from rewards_app import build_sample as B
+    out = work / "regen_100k"
+    B.generate(out, meta["customers"], meta["seed"])
+    fresh, _ = D.account_frame(out)
+    try:
+        pd.testing.assert_frame_equal(fresh, t, check_exact=False, rtol=1e-12, atol=1e-9)
+        same, detail = True, f"{len(fresh):,} accounts x {fresh.shape[1]} columns"
+    except AssertionError as e:
+        same, detail = False, str(e).splitlines()[0][:200]
+    record("100k sample rebuilds identically from a fresh generator run (same seed)", same, detail)
 
 
 def profile_checks(work: Path, cfg: dict) -> None:
@@ -177,6 +208,7 @@ def main() -> int:
         workbook_reproduction(cfg)
         for label, sample in SAMPLES.items():
             portfolio_checks(label, extract(sample, work), cfg)
+        big_sample_checks(cfg, "--scale" in sys.argv, work)
         app_pages(work)
         profile_checks(work, cfg)
     finally:
