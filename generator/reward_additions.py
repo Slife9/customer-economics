@@ -335,11 +335,16 @@ def streams(seed: int) -> list[np.random.Generator]:
     return [np.random.default_rng(s) for s in np.random.SeedSequence(seed + STREAM_OFFSET).spawn(2)]
 
 
-def add_reward_tables(data_dir: Path | str, seed: int | None = None) -> dict:
+def add_reward_tables(data_dir: Path | str, seed: int | None = None,
+                      out_dir: Path | str | None = None) -> dict:
     """Build and write the new tables for the portfolio in `data_dir`.
     `seed` defaults to the build manifest's seed; the new stream is
-    SeedSequence(seed + STREAM_OFFSET). Returns {file name: row count}."""
+    SeedSequence(seed + STREAM_OFFSET). `out_dir` (default `data_dir`) is
+    where the new files go - the audit writes elsewhere to compare runs.
+    Returns {file name: row count}."""
     data_dir = Path(data_dir)
+    out_dir = data_dir if out_dir is None else Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     if seed is None:
         seed = int(json.loads((data_dir / "build_manifest.json").read_text())["seed"])
     rng26, rng27 = streams(seed)
@@ -349,7 +354,7 @@ def add_reward_tables(data_dir: Path | str, seed: int | None = None) -> dict:
         "Table27_Bureau_Inquiries.csv": table27_bureau_inquiries(data_dir, rng27),
     }
     for name, df in tables.items():
-        df.to_csv(data_dir / name, index=False)
+        df.to_csv(out_dir / name, index=False)
     return {name: len(df) for name, df in tables.items()}
 
 

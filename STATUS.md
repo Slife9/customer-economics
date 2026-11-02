@@ -1,4 +1,106 @@
-# STATUS: Pre-computed results bundle
+# STATUS: Reward data additions (branch `feature/reward-data-additions`)
+
+Implements `specs/reward_data_additions/SPEC_reward_data_additions.md`.
+**Additive only:** every pre-existing generator output is byte-identical,
+and no engine calculation changed. Not merged. The evaluation steps are in
+`specs/reward_data_additions/EVALUATION_GUIDE.md`.
+
+**Dependency.** `main` could not generate the negative-control profile. The
+crash is a regression from `161c5d5`: `RW.earn()` is called on an empty
+subset. The one-line fix is on its own branch, `fix/negative-control-generation`
+(`966988a`), and is merged into this one. It is byte-identical to `main` for
+the demo, and to `161c5d5^` for the negative control.
+
+## What was added
+
+| Stage | Commit | What |
+|---|---|---|
+| 1 | `5da2c2d` | Baselines: SHA-256 of 80 files (both profiles, validators, ground truth, circularity) and the engine `run_summary.json` |
+| 2 | `a8f4f7b` | `Table25_MCC_Reference`: MCC, observed interchange, quasi-cash / low-interchange flags, recommended treatment (no randomness) |
+| 3 | `f2cc280` | `Table26_Signup_Bonus`: offer drawn from the new stream; threshold met, month earned, post-window spend change and closure derived from existing tables. Bonus cost is **not** in NEP |
+| 4 | `5a6a2a6` | `Table27_Bureau_Inquiries`: customer x cycle Poisson inquiries, raised by signals read from existing tables (signals not published) |
+| 5 | `52ed86d` | `audit/reward_calibration_report.py` writes `Validation_Report_Reward_Calibration.csv`. It runs after the engine's ledger and never fails |
+| 7 | `8d89fb5` | Contract `RECOGNISED_NOT_LOADED` (header-checked, never loaded); sample zips rebuilt (39 members byte-identical, forward-slash paths, + Tables 25-27 and the calibration report); README / ARCHITECTURE |
+| 8-9 | this commit | `audit/audit_reward_data_additions.py`; evaluation guide; this file |
+
+**Mechanics.**
+- `generator/reward_additions.py` runs as the last step of `build()`, after
+  the manifest. It reads the published tables (Table5 in 500k-row chunks) and
+  writes new files only.
+- Its random draws come from `SeedSequence(seed + 7919)`, with one child per
+  table.
+- Every rate is in `generator/config/benchmarks.yaml`, marked `estimated`
+  with a rationale. `validate/check.py` never reads those keys, and both
+  validation reports were re-checked byte-identical.
+
+**Tests, as run:** `python audit/audit_reward_data_additions.py --scale-dir
+<100k> --scale-json <timing>` gave **33/33 PASSED**. It covers:
+- byte-identity for all 80 baseline files, with only Tables 25-27 added;
+- the engine regression;
+- 8 integrity checks on each of demo, negative control and 100k;
+- determinism;
+- calibration reports at 5k and 100k;
+- the 100k build.
+
+**Engine regression scope.** `run_summary.json` is compared with three
+exceptions:
+- `data_dir` and the run timestamp change on every run, so they're excluded.
+- `leverage_audit.policy_sha256` hashes the policy file's raw bytes. It is
+  accepted only when the difference is CRLF versus LF line endings. The
+  baseline came from a fresh git checkout under `core.autocrlf`; the parsed
+  content is identical.
+
+**Scale, 100,000 customers x 36 cycles**, generated on this branch: the build
+took 323 s. The reward step took 42.8 s of that and added 0.64 GB on top of
+13.4 GB. The build peak of 16.2 GB is set elsewhere in the build.
+
+**Calibration summary.**
+
+| | 5k demo | 100k |
+|---|---|---|
+| Accounts passing the screen | 581 | 8,610 |
+| Within / outside / not assessed | 19 / 18 / 2 | 21 / 16 / 2 |
+
+The largest gaps against the reward model:
+
+| Gap | Observed | Reference |
+|---|---|---|
+| Relationship Customers' share | 59-60% | 13% |
+| Optimizers' share | 1.7-2.4% | 26% |
+| Unassigned | 19-22% | < 10% |
+| Revolving balances | $0-$71 | $300-$1,000 |
+| Transfer-partner redemption cost | 1.78x face | 0.6-1.0 |
+| Travel-portal redemption cost | 1.48x face | 0.6-1.0 |
+
+Inside the ranges: the reward cost share, interchange, earn rates and APRs.
+
+## Open questions
+
+1. **Table25 telecom and tuition.** The spec's "observed effective
+   interchange ≤ 1.5%" rule also marks 4814 telecom (1.45%) and 8220 college
+   tuition (1.49%) as `reduced_earn`. Keep it, or flag only the named codes?
+2. **Table26 bonus chasers.** 67 of 315 bonus earners on the 5k look like
+   chasers on spend or closure, from ordinary dormancy. That's more than the
+   spec's "few". Nothing is planted.
+3. **Table28 merchant offers** (optional, Stage 6) has not been built.
+
+## Out of scope (spec section 6)
+
+- Recalibrating segment mix, revolving balances, APRs, earn rates and
+  redemption cost per point to the reward model's ranges. The report above
+  measures these gaps; the generator was not changed to close them.
+- Planting bonus-chaser or quasi-cash behaviour. No quasi-cash MCC is
+  generated today.
+- A history of reward changes with customer responses. Realistic responses
+  would mean changing existing behaviour, which breaks the byte-identity
+  rule. The response sensitivities stay assumption-based until a pilot, or a
+  later approved generator change, provides them.
+- Adding sign-up bonus cost to NEP. Table26 carries it as a separate,
+  labelled figure.
+
+---
+
+# Previous: Pre-computed results bundle
 
 Built so the hosted Streamlit app (2 GB instance) can show a large portfolio
 without re-running the engine on it or accepting a multi-gigabyte upload.
