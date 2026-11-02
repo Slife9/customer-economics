@@ -14,8 +14,10 @@ ACCOUNT_TYPES = ["checking", "savings", "money_market", "cd"]
 def build_accounts(cust: pd.DataFrame, lat: pd.DataFrame, n_cycles: int,
                    rng: np.random.Generator, profile: dict) -> pd.DataFrame:
     n = len(cust)
-    has_deposit = rng.random(n) < np.clip(
-        0.30 + 0.55 * lat["deposit_propensity"].to_numpy(), 0, 0.94)
+    p_hold = np.clip(0.30 + 0.55 * lat["deposit_propensity"].to_numpy(), 0, 0.94)
+    if "deposit_holding_scale" in profile:  # reward_stress profile only
+        p_hold = p_hold * profile["deposit_holding_scale"]
+    has_deposit = rng.random(n) < p_hold
     idx = np.where(has_deposit)[0]
     k = len(idx)
     if k == 0:

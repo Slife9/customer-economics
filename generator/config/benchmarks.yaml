@@ -249,3 +249,25 @@ reward_additions_new_trade_share_of_inquiries:
   source: "ProfitInsight assumption (spec 2.3: 'about 40%')"
   confidence: estimated
   note: "Not every application is approved or accepted."
+
+# ---------------------------------------------------------------------------
+# reward_stress profile (generator/run.py PROFILES; L1 rewards system). A
+# deliberately skewed stress book tuned toward the Reward Profitability
+# Scenario Model v2's segment mix, NOT a realistic US book - several Layer 2
+# realism checks fail on it by design (as on the other variant profiles).
+# These are generation settings, never read by validate/check.py.
+
+reward_stress_profile_settings:
+  value:
+    latent_tilt: {payment_discipline: 0.8, credit_appetite: -0.3}
+    deposit_holding_scale: 0.20
+    loan_holding_scale: 0.30
+    pre_window_open_share: 0.55
+    optimizers: {share_of_eligible: 0.90, min_spend_rank: 0.30, bonus_category_concentration: 0.70, spend_uplift: 1.4}
+    quasi_cash: {share_of_rewards_accounts: 0.03, count_share_of_transactions: 0.06, spend_uplift: 1.6, mcc_weights: {"6540": 0.35, "4829": 0.15, "6051": 0.15, "6513": 0.35}}
+    bonus_chasers: {share_of_new_eligible_accounts: 1.0, window_spend_boost: 3.5, after_window_spend_factor: 0.0}
+    quasi_cash_interchange_pct: {quasi_cash: [0.40, 0.55], rent_processor: [0.80, 1.20]}
+  unit: mixed (see keys)
+  source: "ProfitInsight assumption; tuned so the L1 rewards engine's segment mix approaches the workbook's (26/10/19/32/13%)"
+  confidence: estimated
+  note: "Achieved on 5k, base seed: optimizers 27%, relationship 14%, quasi-cash 14%, low-spend 11%, bonus chasers 8%, unassigned 26%. Low-spend and bonus chasers stay short of the workbook (they compete for account age); unassigned is mostly flat-rate cash-back transactors the workbook's rules do not cover."

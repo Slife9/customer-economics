@@ -12,8 +12,10 @@ from .latents import true_default_hazard
 def build_and_simulate(cust: pd.DataFrame, lat: pd.DataFrame, cycles: list[str],
                        rng: np.random.Generator, profile: dict):
     n = len(cust)
-    holds_loan = rng.random(n) < np.clip(
-        0.10 + 0.22 * lat["relationship_propensity"].to_numpy(), 0, 0.55)
+    p_hold = np.clip(0.10 + 0.22 * lat["relationship_propensity"].to_numpy(), 0, 0.55)
+    if "loan_holding_scale" in profile:  # reward_stress profile only
+        p_hold = p_hold * profile["loan_holding_scale"]
+    holds_loan = rng.random(n) < p_hold
     idx = np.where(holds_loan)[0]
     k = len(idx)
     if k == 0:

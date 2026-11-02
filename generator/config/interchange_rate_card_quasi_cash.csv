@@ -1,0 +1,9 @@
+Product Tier,Interchange Category,Interchange Rate Percent,Interchange Fixed Fee USD
+Secured Standard,quasi_cash,0.40,0.10
+Standard,quasi_cash,0.45,0.10
+World,quasi_cash,0.50,0.10
+World Elite,quasi_cash,0.55,0.10
+Secured Standard,rent_processor,0.80,0.10
+Standard,rent_processor,0.90,0.10
+World,rent_processor,1.05,0.10
+World Elite,rent_processor,1.20,0.10

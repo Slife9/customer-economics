@@ -71,14 +71,82 @@ def _persona_mcc_matrix(mcc: pd.DataFrame):
     return personas, mat
 
 
+def _reward_behaviour(accounts: pd.DataFrame, lat: pd.DataFrame, mcc: pd.DataFrame,
+                      pmat: np.ndarray, persona_i: np.ndarray, open_idx: np.ndarray,
+                      n_cyc: int, b: dict, rng: np.random.Generator):
+    """Profile-only reward behaviour (the `reward_stress` profile). Never
+    called for a profile without `reward_behaviour`, so those profiles' draws
+    are untouched. Returns the MCC table actually drawn from, one probability
+    vector per spending group, each account's group, a spend multiplier, and
+    the sign-up bonus chasers.
+
+    - Optimizers: high-spend accounts on a bonus programme concentrate spend
+      in that programme's bonus categories.
+    - Quasi-cash users: part of the spend goes to cash-like / processor MCCs
+      (wallet loads, money orders, rent) that earn full points at low
+      interchange.
+    - Bonus chasers: accounts opened inside the window spend hard in the
+      3-month offer window, then go dormant.
+    """
+    n = len(accounts)
+    program = accounts["Reward Program Code"].to_numpy()
+    extra = b.get("quasi_mcc")
+    mcc_all = mcc if extra is None else pd.concat([mcc, extra], ignore_index=True)
+    pad = len(mcc_all) - len(mcc)
+    vecs = [np.concatenate([pmat[p], np.zeros(pad)]) for p in range(len(pmat))]
+    group = persona_i.copy()
+    keyed: dict = {}
+
+    def group_of(key, vec):
+        if key not in keyed:
+            keyed[key] = len(vecs)
+            vecs.append(vec / vec.sum())
+        return keyed[key]
+
+    spend_rank = np.argsort(np.argsort(lat["spend_level"].to_numpy())) / max(n - 1, 1)
+    u = rng.random((n, 3))  # fixed-size draws: optimizer, quasi-cash, chaser
+    uplift = np.ones(n)
+
+    cats = mcc_all["Reward Category"].to_numpy()
+    within = np.where(mcc_all["Long Tail"].to_numpy() == 1, 0.35, 1.0)
+    within[len(mcc):] = 0.0  # bonus categories never point at quasi-cash rows
+    bonus_cats = b.get("optimizer_bonus_categories", {})
+    opt = (np.isin(program, list(bonus_cats)) & (spend_rank >= b.get("optimizer_min_spend_rank", 1.0))
+           & (u[:, 0] < b.get("optimizer_share", 0.0)))
+    c = b.get("optimizer_bonus_concentration", 0.0)
+    for i in np.where(opt)[0]:
+        bv = np.where(np.isin(cats, bonus_cats[program[i]]), within, 0.0)
+        group[i] = group_of(("opt", persona_i[i], program[i]),
+                            (1 - c) * vecs[persona_i[i]] + c * bv / bv.sum())
+    uplift[opt] = b.get("optimizer_spend_uplift", 1.0)
+
+    no_reward = set(b.get("no_reward_programs", []))
+    qc = (~opt & ~np.isin(program, list(no_reward)) & (u[:, 1] < b.get("quasi_cash_share", 0.0)))
+    if extra is not None and qc.any():
+        w = b.get("quasi_cash_mcc_weights", {})
+        qv = np.concatenate([np.zeros(len(mcc)),
+                             np.array([w.get(str(m), 0.0) for m in extra["MCC"]])])
+        q = b.get("quasi_cash_count_share", 0.0)
+        for i in np.where(qc)[0]:
+            group[i] = group_of(("qc", persona_i[i]), (1 - q) * vecs[persona_i[i]] + q * qv / qv.sum())
+        uplift[qc] = b.get("quasi_cash_spend_uplift", 1.0)
+
+    chaser = (~opt & ~qc & np.isin(program, b.get("bonus_eligible_programs", []))
+              & (open_idx >= 0) & (open_idx <= n_cyc - 6) & (u[:, 2] < b.get("bonus_chaser_share", 0.0)))
+    return mcc_all, np.vstack(vecs), group, uplift, chaser
+
+
 def generate(accounts: pd.DataFrame, lat: pd.DataFrame, cycles: list[str],
              open_idx: np.ndarray, closed_idx: np.ndarray,
              mcc: pd.DataFrame, card: pd.DataFrame,
-             rng: np.random.Generator) -> pd.DataFrame:
+             rng: np.random.Generator, behaviour: dict | None = None) -> pd.DataFrame:
     n_acct, n_cyc = len(accounts), len(cycles)
     personas, pmat = _persona_mcc_matrix(mcc)
     p_index = {p: i for i, p in enumerate(personas)}
     persona_i = np.array([p_index[p] for p in lat["spend_persona"]])
+    if behaviour is not None:
+        mcc, gvec, group, uplift, chaser = _reward_behaviour(
+            accounts, lat, mcc, pmat, persona_i, open_idx, n_cyc, behaviour, rng)
 
     # ---- monthly spend intensity -------------------------------------
     base_monthly = lat["spend_level"].to_numpy() / 12.0
@@ -88,6 +156,8 @@ def generate(accounts: pd.DataFrame, lat: pd.DataFrame, cycles: list[str],
     seas = SEASONALITY[months - 1]
     shock = np.exp(rng.normal(0.0, 0.28, (n_acct, n_cyc)))
     intensity = base_monthly[:, None] * persistent[:, None] * seas[None, :] * shock
+    if behaviour is not None:
+        intensity = intensity * uplift[:, None]
 
     # Account must be open and not yet closed in that cycle.
     ci = np.arange(n_cyc)[None, :]
@@ -106,11 +176,23 @@ def generate(accounts: pd.DataFrame, lat: pd.DataFrame, cycles: list[str],
                      np.maximum(open_idx, 0) + rng.integers(2, 13, n_acct),
                      10 ** 6)
     dormant_mask = ci >= onset[:, None]
+    pre_dormancy = intensity
     intensity = np.where(dormant_mask, 0.0, intensity)
+    if behaviour is not None and chaser.any():
+        # A chaser spends hard in the offer window even if the generic
+        # dormancy draw above would have silenced the card, then fades.
+        o = open_idx[:, None]
+        window = chaser[:, None] & (ci >= o) & (ci < o + 3)
+        after = chaser[:, None] & (ci >= o + 3)
+        intensity = np.where(window, pre_dormancy * behaviour.get("bonus_window_spend_boost", 1.0), intensity)
+        intensity = np.where(after, intensity * behaviour.get("bonus_after_window_spend_factor", 1.0), intensity)
 
     # ---- transaction counts -------------------------------------------
-    mean_ticket = np.array([
-        (mcc["Ticket Mean USD"].to_numpy() * pmat[pi]).sum() for pi in persona_i])
+    if behaviour is not None:
+        mean_ticket = gvec[group] @ mcc["Ticket Mean USD"].to_numpy()
+    else:
+        mean_ticket = np.array([
+            (mcc["Ticket Mean USD"].to_numpy() * pmat[pi]).sum() for pi in persona_i])
     lam = np.clip(intensity / mean_ticket[:, None], 0.0, 260.0)
     counts = rng.poisson(lam)
     total = int(counts.sum())
@@ -125,12 +207,20 @@ def generate(accounts: pd.DataFrame, lat: pd.DataFrame, cycles: list[str],
 
     # ---- merchant draw, grouped by persona for speed -------------------
     tx_mcc_i = np.empty(total, dtype=np.int64)
-    tx_persona = persona_i[tx_acct]
-    for pi in range(len(personas)):
-        m = tx_persona == pi
-        k = int(m.sum())
-        if k:
-            tx_mcc_i[m] = rng.choice(len(mcc), k, p=pmat[pi])
+    if behaviour is not None:
+        tx_group = group[tx_acct]
+        for gi in range(len(gvec)):
+            m = tx_group == gi
+            k = int(m.sum())
+            if k:
+                tx_mcc_i[m] = rng.choice(len(mcc), k, p=gvec[gi])
+    else:
+        tx_persona = persona_i[tx_acct]
+        for pi in range(len(personas)):
+            m = tx_persona == pi
+            k = int(m.sum())
+            if k:
+                tx_mcc_i[m] = rng.choice(len(mcc), k, p=pmat[pi])
 
     ticket_mean = mcc["Ticket Mean USD"].to_numpy()[tx_mcc_i]
     ticket_cv = mcc["Ticket CV"].to_numpy()[tx_mcc_i]

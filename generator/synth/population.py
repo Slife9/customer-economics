@@ -150,7 +150,9 @@ def build_card_accounts(cust: pd.DataFrame, lat: pd.DataFrame, cycles: list[str]
 
     # Account open date: most accounts predate the window, some open inside it.
     n_cycles = len(cycles)
-    opened_before = rng.random(n) < 0.82
+    # reward_stress opens more accounts inside the window (sign-up behaviour
+    # is only observable for those); every other profile uses 0.82.
+    opened_before = rng.random(n) < profile.get("pre_window_open_share", 0.82)
     months_before = np.where(
         opened_before,
         -np.clip(rng.gamma(2.2, 14.0, n), 1, 240).round().astype(int),

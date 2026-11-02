@@ -1,0 +1,5 @@
+MCC,Merchant Category Description,Interchange Category,Reward Category,Ticket Mean USD,Ticket CV,Long Tail
+6540,Stored Value Card Purchase / Load,quasi_cash,other,310.00,0.62,0
+4829,Wire Transfers and Money Orders,quasi_cash,other,420.00,0.70,0
+6051,Quasi Cash - Non-Financial Institution,quasi_cash,other,265.00,0.80,0
+6513,Real Estate Agents and Managers - Rentals,rent_processor,other,1640.00,0.35,0

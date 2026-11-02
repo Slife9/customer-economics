@@ -92,6 +92,47 @@ PROFILES = {
         "latent_tilt": {"affluence": 0.95},
         "channel_mix": [0.30, 0.28, 0.06, 0.24, 0.12],
     },
+    # Reward-profitability stress book for the L1 rewards system: tuned toward
+    # the Reward Profitability Scenario Model v2's segment mix. The demo's bank
+    # dials and defects, plus behaviour hooks no other profile switches on
+    # (transactions._reward_behaviour, deposit/loan holding scales, more
+    # accounts opened inside the window). Every value is `estimated` in
+    # config/benchmarks.yaml.
+    "reward_stress": {
+        "n": 5000, "limit_generosity": 1.0, "promo_share": 0.18,
+        "digital_deflection_rate": 0.40, "waiver_rate": 0.14,
+        "review_discipline": 0.90, "fee_aligned_to_reward": False,
+        "line_review_uses_observed_behavior": False,
+        "repricing_tracks_risk": False,
+        "defect_prevalence": DEMO_DEFECT_PREVALENCE,
+        "latent_tilt": {"payment_discipline": 0.8, "credit_appetite": -0.3},
+        "deposit_holding_scale": 0.20,
+        "loan_holding_scale": 0.30,
+        "pre_window_open_share": 0.55,
+        "reward_behaviour": {
+            "optimizer_bonus_categories": {
+                "EVERYDAY_3X_GROCERY_GAS": ["grocery", "gas"],
+                "TRAVEL_REWARDS_3X": ["travel", "dining"],
+                "PREMIUM_TRAVEL_5X": ["travel"],
+                "BUSINESS_CATEGORY_4X": ["business"],
+            },
+            "optimizer_min_spend_rank": 0.30,
+            "optimizer_share": 0.90,
+            "optimizer_bonus_concentration": 0.70,
+            "optimizer_spend_uplift": 1.4,
+            "no_reward_programs": ["CORE_LOW_RATE_NO_REWARDS"],
+            "quasi_cash_share": 0.03,
+            "quasi_cash_count_share": 0.06,
+            "quasi_cash_spend_uplift": 1.6,
+            "quasi_cash_mcc_weights": {"6540": 0.35, "4829": 0.15, "6051": 0.15, "6513": 0.35},
+            "bonus_eligible_programs": ["CORE_CASHBACK_1_5", "EVERYDAY_3X_GROCERY_GAS",
+                                        "TRAVEL_REWARDS_3X", "PREMIUM_TRAVEL_5X",
+                                        "BUSINESS_CATEGORY_4X"],
+            "bonus_chaser_share": 1.0,
+            "bonus_window_spend_boost": 3.5,
+            "bonus_after_window_spend_factor": 0.0,
+        },
+    },
 }
 
 
@@ -127,7 +168,16 @@ def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: in
     open_idx = accounts["Account Open Cycle Index"].to_numpy()
 
     mcc, rate_card = TX.load_config(CFG)
-    tx = TX.generate(accounts, lat, cycles, open_idx, np.full(n, n_cyc), mcc, rate_card, rng)
+    behaviour = prof.get("reward_behaviour")
+    if behaviour is not None:
+        # reward_stress only: cash-like MCCs and their rates live in separate
+        # config files so every other profile's catalogue, merchant draws and
+        # Table15 are untouched.
+        behaviour = dict(behaviour)
+        behaviour["quasi_mcc"] = pd.read_csv(CFG / "mcc_catalog_quasi_cash.csv", dtype={"MCC": str})
+        rate_card = pd.concat([rate_card, pd.read_csv(CFG / "interchange_rate_card_quasi_cash.csv")],
+                              ignore_index=True)
+    tx = TX.generate(accounts, lat, cycles, open_idx, np.full(n, n_cyc), mcc, rate_card, rng, behaviour)
 
     sim = CY.simulate(accounts, cust, lat, tx, cycles, rng, prof)
     cyc = sim["cycles"]
@@ -267,8 +317,11 @@ def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: in
     fee_recon.to_csv(out / "Table13c_Fee_Entitled_Vs_Charged.csv", index=False)
     waivers.to_csv(out / "Table14_Waivers_And_Exceptions.csv", index=False)
 
-    pd.read_csv(CFG / "interchange_rate_card.csv").to_csv(
-        out / "Table15_Interchange_Rate_Card.csv", index=False)
+    if behaviour is not None:
+        rate_card.to_csv(out / "Table15_Interchange_Rate_Card.csv", index=False)
+    else:
+        pd.read_csv(CFG / "interchange_rate_card.csv").to_csv(
+            out / "Table15_Interchange_Rate_Card.csv", index=False)
     pd.read_csv(CFG / "reward_program_rules.csv").to_csv(
         out / "Table16_Reward_Program_Rules.csv", index=False)
     red.to_csv(out / "Table17_Reward_Redemption.csv", index=False)
