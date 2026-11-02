@@ -32,8 +32,9 @@ h2 { font-size: 1.75rem !important; }
 h3 { font-size: 1.45rem !important; }
 .kpi { background: #ffffff; border: 1px solid #e2e8f0; border-left: 6px solid var(--accent, #2563eb);
        border-radius: 10px; padding: 16px 18px 14px; height: 100%; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
-.kpi .label { font-size: 1.0rem; font-weight: 600; color: #334155; margin-bottom: 6px; hyphens: none; word-break: normal; }
-.kpi .value { font-size: clamp(1.35rem, 2.1vw, 2.15rem); font-weight: 700; color: #0f172a; line-height: 1.15;
+.kpi .label { font-size: 1.0rem; font-weight: 600; color: #334155; margin-bottom: 6px; hyphens: none;
+              word-break: normal; overflow-wrap: normal; }
+.kpi .value { font-size: clamp(1.05rem, 1.9vw, 2.15rem); font-weight: 700; color: #0f172a; line-height: 1.15;
               font-variant-numeric: tabular-nums; white-space: nowrap; }
 .kpi .sub { font-size: 0.95rem; color: #475569; margin-top: 6px; }
 .kpi .sub b.good { color: #15803d; } .kpi .sub b.bad { color: #b91c1c; }

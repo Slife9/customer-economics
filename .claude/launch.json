@@ -42,7 +42,9 @@
         "--server.port",
         "8503",
         "--theme.baseFontSize",
-        "18"
+        "18",
+        "--server.maxUploadSize",
+        "4000"
       ],
       "port": 8503
     }

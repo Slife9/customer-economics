@@ -148,12 +148,31 @@ def save_account_frame(t: pd.DataFrame, meta: dict, path: Path | str) -> None:
     pq.write_table(table.replace_schema_metadata(md), path, compression="zstd")
 
 
+FRAME_COLUMNS = [
+    "customer", "interchange", "net_interest", "annual_fee", "other_fee", "reward", "signup_bonus", "credit_loss",
+    "network", "variable_opex", "capital", "fixed_cost", "engine_nep", "paid_in_full_months", "revolving_balance",
+    "open_at_last", "charged_off", "credit_line", "apr", "program", "program_name", "spend", "ic_tx", "points_value",
+    "active_months", "earn_rate", "effective_interchange", "flagged_spend_share", "bonus_category_share",
+    "tenure_months", "bonus_paid", "bonus_earned_month", "spend_change_after_window_pct", "inactive_after_window",
+    "inquiries_12m", "noncard_profit", "deposit_balance", "weight", "revenue", "reward_cost_incl_bonus",
+    "contribution", "fully_loaded_profit", "relationship_adjusted_profit"]
+
+
 def load_account_frame(path: Path | str) -> tuple[pd.DataFrame, dict]:
+    """Read a frame written by save_account_frame. Raises ValueError for any
+    other parquet file, or one missing a column the reward model needs."""
     import json
     import pyarrow.parquet as pq
     table = pq.read_table(path)
-    meta = json.loads(table.schema.metadata[b"l1_rewards_meta"])
-    return table.to_pandas(), meta
+    md = table.schema.metadata or {}
+    if b"l1_rewards_meta" not in md:
+        raise ValueError("this is not a prepared L1 rewards file (no l1_rewards_meta in the parquet metadata)")
+    meta = json.loads(md[b"l1_rewards_meta"])
+    t = table.to_pandas()
+    missing = [c for c in FRAME_COLUMNS if c not in t.columns]
+    if missing:
+        raise ValueError(f"prepared file is missing column(s) {missing}")
+    return t, meta
 
 
 def add_totals(t: pd.DataFrame) -> pd.DataFrame:

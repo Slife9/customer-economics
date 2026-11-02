@@ -19,6 +19,10 @@ the reward_stress generator profile). A script, like every other file here.
 2c. The bundled 100,000-customer sample (the app's default, a prebuilt
    account frame): the same checks, and with --scale, a fresh generator run
    at the same seed rebuilds it identically (about 30 minutes).
+2d. Upload your data: the zip pre-check accepts complete portfolios and
+   refuses incomplete ones; an upload missing Tables 25-27 but carrying a
+   build manifest analyses identically; prepared .parquet files load, and
+   any other parquet is refused.
 3. reward_stress profile: the same seed regenerates the bundled sample
    byte for byte, and its segment mix populates every segment.
 Byte-identity of the existing profiles is covered by
@@ -159,6 +163,50 @@ print("BAD" if bad else "OK", ",".join(bad))
         record(f"{label}: all {n_pages} app pages render without an exception", last.startswith("OK"), last)
 
 
+def upload_checks() -> None:
+    print("\n2d. Upload your data", flush=True)
+    import logging
+    logging.disable(logging.WARNING)  # streamlit's bare-mode chatter
+    from rewards_app.lib import state as S
+    good = SAMPLES["reward_stress"].read_bytes()
+
+    def rezip(drop=(), nest=""):
+        src, buf = zipfile.ZipFile(io.BytesIO(good)), io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            for i in src.infolist():
+                if i.filename.split("/")[-1] not in drop:
+                    z.writestr(nest + i.filename, src.read(i))
+        return buf.getvalue()
+
+    cases = [("complete zip", good, True), ("zip nested in a folder", rezip(nest="my_portfolio/"), True),
+             ("Table9 and Table16 missing", rezip(drop={"Table9_Capital_RWA.csv", "Table16_Reward_Program_Rules.csv"}), False),
+             ("Tables 25-27 missing, manifest present", rezip(drop=set(S.NEEDED)), True),
+             ("Tables 25-27 and manifest missing", rezip(drop={*S.NEEDED, "build_manifest.json"}), False),
+             ("not a zip", b"not a zip", False)]
+    got = {name: S.check_zip(data)["ok"] for name, data, _ in cases}
+    record("upload pre-check accepts complete zips and refuses incomplete ones before any build",
+           all(got[name] == want for name, _, want in cases),
+           ", ".join(f"{name}: {'accepted' if got[name] else 'refused'}" for name, *_ in cases))
+
+    root = S.extract_zip(rezip(drop=set(S.NEEDED), nest="my_portfolio/"), "audit_upload")
+    added = S.ensure_reward_tables(root)
+    t_up = D.account_frame(root)[0]
+    t_ref = D.account_frame(S.extract_zip(good, "audit_ref"))[0]
+    same = t_up.equals(t_ref) and len(added) == 3
+    record("an upload missing Tables 25-27 (manifest present) analyses identically to the complete zip", same,
+           f"{len(t_up):,} accounts; computed {len(added)} tables")
+
+    buf = io.BytesIO()
+    pd.DataFrame({"a": [1]}).to_parquet(buf)
+    try:
+        S.save_parquet_upload(buf.getvalue())
+        rejected = False
+    except ValueError:
+        rejected = True
+    accepted = len(D.load_account_frame(S.save_parquet_upload(BIG.read_bytes()))[0]) > 0
+    record("prepared .parquet upload: the app's own file loads; any other parquet is refused", accepted and rejected)
+
+
 def big_sample_checks(cfg: dict, scale: bool, work: Path) -> None:
     print("\n2c. Bundled 100,000-customer sample (the app's default)", flush=True)
     t, meta = D.load_account_frame(BIG)
@@ -209,6 +257,7 @@ def main() -> int:
         for label, sample in SAMPLES.items():
             portfolio_checks(label, extract(sample, work), cfg)
         big_sample_checks(cfg, "--scale" in sys.argv, work)
+        upload_checks()
         app_pages(work)
         profile_checks(work, cfg)
     finally:

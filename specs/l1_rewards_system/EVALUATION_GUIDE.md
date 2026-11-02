@@ -35,7 +35,7 @@ pip install -r datagen_app/requirements.txt
 ```
 
 ```bash
-streamlit run rewards_app/Home.py --theme.baseFontSize 18
+streamlit run rewards_app/Home.py --theme.baseFontSize 18 --server.maxUploadSize 4000
 ```
 
 The app opens on the **Overview**, with the bundled 100,000-customer reward
@@ -67,8 +67,10 @@ python audit/audit_l1_rewards_system.py
 python audit/audit_reward_data_additions.py
 ```
 
-As last run: **20/20 PASSED** with `--scale` (19/19 without), and **23/23
-PASSED**.
+As last run: **22/22 PASSED** (`--scale` skipped), and **23/23 PASSED**.
+The `--scale` rebuild check passed (20/20) before the upload checks were
+added. The upload change touched neither the 100k sample nor the
+generator.
 
 The first audit covers:
 - the model reproducing the workbook (90 values + 3 totals, $0.00
@@ -134,6 +136,17 @@ Base by segment:
 - [ ] Change one value, for example the Base earn-rate cut for Optimizers.
       The dashboard changes and shows an "edited" warning.
 - [ ] Reset restores the workbook values.
+
+**Upload your data** (sidebar link on every page).
+- [ ] Click **Download an example upload**, then upload that zip. The check
+      says "looks complete - 40 tables".
+- [ ] Click **Run the analysis**. The results show 4,429 card accounts, 1,168
+      unprofitable, -$188,937, and Base +$154,014. The sidebar shows the
+      file's name.
+- [ ] The Overview and the other pages now show that portfolio.
+- [ ] **Back to the bundled sample** returns to the 100k book.
+- [ ] A zip missing a required table, or a file that isn't a zip, is
+      refused with a plain message before anything runs.
 
 **Customer drill-down.** Type `ACC0000021` (an Optimizer) and `ACC0000225`
 (a Bonus Chaser).

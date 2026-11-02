@@ -29,7 +29,10 @@ st.subheader("Reconciliation")
 diff = (t["fully_loaded_profit"] + t["signup_bonus"] - t["engine_nep"]).abs().max()
 st.markdown(f"Fully loaded card profit + sign-up bonus = the engine's net economic profit, for every account: "
             f"largest difference **${diff:,.2f}** across {len(t):,} accounts.")
-if S.prebuilt(root):
+if S.prebuilt(root) and not meta.get("profile"):
+    st.markdown(f"This is a **prepared account file** uploaded by you, built from `{meta.get('data_dir')}`: the "
+                f"per-account figures above, without the raw tables.")
+elif S.prebuilt(root):
     st.markdown(f"This sample is a **prebuilt account frame** (`{root.name}`): the per-account figures above, "
                 f"built from a generator run of the `{meta.get('profile')}` profile with "
                 f"{meta.get('customers', 0):,} customers (seed {meta.get('seed')}) in `{meta.get('data_dir')}`. "

@@ -26,8 +26,14 @@ SAMPLES = {
         ROOT / "samples" / "reward_stress_100k_accounts.parquet",
 }
 DEFAULT_SAMPLE = next(iter(SAMPLES))
+EXAMPLE_UPLOAD = ROOT / "samples" / "reward_stress_portfolio.zip"
 SCRATCH = Path(tempfile.gettempdir()) / "profitinsight_rewards_app"
 NEEDED = ["Table25_MCC_Reference.csv", "Table26_Signup_Bonus.csv", "Table27_Bureau_Inquiries.csv"]
+# Beyond the engine's data contract, the reward model reads the programme
+# rules; Tables 25-26 are needed too but can be computed from a generator
+# build's manifest; Table27 is optional (inquiries then show as n/a).
+REWARD_REQUIRED = ["Table16_Reward_Program_Rules.csv"]
+DERIVABLE, OPTIONAL_REWARD = NEEDED[:2], NEEDED[2]
 
 
 # ------------------------------------------------------------------ loading
@@ -53,18 +59,79 @@ def extract_zip(data: bytes, label: str) -> Path:
     return hits[0].parent
 
 
+def check_zip(data: bytes) -> dict:
+    """Quick pre-check of an uploaded zip from its file list alone, before the
+    slow build: which folder holds the tables and what is missing."""
+    from engine.core.contract import REQUIRED
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            infos = [i for i in zf.infolist() if not i.is_dir()]
+    except zipfile.BadZipFile:
+        return {"ok": False, "problems": ["This is not a valid zip file."], "notes": [], "tables": 0, "mb": 0}
+    names = [i.filename.replace("\\", "/") for i in infos]
+    anchors = [n for n in names if n.split("/")[-1] == "Table1_Customer.csv"]
+    if not anchors:
+        return {"ok": False, "problems": ["Table1_Customer.csv was not found. Zip the folder that holds the table "
+                                          "CSVs (Table1_Customer.csv, Table2_Card_Account.csv, …)."],
+                "notes": [], "tables": 0, "mb": 0}
+    prefix = anchors[0][: -len("Table1_Customer.csv")]
+    present = {n[len(prefix):] for n in names if n.startswith(prefix)}
+    problems, notes = [], []
+    missing = [n for n in [*REQUIRED, *REWARD_REQUIRED] if n not in present]
+    if missing:
+        problems.append("Missing required table(s): " + ", ".join(missing))
+    absent = [n for n in DERIVABLE if n not in present]
+    if absent and "build_manifest.json" not in present:
+        problems.append(f"Missing {', '.join(absent)}, and there is no build_manifest.json to compute "
+                        f"{'it' if len(absent) == 1 else 'them'} from.")
+    elif absent:
+        notes.append(f"{', '.join(absent)} will be computed from build_manifest.json.")
+    if OPTIONAL_REWARD not in present:
+        notes.append(f"{OPTIONAL_REWARD} " + ("will be computed from build_manifest.json."
+                                              if "build_manifest.json" in present
+                                              else "is absent - credit inquiries will show as n/a."))
+    mb = sum(i.file_size for i in infos) / 1e6
+    return {"ok": not problems, "problems": problems, "notes": notes,
+            "tables": sum(n.endswith(".csv") for n in present), "mb": mb}
+
+
 def ensure_reward_tables(root: Path) -> list[str]:
-    """Tables 25-27 are needed. If absent but the folder is a generator
-    build (has build_manifest.json), compute them; returns what was added."""
+    """Tables 25-26 are needed and Table27 is used if present. Any that are
+    absent are computed when the folder is a generator build (has
+    build_manifest.json); returns what was added."""
     missing = [n for n in NEEDED if not (root / n).exists()]
     if not missing:
         return []
     if not (root / "build_manifest.json").exists():
-        raise ValueError(f"This portfolio has no {', '.join(missing)} and no build_manifest.json to "
-                         f"derive them from. Generate it with the current generator.")
+        if any(n in missing for n in DERIVABLE):
+            raise ValueError(f"This portfolio has no {', '.join(n for n in missing if n in DERIVABLE)} and no "
+                             f"build_manifest.json to derive them from. Generate it with the current generator.")
+        return []
     from generator.reward_additions import add_reward_tables
     add_reward_tables(root)
     return missing
+
+
+def save_parquet_upload(data: bytes) -> Path:
+    """A prepared account file uploaded back: store it and check it reads."""
+    SCRATCH.mkdir(parents=True, exist_ok=True)
+    path = SCRATCH / f"upload_{hashlib.sha256(data).hexdigest()[:16]}.parquet"
+    if not path.exists():
+        path.write_bytes(data)
+    D.load_account_frame(path)  # raises ValueError if it is not a prepared L1 rewards file
+    return path
+
+
+def prepared_bytes(root: str) -> bytes:
+    """The loaded portfolio as a prepared account file, to download and
+    upload again later without rebuilding."""
+    if prebuilt(root):
+        return Path(root).read_bytes()
+    t, meta = account_frame(root, root)
+    out = Path(root).parent / f"{Path(root).name}_prepared.parquet"
+    if not out.exists():
+        D.save_account_frame(t, {**meta, "data_dir": st.session_state.get("label", "upload")}, out)
+    return out.read_bytes()
 
 
 def prebuilt(root: str | Path) -> bool:
@@ -80,10 +147,30 @@ def account_frame(root: str, _key: str):
 def load(root: Path, label: str) -> None:
     added = [] if prebuilt(root) else ensure_reward_tables(root)
     t, meta = account_frame(str(root), f"{root}")
+    use(root, label, added, meta)
+
+
+def use(root: Path, label: str, added: list[str], meta: dict) -> None:
     st.session_state["root"] = str(root)
     st.session_state["label"] = label
     st.session_state["added_tables"] = added
     st.session_state["meta"] = meta
+
+
+def is_sample() -> bool:
+    return st.session_state.get("label") in SAMPLES
+
+
+PAGES: dict = {}  # url_path -> st.Page, registered by Home.py on every run
+
+
+def page_link(url_path: str, label: str, icon: str, where=st, **kw) -> None:
+    """Link to another page; plain text when a page runs on its own (tests)."""
+    page = PAGES.get(url_path)
+    if page is not None:
+        where.page_link(page, label=label, icon=icon, **kw)
+    else:
+        where.markdown(f"{icon} **{label}**")
 
 
 def load_sample(label: str) -> None:
@@ -106,7 +193,7 @@ def require() -> None:
         with st.spinner("Loading the bundled 100,000-customer sample…"):
             load_sample(DEFAULT_SAMPLE)
     except FileNotFoundError as e:
-        st.info(f"Load a portfolio on the **Load portfolio** page first. ({e})")
+        st.info(f"Upload a portfolio on the **Upload your data** page first. ({e})")
         st.stop()
 
 

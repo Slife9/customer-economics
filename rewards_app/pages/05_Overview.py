@@ -18,6 +18,7 @@ customers = meta.get("customers") or t["customer"].nunique()
 st.title("🎁 L1 Rewards Profitability - overview")
 st.caption(f"{st.session_state['label']} · {customers:,} customers, {len(t):,} card accounts · "
            f"trailing 12 months to {meta['last']}")
+S.page_link("upload", "Analyse your own data - upload a portfolio", "📤")
 S.edited_badge()
 
 

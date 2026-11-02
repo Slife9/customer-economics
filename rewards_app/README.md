@@ -1,13 +1,15 @@
 # L1 Rewards Profitability (standalone app)
 
 ```bash
-streamlit run rewards_app/Home.py --theme.baseFontSize 18
+streamlit run rewards_app/Home.py --theme.baseFontSize 18 --server.maxUploadSize 4000
 ```
 
 Install with `pip install -r app/requirements.txt`. The app opens on port
-8501, or 8503 through the `profitinsight-rewards` launch config. The
-`--theme.baseFontSize 18` flag enlarges the tables too; the rest of the
-app's larger text works without it.
+8501, or 8503 through the `profitinsight-rewards` launch config.
+- `--theme.baseFontSize 18` enlarges the tables too; the rest of the app's
+  larger text works without it.
+- `--server.maxUploadSize 4000` (MB) lets large portfolios be uploaded. The
+  shared `.streamlit/config.toml` allows 500 MB.
 
 **What it does.** It finds the reward accounts that lose money, sorts them
 into the segments of the *Reward Profitability Scenario Model v2*, and
@@ -26,7 +28,16 @@ to ship. Rebuild the sample, which takes about 15 minutes:
 python -m rewards_app.build_sample
 ```
 
-Your own portfolio can be uploaded as a zip on **Load portfolio**.
+**Your own data.** Use **Upload your data** (in the sidebar on every page).
+1. Upload a zip of the portfolio's table CSVs: the engine's data contract,
+   plus Table16, and Table25/26 or the generator's `build_manifest.json`.
+2. The page checks the zip's contents at once.
+3. **Run the analysis** builds each account's P&L. This takes seconds for
+   5k customers and a few minutes for 100k.
+4. Every page then shows that portfolio.
+
+Save the prepared `.parquet` the page offers. Uploading it later skips the
+rebuild. A browser refresh starts a new session on the bundled sample.
 
 | Page | What it shows |
 |---|---|
@@ -35,7 +46,7 @@ Your own portfolio can be uploaded as a zip on **Load portfolio**.
 | Segments | Screen funnel, segment mix and loss, segment profiles and charts, the rules, and why accounts end up Unassigned |
 | Levers & assumptions | The model's defaults: levers by scenario and segment, customer response, portfolio rates, thresholds. Editable for this session, with reset and download |
 | Customer drill-down | Worklist (filters, CSV). For one account: the screen and every segment rule, baseline and post-change P&L, leave probability and spend change, recommended actions |
-| Load portfolio | The bundled sample, or an uploaded zip. Tables 25-27 are computed if missing and the folder has a build manifest |
+| Upload your data | Upload a zipped portfolio or a prepared .parquet; instant check of the zip's contents; step-by-step run; headline results; save the prepared file; back to the bundled sample. Tables 25-27 are computed if missing and the zip has a build manifest |
 | Data & calibration | Where each figure comes from, reconciliation to the engine, limitations |
 | Downloads | Account results, segment summary, and the assumptions in use |
 | Lever guide & regulation | What each lever is, actions by segment, how the model works, US guardrails |
