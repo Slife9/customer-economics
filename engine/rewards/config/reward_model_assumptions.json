@@ -1,0 +1,389 @@
+{
+  "_source": {
+    "workbook": "Reward_Profitability_Scenario_Model_v2.xlsx",
+    "workbook_sha256": "df975548535d5b4810a8ea4dc131ac3a777aec26ea8e52ffbba650ab7f9487f1",
+    "note": "Illustrative industry-average estimates from the Reward Profitability Scenario Model v2 (not portfolio data). Defaults only - edit here or in the app."
+  },
+  "segments_in_priority_order": [
+    "relationship",
+    "quasi_cash",
+    "bonus_chasers",
+    "optimizers",
+    "low_spend"
+  ],
+  "segment_labels": {
+    "optimizers": "Optimizers / Transactors",
+    "bonus_chasers": "Sign-Up Bonus Chasers",
+    "quasi_cash": "Quasi-Cash Users",
+    "low_spend": "Low-Spend Loyalists",
+    "relationship": "Relationship Customers",
+    "unassigned": "Unassigned (review)"
+  },
+  "thresholds": {
+    "screen_max_fully_loaded_profit_usd": 0,
+    "screen_min_reward_cost_share_of_revenue": 0.5,
+    "screen_min_tenure_months": 6,
+    "relationship_min_noncard_profit_usd": 150,
+    "relationship_min_deposit_balance_usd": 25000,
+    "quasi_cash_min_spend_share": 0.25,
+    "quasi_cash_max_effective_interchange": 0.015,
+    "bonus_chaser_max_tenure_months": 18,
+    "bonus_chaser_min_spend_drop": 0.6,
+    "bonus_chaser_min_inquiries_12m": 3,
+    "optimizer_min_paid_in_full_months": 10,
+    "optimizer_min_bonus_category_share": 0.5,
+    "optimizer_min_annual_spend_usd": 12000,
+    "low_spend_max_annual_spend_usd": 6000,
+    "low_spend_min_tenure_months": 36,
+    "low_spend_min_active_months": 9
+  },
+  "behaviour": {
+    "attrition_per_10pct_value_cut": {
+      "optimizers": 0.04,
+      "bonus_chasers": 0.06,
+      "quasi_cash": 0.05,
+      "low_spend": 0.015,
+      "relationship": 0.01
+    },
+    "attrition_per_100usd_fee_increase": {
+      "optimizers": 0.15,
+      "bonus_chasers": 0.25,
+      "quasi_cash": 0.2,
+      "low_spend": 0.2,
+      "relationship": 0.08
+    },
+    "spend_change_per_10pct_value_cut": {
+      "optimizers": -0.04,
+      "bonus_chasers": -0.05,
+      "quasi_cash": -0.06,
+      "low_spend": -0.02,
+      "relationship": -0.015
+    }
+  },
+  "portfolio": {
+    "cost_of_funds": 0.045,
+    "capital_ratio": 0.1,
+    "cost_of_equity": 0.12,
+    "undrawn_ccf": 0.1,
+    "non_rewards_interchange_rate": 0.017,
+    "non_rewards_annual_fee_usd": 0,
+    "product_change_attrition": 0.1,
+    "product_change_spend_reduction": 0.3,
+    "redemption_steering_pass_through": 0.5,
+    "max_attrition": 0.6,
+    "promo_cost_on_incremental_balance": 0.03,
+    "behavioural_response_multiplier": 1
+  },
+  "levers": {
+    "conservative": {
+      "earn_rate_reduction_pp": {
+        "optimizers": 0.001,
+        "bonus_chasers": 0,
+        "quasi_cash": 0,
+        "low_spend": 0,
+        "relationship": 0
+      },
+      "excluded_spend_share": {
+        "optimizers": 0.02,
+        "bonus_chasers": 0,
+        "quasi_cash": 0.3,
+        "low_spend": 0,
+        "relationship": 0
+      },
+      "bonus_category_cap_cut": {
+        "optimizers": 0.1,
+        "bonus_chasers": 0,
+        "quasi_cash": 0,
+        "low_spend": 0,
+        "relationship": 0
+      },
+      "redemption_steering_cut": {
+        "optimizers": 0,
+        "bonus_chasers": 0,
+        "quasi_cash": 0,
+        "low_spend": 0.1,
+        "relationship": 0
+      },
+      "annual_fee_increase_usd": {
+        "optimizers": 0,
+        "bonus_chasers": 0,
+        "quasi_cash": 0,
+        "low_spend": 0,
+        "relationship": 0
+      },
+      "merchant_funded_share": {
+        "optimizers": 0.03,
+        "bonus_chasers": 0.02,
+        "quasi_cash": 0,
+        "low_spend": 0.03,
+        "relationship": 0.03
+      },
+      "product_change_share": {
+        "optimizers": 0,
+        "bonus_chasers": 0,
+        "quasi_cash": 0,
+        "low_spend": 0.1,
+        "relationship": 0
+      },
+      "revolving_balance_uplift": {
+        "optimizers": 0.05,
+        "bonus_chasers": 0.05,
+        "quasi_cash": 0.05,
+        "low_spend": 0.05,
+        "relationship": 0
+      },
+      "signup_bonus_cost_cut": {
+        "optimizers": 0.2,
+        "bonus_chasers": 0.3,
+        "quasi_cash": 0.1,
+        "low_spend": 0.1,
+        "relationship": 0
+      }
+    },
+    "base": {
+      "earn_rate_reduction_pp": {
+        "optimizers": 0.0025,
+        "bonus_chasers": 0.001,
+        "quasi_cash": 0.001,
+        "low_spend": 0,
+        "relationship": 0.001
+      },
+      "excluded_spend_share": {
+        "optimizers": 0.03,
+        "bonus_chasers": 0.02,
+        "quasi_cash": 0.5,
+        "low_spend": 0.02,
+        "relationship": 0.02
+      },
+      "bonus_category_cap_cut": {
+        "optimizers": 0.2,
+        "bonus_chasers": 0.05,
+        "quasi_cash": 0,
+        "low_spend": 0,
+        "relationship": 0.05
+      },
+      "redemption_steering_cut": {
+        "optimizers": 0.05,
+        "bonus_chasers": 0.05,
+        "quasi_cash": 0.05,
+        "low_spend": 0.2,
+        "relationship": 0.05
+      },
+      "annual_fee_increase_usd": {
+        "optimizers": 0,
+        "bonus_chasers": 0,
+        "quasi_cash": 0,
+        "low_spend": 0,
+        "relationship": 0
+      },
+      "merchant_funded_share": {
+        "optimizers": 0.05,
+        "bonus_chasers": 0.04,
+        "quasi_cash": 0.02,
+        "low_spend": 0.05,
+        "relationship": 0.05
+      },
+      "product_change_share": {
+        "optimizers": 0,
+        "bonus_chasers": 0.1,
+        "quasi_cash": 0,
+        "low_spend": 0.25,
+        "relationship": 0
+      },
+      "revolving_balance_uplift": {
+        "optimizers": 0.1,
+        "bonus_chasers": 0.1,
+        "quasi_cash": 0.1,
+        "low_spend": 0.1,
+        "relationship": 0.05
+      },
+      "signup_bonus_cost_cut": {
+        "optimizers": 0.3,
+        "bonus_chasers": 0.5,
+        "quasi_cash": 0.2,
+        "low_spend": 0.2,
+        "relationship": 0.1
+      }
+    },
+    "aggressive": {
+      "earn_rate_reduction_pp": {
+        "optimizers": 0.005,
+        "bonus_chasers": 0.0025,
+        "quasi_cash": 0.0025,
+        "low_spend": 0.0025,
+        "relationship": 0.0025
+      },
+      "excluded_spend_share": {
+        "optimizers": 0.05,
+        "bonus_chasers": 0.03,
+        "quasi_cash": 0.7,
+        "low_spend": 0.03,
+        "relationship": 0.03
+      },
+      "bonus_category_cap_cut": {
+        "optimizers": 0.3,
+        "bonus_chasers": 0.1,
+        "quasi_cash": 0,
+        "low_spend": 0,
+        "relationship": 0.1
+      },
+      "redemption_steering_cut": {
+        "optimizers": 0.1,
+        "bonus_chasers": 0.1,
+        "quasi_cash": 0.1,
+        "low_spend": 0.3,
+        "relationship": 0.1
+      },
+      "annual_fee_increase_usd": {
+        "optimizers": 95,
+        "bonus_chasers": 0,
+        "quasi_cash": 49,
+        "low_spend": 0,
+        "relationship": 0
+      },
+      "merchant_funded_share": {
+        "optimizers": 0.08,
+        "bonus_chasers": 0.06,
+        "quasi_cash": 0.04,
+        "low_spend": 0.08,
+        "relationship": 0.08
+      },
+      "product_change_share": {
+        "optimizers": 0,
+        "bonus_chasers": 0.2,
+        "quasi_cash": 0.1,
+        "low_spend": 0.4,
+        "relationship": 0
+      },
+      "revolving_balance_uplift": {
+        "optimizers": 0.15,
+        "bonus_chasers": 0.2,
+        "quasi_cash": 0.15,
+        "low_spend": 0.15,
+        "relationship": 0.1
+      },
+      "signup_bonus_cost_cut": {
+        "optimizers": 0.5,
+        "bonus_chasers": 0.7,
+        "quasi_cash": 0.3,
+        "low_spend": 0.3,
+        "relationship": 0.2
+      }
+    }
+  },
+  "excel_reference_baseline": {
+    "accounts": {
+      "optimizers": 20000,
+      "bonus_chasers": 15000,
+      "quasi_cash": 8000,
+      "low_spend": 25000,
+      "relationship": 10000
+    },
+    "annual_spend_usd": {
+      "optimizers": 24000,
+      "bonus_chasers": 6000,
+      "quasi_cash": 30000,
+      "low_spend": 4000,
+      "relationship": 15000
+    },
+    "revolving_balance_usd": {
+      "optimizers": 500,
+      "bonus_chasers": 300,
+      "quasi_cash": 800,
+      "low_spend": 400,
+      "relationship": 1000
+    },
+    "credit_line_usd": {
+      "optimizers": 15000,
+      "bonus_chasers": 8000,
+      "quasi_cash": 20000,
+      "low_spend": 7000,
+      "relationship": 15000
+    },
+    "interchange_rate": {
+      "optimizers": 0.022,
+      "bonus_chasers": 0.021,
+      "quasi_cash": 0.012,
+      "low_spend": 0.02,
+      "relationship": 0.021
+    },
+    "earn_rate": {
+      "optimizers": 0.026,
+      "bonus_chasers": 0.018,
+      "quasi_cash": 0.02,
+      "low_spend": 0.015,
+      "relationship": 0.025
+    },
+    "redemption_rate": {
+      "optimizers": 0.95,
+      "bonus_chasers": 0.85,
+      "quasi_cash": 0.97,
+      "low_spend": 0.9,
+      "relationship": 0.92
+    },
+    "cost_per_dollar_redeemed": {
+      "optimizers": 1,
+      "bonus_chasers": 1,
+      "quasi_cash": 1,
+      "low_spend": 1,
+      "relationship": 1
+    },
+    "apr": {
+      "optimizers": 0.22,
+      "bonus_chasers": 0.24,
+      "quasi_cash": 0.21,
+      "low_spend": 0.24,
+      "relationship": 0.2
+    },
+    "annual_fee_usd": {
+      "optimizers": 0,
+      "bonus_chasers": 0,
+      "quasi_cash": 0,
+      "low_spend": 0,
+      "relationship": 0
+    },
+    "other_fee_income_usd": {
+      "optimizers": 15,
+      "bonus_chasers": 10,
+      "quasi_cash": 15,
+      "low_spend": 12,
+      "relationship": 10
+    },
+    "signup_bonus_cost_usd": {
+      "optimizers": 50,
+      "bonus_chasers": 150,
+      "quasi_cash": 40,
+      "low_spend": 20,
+      "relationship": 30
+    },
+    "credit_loss_rate": {
+      "optimizers": 0.02,
+      "bonus_chasers": 0.035,
+      "quasi_cash": 0.02,
+      "low_spend": 0.04,
+      "relationship": 0.015
+    },
+    "variable_opex_usd": {
+      "optimizers": 45,
+      "bonus_chasers": 40,
+      "quasi_cash": 45,
+      "low_spend": 45,
+      "relationship": 45
+    },
+    "fixed_cost_usd": {
+      "optimizers": 60,
+      "bonus_chasers": 60,
+      "quasi_cash": 60,
+      "low_spend": 60,
+      "relationship": 60
+    },
+    "noncard_profit_usd": {
+      "optimizers": 0,
+      "bonus_chasers": 0,
+      "quasi_cash": 0,
+      "low_spend": 0,
+      "relationship": 250
+    },
+    "network_cost_rate": 0.001
+  }
+}
