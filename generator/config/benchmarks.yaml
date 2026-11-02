@@ -228,3 +228,24 @@ reward_additions_signup_bonus_terms:
   source: "ProfitInsight assumption (spec 2.2 example tiers); consistent with typical US public offers by product tier"
   confidence: estimated
   note: "Window 3 months from the account-open month. Bonus cost is NOT in the ledger or NEP (spec 2.2)."
+
+reward_additions_inquiry_base_rate:
+  value: 0.05
+  unit: hard_inquiries_per_customer_per_month
+  source: "ProfitInsight assumption (spec SPEC_reward_data_additions.md, 2.3: 'about 0.05')"
+  confidence: estimated
+  note: "About 0.6 a year before signals. US consumers typically carry roughly one hard inquiry a year on file; the signals below lift the 5k demo to about 0.8."
+
+reward_additions_inquiry_rate_multipliers:
+  value: {card_opened_here_last_6_months: 3.0, voluntary_closure_next_3_months: 4.0, utilisation_at_least_0.80: 2.0}
+  unit: multiplier_on_base_rate (combined multiplicatively, monthly rate capped at 1.0)
+  source: "ProfitInsight assumption"
+  confidence: estimated
+  note: "Shopping for credit clusters around new accounts, ahead of moving a relationship, and when a card is near its limit. The signals are read from existing tables and never written to Table27 (the closure signal is future information)."
+
+reward_additions_new_trade_share_of_inquiries:
+  value: 0.40
+  unit: share_of_hard_inquiries
+  source: "ProfitInsight assumption (spec 2.3: 'about 40%')"
+  confidence: estimated
+  note: "Not every application is approved or accepted."

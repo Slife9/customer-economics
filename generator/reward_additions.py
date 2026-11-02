@@ -249,6 +249,85 @@ def bonus_chaser_summary(t26: pd.DataFrame) -> dict:
     }
 
 
+# --------------------------------------------------------------- Table27
+# Spec 2.3. Monthly hard-inquiry rate, raised (multiplicatively, capped) for
+# signals read from existing tables. Every value is `estimated`
+# (benchmarks.yaml). The signals themselves are NOT written to the table:
+# "closes within 3 months" is future information, and a published column
+# carrying it would hand any model built on this table its own answer.
+INQUIRY_BASE_RATE = 0.05
+INQUIRY_MULT_RECENT_OPEN = 3.0      # a card account opened here in the last 6 months
+INQUIRY_MULT_PRE_ATTRITION = 4.0    # a voluntary closure in the next 3 months
+INQUIRY_MULT_HIGH_UTILISATION = 2.0
+HIGH_UTILISATION = 0.80
+INQUIRY_RATE_CAP = 1.0
+NEW_TRADE_SHARE = 0.40
+RECENT_OPEN_MONTHS = 6
+PRE_ATTRITION_MONTHS = 3
+TRAILING_MONTHS = 12
+
+
+def table27_bureau_inquiries(data_dir: Path, rng: np.random.Generator) -> pd.DataFrame:
+    cycles = _cycles(data_dir)
+    n_cyc = len(cycles)
+    c_ix = {c: i for i, c in enumerate(cycles)}
+    cust = pd.read_csv(data_dir / "Table1_Customer.csv", usecols=["Masked Customer Number"])
+    k = pd.Series(np.arange(len(cust)), index=cust["Masked Customer Number"])
+    n = len(cust)
+    t = np.arange(n_cyc)[None, :]
+
+    acct = pd.read_csv(data_dir / "Table2_Card_Account.csv",
+                       usecols=["Masked Customer Number", "Masked Account Number"])
+    opened = pd.read_csv(data_dir / "Table2b_Account_Open_Reference.csv",
+                         usecols=["Masked Account Number", "Account Open Cycle Index"])
+    acct = acct.merge(opened, on="Masked Account Number", how="left", validate="one_to_one")
+    acct["_k"] = k.reindex(acct["Masked Customer Number"]).to_numpy()
+
+    recent_open = np.zeros((n, n_cyc), dtype=bool)
+    for kk, o in zip(acct["_k"].to_numpy(), acct["Account Open Cycle Index"].to_numpy()):
+        if o >= 0:
+            recent_open[kk, o:min(n_cyc, o + RECENT_OPEN_MONTHS)] = True
+
+    attr = pd.read_csv(data_dir / "Table22_Attrition_Events.csv",
+                       usecols=["Masked Account Number", "Closure Cycle Month", "Voluntary Closure"])
+    vol = attr[attr["Voluntary Closure"].astype(bool)].merge(
+        acct[["Masked Account Number", "_k"]], on="Masked Account Number", how="left")
+    pre_attrition = np.zeros((n, n_cyc), dtype=bool)
+    for kk, cm in zip(vol["_k"].to_numpy(), vol["Closure Cycle Month"].map(c_ix).to_numpy()):
+        pre_attrition[kk, max(0, cm - PRE_ATTRITION_MONTHS):cm] = True   # the 3 months before
+
+    high_util = np.zeros((n, n_cyc), dtype=bool)
+    for ch in pd.read_csv(data_dir / "Table4_Account_Cycle.csv", chunksize=CHUNK_ROWS,
+                          usecols=["Masked Customer Number", "Cycle Month", "Utilization"]):
+        hi = ch[ch["Utilization"] >= HIGH_UTILISATION]
+        high_util[k.reindex(hi["Masked Customer Number"]).to_numpy(),
+                  hi["Cycle Month"].map(c_ix).to_numpy()] = True
+
+    rate = INQUIRY_BASE_RATE \
+        * np.where(recent_open, INQUIRY_MULT_RECENT_OPEN, 1.0) \
+        * np.where(pre_attrition, INQUIRY_MULT_PRE_ATTRITION, 1.0) \
+        * np.where(high_util, INQUIRY_MULT_HIGH_UTILISATION, 1.0)
+    rate = np.minimum(rate, INQUIRY_RATE_CAP)
+
+    # Fixed-size draws (every customer x cycle, C order), so the stream's use
+    # never depends on the signals.
+    inquiries = rng.poisson(rate)
+    new_trades = rng.binomial(inquiries, NEW_TRADE_SHARE)
+    csum = np.cumsum(inquiries, axis=1)
+    trailing = csum - np.concatenate(
+        [np.zeros((n, TRAILING_MONTHS), dtype=csum.dtype), csum[:, :-TRAILING_MONTHS]], axis=1)[:, :n_cyc]
+    window = np.minimum(t + 1, TRAILING_MONTHS).repeat(n, axis=0)
+
+    return pd.DataFrame({
+        "Masked Customer Number": np.repeat(cust["Masked Customer Number"].to_numpy(), n_cyc),
+        "Cycle Month": np.tile(np.array(cycles), n),
+        "Hard Inquiries": inquiries.ravel(),
+        "New Trades Opened Elsewhere": new_trades.ravel(),
+        "Inquiries Trailing 12m": trailing.ravel(),
+        "Trailing Window Months": window.ravel(),
+    })
+
+
 # --------------------------------------------------------------- driver
 def streams(seed: int) -> list[np.random.Generator]:
     """The new random stream: SeedSequence(seed + STREAM_OFFSET), one
@@ -267,6 +346,7 @@ def add_reward_tables(data_dir: Path | str, seed: int | None = None) -> dict:
     tables = {
         "Table25_MCC_Reference.csv": table25_mcc_reference(data_dir),
         "Table26_Signup_Bonus.csv": table26_signup_bonus(data_dir, rng26),
+        "Table27_Bureau_Inquiries.csv": table27_bureau_inquiries(data_dir, rng27),
     }
     for name, df in tables.items():
         df.to_csv(data_dir / name, index=False)
