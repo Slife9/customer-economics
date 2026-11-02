@@ -207,3 +207,24 @@ lifetime_ecl_share_of_balance:
   url: "https://www.sec.gov/Archives/edgar/data/927628/000092762826000024/cof-20251231.htm"
   confidence: sourced
   note: "subprime-skewed issuers typically run higher (~9-12%); upper bound not independently re-verified this pass."
+
+# ---------------------------------------------------------------------------
+# Reward data additions (specs/reward_data_additions). These are GENERATION
+# ASSUMPTIONS for the new tables 26-27 (generator/reward_additions.py), not
+# realism ranges: validate/check.py looks up its own metrics by name and
+# never reads these keys. All are estimated - no primary source reports
+# them at this level - and stated with a rationale rather than a citation.
+
+reward_additions_signup_bonus_offer_rate:
+  value: 0.70
+  unit: share_of_accounts_on_eligible_programmes
+  source: "ProfitInsight assumption (spec SPEC_reward_data_additions.md, 2.2: 'e.g. 70%')"
+  confidence: estimated
+  note: "Most rewards cards are acquired on a sign-up offer; some apply without one (branch, pre-approved, product change). Secured and no-rewards programmes get no offer."
+
+reward_additions_signup_bonus_terms:
+  value: {core: [500, 100], everyday: [1000, 150], travel: [3000, 200], premium: [4000, 300], business: [4000, 300]}
+  unit: "[spend threshold USD within the window, bonus value USD]"
+  source: "ProfitInsight assumption (spec 2.2 example tiers); consistent with typical US public offers by product tier"
+  confidence: estimated
+  note: "Window 3 months from the account-open month. Bonus cost is NOT in the ledger or NEP (spec 2.2)."
