@@ -69,6 +69,7 @@ def account_frame(data_dir: Path | str) -> tuple[pd.DataFrame, dict]:
     t["program"] = acct["Reward Program Code"].reindex(t.index)
     t["product_tier"] = acct["Product Tier"].reindex(t.index)
     rules = pd.read_csv(data_dir / "Table16_Reward_Program_Rules.csv").set_index("Program Code")
+    t["program_name"] = t["program"].map(rules["Program Name"]).fillna(t["program"])
     nominal = acct["Reward Program Code"].map(rules["Nominal Point Value Cents"]) / 100.0
     bonus_cats = acct["Reward Program Code"].map(rules["Bonus Reward Categories"]).fillna("")
 
