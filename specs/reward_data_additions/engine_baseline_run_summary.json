@@ -1,0 +1,196 @@
+{
+  "data_dir": "C:\\Users\\sisuman\\AppData\\Local\\Temp\\claude\\C--Users-sisuman-OneDrive---PROFIT-INSIGHT-Credit-card-data-synthesis\\a5c7955c-c462-4cb0-8b63-e1e992eeeb65\\scratchpad\\baseline\\demo",
+  "customers": 4856,
+  "suppressed_customers": 144,
+  "below_cost_customers": 883,
+  "structural_floor_share": 0.3114382785956965,
+  "routing_summary": [
+    {
+      "routed_lever": "L2",
+      "customers": 86,
+      "total_loss": 53286.03868443256
+    },
+    {
+      "routed_lever": "L4",
+      "customers": 329,
+      "total_loss": 23012.460369079992
+    },
+    {
+      "routed_lever": "STRUCTURAL",
+      "customers": 275,
+      "total_loss": 17449.867159494766
+    },
+    {
+      "routed_lever": "L1",
+      "customers": 186,
+      "total_loss": 11157.183012971835
+    },
+    {
+      "routed_lever": "L3",
+      "customers": 7,
+      "total_loss": 9812.009485478195
+    }
+  ],
+  "leakage_register": [
+    {
+      "lever": "L1",
+      "population_count": 828,
+      "priced_value_usd": NaN,
+      "unpriced_context_usd": 222376.01981409662,
+      "basis": "Charging for value already delivered is a policy change; how many customers would accept the new fee vs. close the account is a behavioral response to an untried treatment (concept spec section 7) and cannot be sized from this data.",
+      "caveat": "642 profitable customers currently take reward value with no annual fee, totalling $222,376/yr in accrued reward cost the relationship never recovers. That figure is context for a fee decision, not a revenue forecast - actual capture depends on take-up under a champion/challenger test.",
+      "owner": "Cards Product"
+    },
+    {
+      "lever": "L2",
+      "population_count": 2870,
+      "priced_value_usd": 31211.98,
+      "unpriced_context_usd": 117681.30383729999,
+      "basis": "expected-loss avoided from EAD reduction (same PD/LGD the bank already uses, target limit sized off PEAK utilization and actual trailing spend - never a single snapshot) plus liquidity cost avoided (LCR outflow rate x yield gap on the limit cut, 12 CFR 249) plus leverage capital freed/consumed (SLR regime only, 12 CFR 217.10) plus peer-benchmarked incremental interest on genuinely stretched good-standing accounts",
+      "caveat": "regulatory capital relief from decreases is $0 by design (0% CCF on cancellable undrawn lines, 12 CFR 217.33(b)(1)). Economic capital relief (diagnostic only): $117,681. Liquidity cost avoided (included in priced value, separate regime from capital): $8,776/yr. Leverage capital: not charged. This bank is assessed under the Tier 1 leverage regime, which counts on-balance-sheet assets only (R-01) - decreases free $0 and increases consume $0. 1985 customers are flagged for engagement rather than a limit change - their current combined card revenue of $501,524/yr is reported as context, not a forecast of what a campaign would recover (that requires a champion/challenger test, per section 7). That same cohort is also carrying $41,270/yr in liquidity cost on capacity it isn't using - reactivating it doesn't just recover revenue, it cuts that drag too, also contingent on the same pilot (not priced).",
+      "owner": "Credit Risk"
+    },
+    {
+      "lever": "L3",
+      "population_count": 179,
+      "priced_value_usd": NaN,
+      "unpriced_context_usd": 3873.64,
+      "basis": "repricing value depends on how customers respond - attrition and revolve behavior under a new rate - which is a causal question about a treatment never applied (concept spec section 7). Not sizeable from historical data alone.",
+      "caveat": "$3,874/yr is the zero-elasticity ceiling: what the gap is worth if every customer stayed and paid it. Real value requires a champion/challenger test.",
+      "owner": "Pricing"
+    },
+    {
+      "lever": "L4",
+      "population_count": 2779,
+      "priced_value_usd": 62829.36,
+      "unpriced_context_usd": NaN,
+      "basis": "marginal unit cost x avoidable volume, plus any fixed capacity cost freed ONLY where avoided volume crosses a band boundary",
+      "caveat": "contact_center_call: marginal-only ($27,569) - avoided volume does not cross a capacity step; statement_paper: marginal-only ($35,261) - avoided volume does not cross a capacity step",
+      "owner": "Servicing Operations"
+    },
+    {
+      "lever": "L5",
+      "population_count": 470,
+      "priced_value_usd": NaN,
+      "unpriced_context_usd": 510953.06,
+      "basis": "retention uplift from an intervention is a causal response to a treatment never applied (concept spec section 7) - not derivable from historical data",
+      "caveat": "$510,953 is the trailing-12-month value these 470 customers represent if nothing changes - value AT RISK, not value recoverable. Actual retention uplift requires a champion/challenger pilot.",
+      "owner": "Retention Marketing"
+    },
+    {
+      "lever": "L6",
+      "population_count": 916,
+      "priced_value_usd": 276936.74,
+      "unpriced_context_usd": NaN,
+      "basis": "(digital mean net value $446 - aggregator mean net value $158) x 962 accounts acquired via aggregator",
+      "caveat": "a correlational, backward-looking channel comparison, not a guarantee the same volume is available at the same cost through the better channel - directional, not a promise.",
+      "owner": "Acquisition Marketing"
+    }
+  ],
+  "fairness_score_any_failure": true,
+  "fairness_treatment_any_failure": false,
+  "negative_control_gate": [
+    {
+      "lever": "DEFECTS",
+      "status": "PASS",
+      "driver_demo": 369.0,
+      "driver_control": 0.0,
+      "driver_ratio": NaN,
+      "value_demo": NaN,
+      "value_control": NaN,
+      "value_ratio": NaN,
+      "detail": "control carries 0 planted defects (must be 0)"
+    },
+    {
+      "lever": "L1",
+      "status": "PASS",
+      "driver_demo": 324.19767615702887,
+      "driver_control": 299.4637543799242,
+      "driver_ratio": 0.9237,
+      "value_demo": 222376.01981409662,
+      "value_control": 189079.1132799445,
+      "value_ratio": 0.8503,
+      "detail": "value fell to 0.85x of demo; driver fell to 0.92x (+15% slack) - value tracked its cause"
+    },
+    {
+      "lever": "L2",
+      "status": "PASS",
+      "driver_demo": 1236.0714697027927,
+      "driver_control": 255.15294525406244,
+      "driver_ratio": 0.2064,
+      "value_demo": 31211.98,
+      "value_control": 4086.74,
+      "value_ratio": 0.1309,
+      "detail": "value fell to 0.13x of demo; driver fell to 0.21x (+15% slack) - value tracked its cause"
+    },
+    {
+      "lever": "L3",
+      "status": "PASS",
+      "driver_demo": 0.48555059327732686,
+      "driver_control": 0.46327314934227487,
+      "driver_ratio": 0.9541,
+      "value_demo": 3873.64,
+      "value_control": 1656.13,
+      "value_ratio": 0.4275,
+      "detail": "value fell to 0.43x of demo; driver fell to 0.95x (+15% slack) - value tracked its cause"
+    },
+    {
+      "lever": "L4",
+      "status": "PASS",
+      "driver_demo": 61931.0,
+      "driver_control": 58273.0,
+      "driver_ratio": 0.9409,
+      "value_demo": 62829.36,
+      "value_control": 52977.3,
+      "value_ratio": 0.8432,
+      "detail": "value fell to 0.84x of demo; driver fell to 0.94x (+15% slack) - value tracked its cause"
+    },
+    {
+      "lever": "L5",
+      "status": "INCONCLUSIVE",
+      "driver_demo": NaN,
+      "driver_control": NaN,
+      "driver_ratio": NaN,
+      "value_demo": NaN,
+      "value_control": NaN,
+      "value_ratio": NaN,
+      "detail": "the negative control does not vary L5's mechanism in this build - reported outstanding, not passed and not failed"
+    },
+    {
+      "lever": "L6",
+      "status": "INCONCLUSIVE",
+      "driver_demo": NaN,
+      "driver_control": NaN,
+      "driver_ratio": NaN,
+      "value_demo": NaN,
+      "value_control": NaN,
+      "value_ratio": NaN,
+      "detail": "the negative control does not vary L6's mechanism in this build - reported outstanding, not passed and not failed"
+    }
+  ],
+  "leverage_audit": {
+    "run_timestamp_utc": "2026-11-02T14:57:01.641377+00:00",
+    "policy_file": "leverage_capital_policy.case_b_tier1_regional.json",
+    "policy_sha256": "1b9ff5e6f3bb9585efb1c711a3a9d9fee3958f2b3b95b720363ef7260389dfe2",
+    "policy_version": "2.0.0",
+    "case_label": "Case B: Tier 1 leverage community/regional bank",
+    "slr_mode": false,
+    "bank_category": "BELOW_100B",
+    "rule_ids_applied": [
+      "R-01",
+      "R-09"
+    ],
+    "validation_warnings": [
+      "V-08: inputs_verified is false - every regulatory value in this policy is an illustrative default until a reviewer confirms it against the primary source and records the result in governance/regulatory_verification_log.md."
+    ],
+    "inputs_verified": false,
+    "totals": {
+      "customers": 5000,
+      "total_avg_undrawn_12m": 28006859.17657035,
+      "total_leverage_exposure": 0.0,
+      "total_leverage_capital_held": 0.0,
+      "total_leverage_capital_cost": 0.0,
+      "total_shadow_leverage_capital_cost": 13443.292404753767
+    }
+  }
+}
