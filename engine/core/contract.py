@@ -110,6 +110,26 @@ OPTIONAL = {
     "Table6_Deposit_Account.csv": ["Masked Customer Number", "Masked Deposit Account Number"],
 }
 
+# Optional reward-data tables (specs/reward_data_additions). When present,
+# only the header is read and checked (expected columns, no ground-truth
+# marker); the table is NOT loaded into the portfolio, because no engine
+# module reads it yet and Table27 alone is customer x cycle (3.6M rows at
+# 100k customers). Absent or present, the engine runs exactly as before.
+RECOGNISED_NOT_LOADED = {
+    "Table25_MCC_Reference.csv": [
+        "Merchant Category Code (MCC)", "Quasi Cash Flag", "Low Interchange Flag",
+        "Recommended Reward Treatment",
+    ],
+    "Table26_Signup_Bonus.csv": [
+        "Masked Account Number", "Bonus Offered", "Offer Spend Threshold USD",
+        "Bonus Value USD", "Window Observed", "Threshold Met", "Bonus Paid USD",
+    ],
+    "Table27_Bureau_Inquiries.csv": [
+        "Masked Customer Number", "Cycle Month", "Hard Inquiries",
+        "New Trades Opened Elsewhere", "Inquiries Trailing 12m",
+    ],
+}
+
 
 def _check_ground_truth_leak(df: pd.DataFrame, name: str) -> None:
     for col in df.columns:
@@ -182,5 +202,16 @@ def load_portfolio(root: Path | str) -> Portfolio:
                 f"{real_name}: present but missing expected column(s) "
                 f"{missing_cols}.")
         tables[real_name] = df
+
+    for fname, required_cols in RECOGNISED_NOT_LOADED.items():
+        p = root / fname
+        if not p.exists():
+            continue
+        header = pd.read_csv(p, nrows=0)
+        _check_ground_truth_leak(header, fname)
+        missing_cols = [c for c in required_cols if c not in header.columns]
+        if missing_cols:
+            raise DataContractViolation(
+                f"{fname}: present but missing expected column(s) {missing_cols}.")
 
     return Portfolio(root=root, tables=tables)

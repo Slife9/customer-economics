@@ -65,6 +65,24 @@ are falsifiable. We know what was actually planted, so the negative-control
 gate (§7) can assert that a lever's claimed effect tracks its real cause,
 not a generator artifact.
 
+**Additive data: a post-processing step with its own random stream.** The
+reward-profitability tables (Table25 MCC reference, Table26 sign-up bonus,
+Table27 bureau inquiries; `generator/reward_additions.py`, spec in
+`specs/reward_data_additions/`) are written by the last line of
+`generator.run.build()`, after `build_manifest.json`. The step only *reads*
+the published tables and writes new files; its draws come from
+`SeedSequence(seed + 7919)`, spawned into one child per table, so the
+generator's own `rng` and draw order are untouched and adding a table later
+cannot shift another's draws. Result, verified by
+`audit/audit_reward_data_additions.py`: for the same profile, seed, size and
+cycles, every pre-existing output file is byte-identical with or without the
+step. Correlations in the new tables (e.g. more credit inquiries before a
+voluntary closure) are drawn *from* existing outputs, never fed back into
+them, and the future-looking signals are not published. Use this pattern for
+any later addition that must not disturb existing data. The engine registers
+these tables in `contract.RECOGNISED_NOT_LOADED`: header-checked when
+present, never loaded (no engine module reads them yet).
+
 ## 4. The engine pipeline (`engine/`)
 
 Orchestrated by `engine/run.py:build_pipeline(data_dir)`. Seven stages, run in

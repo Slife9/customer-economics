@@ -92,6 +92,10 @@ synth/
   installments.py    installment plan origination and runoff
   timeline.py        Product Holding Timeline, assembled from other tables
 
+reward_additions.py  Tables 25-27, written last by build(): reads the
+                     published tables, writes new ones only, own random
+                     stream (see "Reward-profitability additions" below)
+
 validate/
   check.py           Layer 1 (35 consistency checks) + Layer 2 (22 realism
                      checks against cited benchmarks)
@@ -181,6 +185,66 @@ cycles affected + dollar impact per account, not a marker column.
 Prevalence is set per defect type over its own eligible population (see
 `run.py:DEMO_DEFECT_PREVALENCE`), not as a flat share of all accounts, so
 each type has enough positives to score a detector against.
+
+---
+
+## Reward-profitability additions (Tables 25-27)
+
+Added for the L1 Rewards strategy (`specs/reward_data_additions/`). **Additive
+only:** `generator/reward_additions.py` runs as the last step of `build()`,
+after `build_manifest.json` is written. It reads the published tables and
+writes three new ones; every table above, the manifest, the validation reports
+and `_ground_truth/` are byte-identical with or without it. Its random draws
+come from a separate stream, `SeedSequence(seed + 7919)`, with one
+independent child per table, so the generator's own `rng` is never touched
+and a later table cannot shift these. To add the tables to an existing
+portfolio: `python -m generator.reward_additions --data <dir>`. Every rate
+below is in `config/benchmarks.yaml` as `confidence: estimated`.
+
+**`Table25_MCC_Reference.csv`** - reference data, no randomness. One row per
+MCC in Table5, plus the standard quasi-cash codes (4829, 6050, 6051, 6540,
+7995) and listed low-interchange codes (9311, 9399, 4900, 6300, 6513, 6012)
+even when absent (`Present In Data`). Observed effective interchange is
+interchange / amount over purchases, cash advances excluded. Quasi-cash ->
+`no_earn`; a listed low-interchange code, or an observed rate at or below
+1.5%, -> `reduced_earn`; otherwise `standard`. On the 5k demo the observed
+rule adds 4814 telecom (1.45%) and 8220 colleges (1.49%). None of the
+quasi-cash codes are generated today.
+
+**`Table26_Signup_Bonus.csv`** - one row per card account. Only `Bonus
+Offered` comes from the new stream: 70% of accounts on eligible programmes
+(secured and no-rewards get no offer). Threshold and value by tier: core
+$500/$100, everyday $1,000/$150, travel $3,000/$200, premium and business
+$4,000/$300; window 3 months from the open month. Derived from existing
+tables: open cycle (Table2b; `predates_window` for accounts opened before the
+data), `Window Observed` (the whole window inside the cycles), spend in the
+window and the first month cumulative purchases crossed the threshold
+(Table5, cash advances excluded), spend change in the 6 months after the
+window, and a voluntary closure within 12 months of the bonus (Table22).
+Unknowns are blank, not False. `Clawback Applied` is always False (no policy
+today). **Bonus cost is not in the ledger or NEP**, and no bonus-chaser
+behaviour is planted: on the 5k demo 67 of 315 bonus earners look like
+chasers on spend or closure, from ordinary dormancy.
+
+**`Table27_Bureau_Inquiries.csv`** - customer x cycle. `Hard Inquiries` is a
+Poisson draw at 0.05 a month, x3 for a card opened here in the last 6 months,
+x4 in the 3 months before a voluntary closure, x2 at utilisation >= 80%
+(capped at 1.0 a month); `New Trades Opened Elsewhere` is Binomial(inquiries,
+0.4); `Inquiries Trailing 12m` is a rolling sum, with `Trailing Window
+Months` saying how many months it covers (fewer in the first 11 cycles). The
+signals are read from Tables 2/2b, 4 and 22 and are deliberately not written
+out - "closes within 3 months" is future information.
+
+**Calibration report.** `python audit/reward_calibration_report.py --data
+<dir>` writes `Validation_Report_Reward_Calibration.csv`: the reward model's
+screen and segments, observed against the Reward Profitability Scenario
+Model v2's reference ranges (+/-25%). It runs after generation because the
+screen needs the engine's fully loaded card profit, and it never fails
+anything - the gaps it reports are known and out of scope (see STATUS.md).
+
+**Not added:** a history of past reward changes and customer responses.
+Realistic responses would require changing existing behaviour; the
+sensitivities stay assumption-based until a pilot provides them.
 
 ---
 
