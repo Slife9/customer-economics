@@ -182,8 +182,11 @@ def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: in
     wrong_earn_mask = tx["Masked Account Number"].isin(wrong_earn_accts).to_numpy()
     tx_before_subset = tx.loc[wrong_earn_mask].copy()
     tx = RW.earn(tx, accounts, rules, wrong_earn_accts)
+    # A profile with no WRONG_EARN_RULE defects (e.g. negative_control) has an
+    # empty subset, which RW.earn() cannot process; wrong_earn_ground_truth()
+    # returns its empty frame without reading this argument in that case.
     gt_earn = DEF.wrong_earn_ground_truth(
-        RW.earn(tx_before_subset, accounts, rules, set()),
+        RW.earn(tx_before_subset, accounts, rules, set()) if wrong_earn_accts else tx_before_subset,
         tx.loc[wrong_earn_mask], wrong_earn_accts)
     red, exp, liab = RW.redeem_and_expire(tx, accounts, lat, rules, channels,
                                           cycles, closed_at, rng)
