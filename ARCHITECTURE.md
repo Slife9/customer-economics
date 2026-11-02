@@ -83,6 +83,22 @@ any later addition that must not disturb existing data. The engine registers
 these tables in `contract.RECOGNISED_NOT_LOADED`: header-checked when
 present, never loaded (no engine module reads them yet).
 
+**L1 rewards system (standalone).** `engine/rewards/` and `rewards_app/` model
+the L1 rewards lever on its own, following the *Reward Profitability
+Scenario Model v2*. They sit alongside the six-lever engine and app and
+change neither.
+- `data.py` builds one row per card account from the engine's card ledger.
+  It reconciles exactly: fully loaded profit plus sign-up bonus equals the
+  engine's NEP.
+- `segments.py` applies the workbook's screen and priority rules.
+- `model.py` applies the workbook's Calc formulas per account.
+  Fed the workbook's own segments, it reproduces the workbook to the cent
+  (`audit/audit_l1_rewards_system.py`).
+- Assumptions live in `engine/rewards/config/reward_model_assumptions.json`,
+  extracted from the workbook with its sha256, and are editable in the app.
+- The `reward_stress` generator profile supplies a book where every segment
+  is populated (see `generator/README.md`).
+
 ## 4. The engine pipeline (`engine/`)
 
 Orchestrated by `engine/run.py:build_pipeline(data_dir)`. Seven stages, run in

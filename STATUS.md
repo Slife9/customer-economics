@@ -1,4 +1,49 @@
-# STATUS: Reward data additions (branch `feature/reward-data-additions`)
+# STATUS: L1 rewards system (branch `feature/l1-rewards-system`)
+
+A standalone app and model for the L1 rewards lever only, following the
+*Reward Profitability Scenario Model v2*. It builds on
+`feature/reward-data-additions` (below), which needs
+`fix/negative-control-generation`. Merge in that order. Not deployed.
+Evaluation steps are in `specs/l1_rewards_system/EVALUATION_GUIDE.md`.
+
+| Stage | Commit | What |
+|---|---|---|
+| A | `640a501` | The `reward_stress` generator profile, with four profile-only behaviour hooks (optimizers, quasi-cash, deposit/loan holding, bonus chasers). Existing profiles are byte-identical |
+| B | `1174f00` | `engine/rewards/`: the workbook's defaults (extracted, sha256 recorded), the account P&L from the engine ledger, segmentation, and the workbook's formulas per account |
+| C | `db697b5` | `rewards_app/` (8 pages) and `samples/reward_stress_portfolio.zip` |
+| D | this commit | `audit/audit_l1_rewards_system.py`, docs, evaluation guide |
+
+**Tests, as run:**
+- `audit/audit_l1_rewards_system.py` gave **13/13**:
+  - the workbook reproduced (90 values + 3 totals, $0.00 difference);
+  - reconciliation to the engine on both samples;
+  - segmentation and rule trace consistent;
+  - the model's invariants;
+  - all 8 pages render on both samples;
+  - the sample regenerates byte for byte;
+  - every segment populated.
+- `audit/audit_reward_data_additions.py` gave **23/23**: existing outputs
+  and engine results are unchanged.
+- The app was also checked in a browser: the sample loads, the dashboard
+  renders, and there are no console errors.
+
+**Reward stress book, Base scenario:** 1,168 screened accounts, which lose
+$188,937 a year. Base adds +$154,014 of card profit and loses 8.3% of the
+accounts. At 1.5x customer response it adds +$148,990. Mix: optimizers 27%,
+relationship 14%, quasi-cash 14%, low-spend 11%, bonus chasers 8%,
+unassigned 26%.
+
+**Open points:**
+- **Unassigned is large (26%).** It's mostly flat-rate cash-back
+  transactors, which the workbook's rules don't cover.
+- **Low-Spend (11% vs 32%) and Bonus Chasers (8% vs 19%) fall short** of the
+  workbook's shares.
+- **The sign-up bonus is counted in the reward-model P&L**, as the workbook
+  does, but is still not in the engine's own profit.
+
+---
+
+# Previous: Reward data additions (branch `feature/reward-data-additions`)
 
 Implements `specs/reward_data_additions/SPEC_reward_data_additions.md`.
 **Additive only:** every pre-existing generator output is byte-identical,

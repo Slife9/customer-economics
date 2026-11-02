@@ -1,0 +1,142 @@
+{
+  "_source": {
+    "workbook": "Reward_Profitability_Scenario_Model_v2.xlsx",
+    "workbook_sha256": "df975548535d5b4810a8ea4dc131ac3a777aec26ea8e52ffbba650ab7f9487f1",
+    "cells": "Calc_<Scenario> rows baseline_fully_loaded_profit=21, post_revenue=73, post_reward_cost=74, accounts_lost=72, post_fully_loaded_profit=77, post_relationship_adjusted_profit=79; H84 total change"
+  },
+  "conservative": {
+    "segments": {
+      "optimizers": {
+        "baseline_fully_loaded_profit": -3494000,
+        "post_revenue": 11323156.633136094,
+        "post_reward_cost": 8603789.848636685,
+        "accounts_lost": 1215.384615384617,
+        "post_fully_loaded_profit": -1156718.4226011839,
+        "post_relationship_adjusted_profit": -1156718.4226011839
+      },
+      "bonus_chasers": {
+        "baseline_fully_loaded_profit": -2649600,
+        "post_revenue": 2961375,
+        "post_reward_cost": 1349459.9999999998,
+        "accounts_lost": 0,
+        "post_fully_loaded_profit": -1920240,
+        "post_relationship_adjusted_profit": -1920240
+      },
+      "quasi_cash": {
+        "baseline_fully_loaded_profit": -2389120,
+        "post_revenue": 3051840,
+        "post_reward_cost": 2271662.4,
+        "accounts_lost": 1200,
+        "post_fully_loaded_profit": -765192,
+        "post_relationship_adjusted_profit": -765192
+      },
+      "low_spend": {
+        "baseline_fully_loaded_profit": -1043000,
+        "post_revenue": 4175139.375,
+        "post_reward_cost": 1042212.389625,
+        "accounts_lost": 418.75,
+        "post_fully_loaded_profit": -711984.3146249996,
+        "post_relationship_adjusted_profit": -711984.3146249996
+      },
+      "relationship": {
+        "baseline_fully_loaded_profit": -588000,
+        "post_revenue": 4800000,
+        "post_reward_cost": 3346500,
+        "accounts_lost": 0,
+        "post_fully_loaded_profit": -484500,
+        "post_relationship_adjusted_profit": 2015500
+      }
+    },
+    "total_change_fully_loaded_profit": 5125085.2627738165
+  },
+  "base": {
+    "segments": {
+      "optimizers": {
+        "baseline_fully_loaded_profit": -3494000,
+        "post_revenue": 10001668.209695999,
+        "post_reward_cost": 5726736.8810850745,
+        "accounts_lost": 2529.2000000000007,
+        "post_fully_loaded_profit": 674356.7534429254,
+        "post_relationship_adjusted_profit": 674356.7534429254
+      },
+      "bonus_chasers": {
+        "baseline_fully_loaded_profit": -2649600,
+        "post_revenue": 2551026.783665109,
+        "post_reward_cost": 843867.0021292638,
+        "accounts_lost": 1305.9037500000013,
+        "post_fully_loaded_profit": -1088551.8841558266,
+        "post_relationship_adjusted_profit": -1088551.8841558266
+      },
+      "quasi_cash": {
+        "baseline_fully_loaded_profit": -2389120,
+        "post_revenue": 2365785.3375,
+        "post_reward_cost": 1021074.2288633905,
+        "accounts_lost": 2147.5,
+        "post_fully_loaded_profit": -18081.45448839059,
+        "post_relationship_adjusted_profit": -18081.45448839059
+      },
+      "low_spend": {
+        "baseline_fully_loaded_profit": -1043000,
+        "post_revenue": 4013969.205,
+        "post_reward_cost": 723280.2638292001,
+        "accounts_lost": 956.875,
+        "post_fully_loaded_profit": -423671.44282920007,
+        "post_relationship_adjusted_profit": -423671.44282920007
+      },
+      "relationship": {
+        "baseline_fully_loaded_profit": -588000,
+        "post_revenue": 4754808.438178897,
+        "post_reward_cost": 2694066.679015544,
+        "accounts_lost": 128.58400000000074,
+        "post_fully_loaded_profit": 144875.23457197798,
+        "post_relationship_adjusted_profit": 2612729.234571978
+      }
+    },
+    "total_change_fully_loaded_profit": 9452647.206541486
+  },
+  "aggressive": {
+    "segments": {
+      "optimizers": {
+        "baseline_fully_loaded_profit": -3494000,
+        "post_revenue": 8404907.165648518,
+        "post_reward_cost": 2805086.642795351,
+        "accounts_lost": 6767.92307692308,
+        "post_fully_loaded_profit": 2715926.3635229906,
+        "post_relationship_adjusted_profit": 2715926.3635229906
+      },
+      "bonus_chasers": {
+        "baseline_fully_loaded_profit": -2649600,
+        "post_revenue": 2248731.579457875,
+        "post_reward_cost": 497486.0688490271,
+        "accounts_lost": 2358.0300000000007,
+        "post_fully_loaded_profit": -504568.05520152743,
+        "post_relationship_adjusted_profit": -504568.05520152743
+      },
+      "quasi_cash": {
+        "baseline_fully_loaded_profit": -2389120,
+        "post_revenue": 1931559.72975,
+        "post_reward_cost": 275117.376349935,
+        "accounts_lost": 3487.8500000000004,
+        "post_fully_loaded_profit": 542429.0876875648,
+        "post_relationship_adjusted_profit": 542429.0876875648
+      },
+      "low_spend": {
+        "baseline_fully_loaded_profit": -1043000,
+        "post_revenue": 3764396.8499999996,
+        "post_reward_cost": 376717.18044614064,
+        "accounts_lost": 1704.0625,
+        "post_fully_loaded_profit": -177951.67325864104,
+        "post_relationship_adjusted_profit": -177951.67325864104
+      },
+      "relationship": {
+        "baseline_fully_loaded_profit": -588000,
+        "post_revenue": 4712568.147892632,
+        "post_reward_cost": 2104307.068830281,
+        "accounts_lost": 253.58499999999913,
+        "post_fully_loaded_profit": 713845.2218198436,
+        "post_relationship_adjusted_profit": 3150448.9718198436
+      }
+    },
+    "total_change_fully_loaded_profit": 13453400.94457023
+  }
+}

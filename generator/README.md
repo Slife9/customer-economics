@@ -242,6 +242,26 @@ Model v2's reference ranges (+/-25%). It runs after generation because the
 screen needs the engine's fully loaded card profit, and it never fails
 anything - the gaps it reports are known and out of scope (see STATUS.md).
 
+**The `reward_stress` profile** (`python -m generator.run --profile
+reward_stress`) is a deliberately skewed book for the L1 rewards system
+(`rewards_app/`). It is tuned toward the Reward Profitability Scenario Model
+v2's segment mix. It uses the demo's bank settings and defects, plus four
+behaviour hooks that **no other profile switches on**:
+
+- Optimizers concentrate spend in their programme's bonus categories.
+- Quasi-cash users spend partly at wallet-load, money-order and
+  rent-processor MCCs. These come from the separate files
+  `config/mcc_catalog_quasi_cash.csv` and
+  `config/interchange_rate_card_quasi_cash.csv`, and are written to that
+  profile's Table15.
+- Deposit and loan holding is scaled down.
+- More accounts open inside the window, and new eligible accounts spend hard
+  in the 3-month offer window and then go dormant (bonus chasers).
+
+Every other profile's draws and outputs are byte-identical, as checked by
+`audit/audit_reward_data_additions.py`. Several Layer 2 realism checks fail
+on it by design. Its settings are in `benchmarks.yaml` as `estimated`.
+
 **Not added:** a history of past reward changes and customer responses.
 Realistic responses would require changing existing behaviour; the
 sensitivities stay assumption-based until a pilot provides them.
