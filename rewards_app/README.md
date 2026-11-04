@@ -4,7 +4,9 @@
 streamlit run rewards_app/Home.py --theme.baseFontSize 18 --server.maxUploadSize 4000
 ```
 
-Install with `pip install -r app/requirements.txt`. The app opens on port
+Install with `pip install -r app/requirements.txt` (`rewards_app/requirements.txt`
+is the same list, for Streamlit Community Cloud, which reads the file next to
+the main file; deploy `rewards_app/Home.py`). The app opens on port
 8501, or 8503 through the `profitinsight-rewards` launch config.
 - `--theme.baseFontSize 18` enlarges the tables too; the rest of the app's
   larger text works without it.
