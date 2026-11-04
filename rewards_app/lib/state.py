@@ -238,6 +238,19 @@ def run(scn: str | None = None, multiplier: float | None = None, t: pd.DataFrame
     return t, post, M.summary(t, post)
 
 
+def lever_values(scn: str | None = None, t: pd.DataFrame | None = None):
+    """(annual, year 1) change in card profit per lever x segment for a
+    scenario; the annual values add up to run()'s total change."""
+    t = frame() if t is None else t
+    c = cfg()
+    v = M.lever_values(t, c, A.levers_for(c, scn or scenario()))
+    return v, M.year_one(v, c)
+
+
+def signed(v: float) -> str:
+    return ("+" if v >= 0 else "") + usd(v)
+
+
 def seg_label(key: str) -> str:
     return cfg()["segment_labels"].get(key, key)
 

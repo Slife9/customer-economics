@@ -49,7 +49,7 @@ rebuild. A browser refresh starts a new session on the bundled sample.
 | Upload your data | Upload a zipped portfolio or a prepared .parquet; instant check of the zip's contents; step-by-step run; headline results; save the prepared file; back to the bundled sample. Tables 25-27 are computed if missing and the zip has a build manifest |
 | Data & calibration | Where each figure comes from, reconciliation to the engine, limitations |
 | Downloads | Account results, segment summary, and the assumptions in use |
-| Lever guide & regulation | What each lever is, actions by segment, how the model works, US guardrails |
+| Lever guide & regulation | What each lever is and when it pays; when each lever starts earning and reaches full value, its year-1 share, and its annual and year-1 value for a scenario (table, timeline, annual vs year-1 chart); what drives the timing; actions by segment; how the model works; US guardrails |
 
 **What's measured and what's assumed.**
 - **Measured:** each account's trailing-12-month P&L from the engine's card
@@ -59,6 +59,13 @@ rebuild. A browser refresh starts a new session on the bundled sample.
   the workbook's illustrative industry averages, kept in
   `engine/rewards/config/reward_model_assumptions.json` with the workbook's
   sha256.
+- **Timing (estimated, not from the workbook):** when each lever starts
+  earning, when it reaches full value, and the share of its annual value
+  earned in year 1 (`lever_timing` in the same file, editable). Scenario
+  figures are full annual values; the Year 1 figures on the Overview,
+  Scenario dashboard and Lever guide split each scenario's change across
+  the nine levers (Shapley values, which add up exactly to the total) and
+  apply each lever's year-1 share.
 - Every post-change figure is an expected value. Pilot before acting.
 
 **Tests:** `python audit/audit_l1_rewards_system.py`. It includes

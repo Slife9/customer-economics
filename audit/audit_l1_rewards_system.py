@@ -15,6 +15,8 @@ the reward_stress generator profile). A script, like every other file here.
    - model invariants: all levers at 0 leave every account unchanged;
      unassigned accounts never change; leave probability within [0, cap];
      accounts lost within [0, accounts];
+   - per-lever values (Shapley split) add up to each scenario's change by
+     segment, and year 1 = value x the lever's year-1 share;
    - every app page renders without an exception.
 2c. The bundled 100,000-customer sample (the app's default, a prebuilt
    account frame): the same checks, and with --scale, a fresh generator run
@@ -130,6 +132,18 @@ def portfolio_checks(label: str, root: Path, cfg: dict) -> pd.DataFrame:
         ok &= bool(((p["attrition"] >= 0) & (p["attrition"] <= cfg["portfolio"]["max_attrition"] + 1e-12)).all())
         ok &= bool(((p["accounts_lost"] >= -1e-12) & (p["accounts_lost"] <= p["weight"] + 1e-12)).all())
     record(f"{label}: unassigned unchanged; leave probability and accounts lost within bounds (3 scenarios)", ok)
+
+    worst, ok = 0.0, True
+    share = pd.Series({k: cfg["lever_timing"][k]["year1_share"] for k in A.LEVERS})
+    for scn in A.SCENARIOS:
+        lv = A.levers_for(cfg, scn)
+        v = M.lever_values(t, cfg, lv)
+        sm = M.summary(t, M.apply(t, cfg, lv))
+        worst = max(worst, float((v.sum() - sm.loc[A.SEGMENTS, "change_fully_loaded_profit"]).abs().max()))
+        ok &= all(v.loc[k, seg] == 0 for k in A.LEVERS for seg in A.SEGMENTS if lv[k][seg] == 0)
+        ok &= abs(M.year_one(v, cfg).values.sum() - (v.sum(axis=1) * share).sum()) < 1e-6
+    record(f"{label}: per-lever values add up to each scenario's change by segment; unused levers get 0; "
+           f"year 1 = value x year-1 share (3 scenarios)", ok and worst < 1e-4, f"largest difference ${worst:.8f}")
     return t
 
 

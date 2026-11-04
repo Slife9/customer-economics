@@ -72,6 +72,60 @@ LEVER_GUIDE = [
      "Terms disclosed at application; consistent application (fair lending)."),
 ]
 
+# When each lever pays off. Text only; the months and year-1 shares the
+# figures use are in reward_model_assumptions.json (lever_timing), editable.
+TIMING_HEADLINE = ("Most reward changes start paying within 2-3 months, once the 45-day notice runs out. "
+                   "Fees and balance offers take about a year to reach full value.")
+
+TIMING_DRIVERS = [
+    ("Reg Z 45-day notice (12 CFR 1026.9(c))",
+     "A significant change to account terms, such as a new or higher annual fee, needs 45 days' written notice "
+     "before it takes effect."),
+    ("Right to reject (1026.9(h))",
+     "The customer can refuse the change and repay on the old terms, so not all customers start paying."),
+    ("No fee increase in year one (1026.55)", "Accounts less than a year old must wait."),
+    ("Reward programme terms",
+     "Reward changes (earn rates, caps, exclusions, redemption rules) are mostly governed by the programme terms "
+     "and fair-treatment (UDAAP) expectations, not a Reg Z fixed period. 45 days' notice is the safe design used "
+     "here, and earned rewards must not be devalued."),
+    ("New offers only",
+     "Changes that apply only to new applications or new opt-in offers need no change-in-terms notice; they're "
+     "disclosed upfront."),
+    ("How the money arrives",
+     "Fees are charged at each account's anniversary; reward savings only appear as customers spend or redeem; "
+     "promotional interest only arrives after the promo ends."),
+]
+
+# (starts earning, full annual value), in LEVERS order
+LEVER_TIMING = [
+    ("After 45 days' notice plus about 1 month to prepare, so month 2-3. Applies to new purchases only.",
+     "From month 3"),
+    ("After 45 days' notice and merchant-code setup: month 2-3, on new transactions.", "From month 3"),
+    ("After 45 days' notice: month 2-3. Savings show once customers hit the quarterly cap.",
+     "From the first full quarter after launch, about month 4-6"),
+    ("Promoting cheaper options: immediately. New minimums or changed redemption values: after 45 days' notice.",
+     "Builds as points are redeemed, about month 6-9"),
+    ("Notice takes 45 days, but the fee is charged on each account's anniversary after that. Accounts under 1 "
+     "year old must wait. Customers can reject.",
+     "Only once every account has passed an anniversary: about month 14"),
+    ("No customer notice, but merchant agreements and the offers platform take about 3-6 months.",
+     "From about month 6"),
+    ("An opt-in offer is effective when the customer accepts (campaign month 1-3). A bank-initiated change needs "
+     "45 days' notice.", "From about month 4"),
+    ("New offers, so month 1. The balance-transfer fee is earned straight away.",
+     "After the 12-month promotional rate ends, about month 13+, when the full APR applies"),
+    ("New applications only, effective as soon as the new terms are published (month 1). Savings come when "
+     "bonuses would have been paid, 3-6 months after opening.", "Builds as new accounts open, about month 12-18"),
+]
+
+TIMELINE = [
+    ("Months 1-3", "Sign-up bonus controls, balance-transfer offers, product-change offers, redemption steering "
+                   "(promotion only)"),
+    ("Months 3-6", "Earn-rate reduction, quasi-cash exclusions, bonus-category caps"),
+    ("Months 6-12", "Merchant-funded offers; the redemption rule changes paying off"),
+    ("Month 12+", "Annual fee increases (at anniversaries) and the interest from balance offers reach full value"),
+]
+
 GUARDRAILS = [
     "Reg Z / CARD Act: 45-day change-in-terms notice and right to reject (12 CFR 1026.9); limits on APR "
     "increases on existing balances (1026.55); first-year fee cap of 25% of the line (1026.52).",

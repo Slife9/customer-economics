@@ -67,10 +67,9 @@ python audit/audit_l1_rewards_system.py
 python audit/audit_reward_data_additions.py
 ```
 
-As last run: **22/22 PASSED** (`--scale` skipped), and **23/23 PASSED**.
-The `--scale` rebuild check passed (20/20) before the upload checks were
-added. The upload change touched neither the 100k sample nor the
-generator.
+As last run: **25/25 PASSED** (`--scale` skipped), and **23/23 PASSED**. The `--scale`
+rebuild check passed (20/20) before the upload and lever-timing checks were
+added. Neither change touched the 100k sample or the generator.
 
 The first audit covers:
 - the model reproducing the workbook (90 values + 3 totals, $0.00
@@ -78,6 +77,7 @@ The first audit covers:
 - reconciliation to the engine on the two 5k samples and on the 100k sample;
 - segmentation and the rule trace;
 - the model's invariants;
+- the per-lever split adding up to each scenario's change, and year 1;
 - all 9 app pages rendering on all three samples;
 - regenerating the bundled 5k sample byte for byte.
 
@@ -148,6 +148,20 @@ Base by segment:
 - [ ] A zip missing a required table, or a file that isn't a zip, is
       refused with a plain message before anything runs.
 
+**Lever guide & regulation: when each lever pays off.** Expected on the
+100k book, Base scenario: full annual value +$2,965,252, year 1
++$2,043,041 (69%). Conservative year 1 is +$1,025,059 and Aggressive
++$2,824,607.
+- [ ] The nine-lever table has a "When it pays" column.
+- [ ] The timing table, timeline chart, four timeline phases and "What
+      drives the timing" table match the agreed content.
+- [ ] The nine lever values add up to the scenario total (largest is the
+      bonus-category cap, +$1,268,386 a year in Base).
+- [ ] The Overview's profit card and the dashboard's "Year 1 change in card
+      profit" row show the same year-1 figure.
+- [ ] Editing a year-1 share on **Levers & assumptions** changes the year-1
+      figures but not the annual ones.
+
 **Customer drill-down.** Type `ACC0000021` (an Optimizer) and `ACC0000225`
 (a Bonus Chaser).
 - [ ] The screen and the rules explain why each account is where it is.
@@ -182,6 +196,16 @@ Base by segment:
    and `--theme.baseFontSize 18` for the tables. The shared
    `.streamlit/config.toml` is unchanged, so the six-lever app looks as
    before.
+8. **Year 1 vs full annual value.** The timing and year-1 shares are
+   planning estimates (`lever_timing` in `reward_model_assumptions.json`,
+   marked `estimated`), not workbook values; ranges use the midpoint
+   (redemption steering 65%, annual fee 45%, merchant offers 55%). The
+   model's levers interact, so each lever's annual value is its Shapley
+   value: what it adds on top of the others, averaged over every order of
+   switching them on. The nine add up exactly to the scenario total; year 1
+   = each value x its share. Accounts expected to leave are shown at full
+   value only. The model's formulas moved into one shared function so the
+   split reuses them; outputs are identical to before on every scenario.
 
 ## 5. Sign-off
 

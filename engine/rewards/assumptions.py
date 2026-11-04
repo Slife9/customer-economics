@@ -42,6 +42,10 @@ def load(path: Path | str | None = None) -> tuple[dict, str]:
             missing = [s for s in SEGMENTS if s not in cfg["levers"][scn][lever]]
             if missing:
                 raise AssumptionsError(f"{p.name}: {scn}.{lever} missing segments {missing}")
+    for lever in LEVERS:
+        timing = cfg["lever_timing"].get(lever)
+        if timing is None or not 0 <= timing["year1_share"] <= 1:
+            raise AssumptionsError(f"{p.name}: lever_timing.{lever} missing or year1_share outside [0, 1]")
     return cfg, hashlib.sha256(raw).hexdigest()
 
 

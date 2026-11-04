@@ -28,11 +28,13 @@ rows = {"Baseline": {
     "Contribution (variable)": base_tot.baseline_contribution,
     "Fully loaded card profit": base_tot.baseline_fully_loaded_profit,
     "Relationship-adjusted profit": base_tot.baseline_relationship_adjusted_profit,
-    "Change in fully loaded card profit": None, "Change in relationship-adjusted profit": None,
+    "Change in fully loaded card profit": None, "Year 1 change in card profit": None,
+    "Change in relationship-adjusted profit": None,
     "Accounts lost": None, "Account attrition %": None,
     "Fully loaded profit per account": base_tot.baseline_profit_per_account}}
 for s in SCENARIOS:
     x = results[s][2].loc["total"]
+    year1 = S.lever_values(s, t=results[s][0])[1].values.sum()
     rows[s.capitalize()] = {
         "Accounts": x.accounts - x.accounts_lost, "Total revenue": x.post_revenue,
         "Reward cost": x.post_reward_cost, "Sign-up bonus cost": x.post_signup_bonus,
@@ -41,6 +43,7 @@ for s in SCENARIOS:
         "Fully loaded card profit": x.post_fully_loaded_profit,
         "Relationship-adjusted profit": x.post_relationship_adjusted_profit,
         "Change in fully loaded card profit": x.change_fully_loaded_profit,
+        "Year 1 change in card profit": year1,
         "Change in relationship-adjusted profit": x.change_relationship_adjusted_profit,
         "Accounts lost": x.accounts_lost, "Account attrition %": x.attrition_rate,
         "Fully loaded profit per account": x.post_profit_per_account}
@@ -48,7 +51,8 @@ comp = pd.DataFrame(rows)
 
 st.subheader("Scenario comparison - all screened (unprofitable) reward accounts")
 st.caption(f"Annual, trailing 12 cycles to {st.session_state['meta']['last']}. Baseline is measured; the "
-           f"scenario columns apply the workbook's levers and response assumptions.")
+           f"scenario columns apply the workbook's levers and response assumptions, at full annual value. The "
+           f"year-1 row phases each lever in by its year-1 share (see **Lever guide & regulation**).")
 fmt = comp.copy().astype(object)
 for r in comp.index:
     f = S.pct if "%" in r else ((lambda v: "" if pd.isna(v) else f"{v:,.0f}") if r.startswith("Accounts") else S.usd)

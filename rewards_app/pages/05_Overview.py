@@ -57,10 +57,12 @@ sm = runs[scn][2]
 x = tot[scn]
 stress = S.run(scn, multiplier=1.5, t=t)[2].loc["total"].change_fully_loaded_profit
 gain = x.change_fully_loaded_profit
+year1 = S.lever_values(scn, t=t)[1].values.sum()
 Y.cards([
     (f"Profit improvement - {scn.capitalize()}", ("+" if gain >= 0 else "") + S.usd(gain),
      f"card loss goes from {S.usd(x.baseline_fully_loaded_profit)} to <b class='{'good' if x.post_fully_loaded_profit >= 0 else 'bad'}'>"
-     f"{S.usd(x.post_fully_loaded_profit)}</b>", Y.GREEN if gain >= 0 else Y.RED),
+     f"{S.usd(x.post_fully_loaded_profit)}</b> a year; <b>{S.signed(year1)}</b> in year 1 as the levers phase in",
+     Y.GREEN if gain >= 0 else Y.RED),
     ("Accounts expected to leave", f"{x.accounts_lost:,.0f}", f"{x.attrition_rate:.1%} of the unprofitable accounts", Y.AMBER),
     ("Reward cost as % of revenue, after", S.pct(reward_share(sm, "post")["total"]),
      f"down from {S.pct(reward_share(sm, 'baseline')['total'])} today", Y.BLUE),

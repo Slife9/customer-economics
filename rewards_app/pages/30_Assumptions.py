@@ -53,6 +53,20 @@ seg_table(c["behaviour"], {
 st.caption("Calibrate with a champion / challenger test: apply each change to a random 10-20% of a segment, "
            "measure closures and spend against control for 6 months, then replace these.")
 
+st.subheader("When each lever pays off (planning estimates)")
+tm = c["lever_timing"]
+cols = {"months_to_start": "Starts (month)", "months_to_full_value": "Full value (month)",
+        "year1_share": "Year-1 share"}
+tdf = pd.DataFrame({lab: [float(tm[k][f]) for k in LEVERS] for f, lab in cols.items()},
+                   index=[LEVER_LABELS[k] for k in LEVERS])
+ted = st.data_editor(tdf, key="ed_timing", width="stretch")
+for k in LEVERS:
+    for f, lab in cols.items():
+        val = float(ted.loc[LEVER_LABELS[k], lab])
+        tm[k][f] = min(1.0, max(0.0, val)) if f == "year1_share" else val
+st.caption("Not workbook values. The share in year 1 (0.8 = 80%) turns each lever's annual value into a year-1 "
+           "figure; the months drive the timeline on **Lever guide & regulation**.")
+
 st.subheader("Portfolio-wide")
 pf = c["portfolio"]
 pdf = pd.DataFrame({"Value": pd.Series(pf, dtype=float)})

@@ -271,6 +271,64 @@
       }
     }
   },
+  "lever_timing": {
+    "_status": "estimated",
+    "_note": "Not from the workbook: planning estimates of when each lever starts earning (months after launch), when it reaches its full annual value, and the share of that annual value earned in the first 12 months. Drivers: Reg Z 45-day change-in-terms notice (12 CFR 1026.9(c)) and right to reject (1026.9(h)); no fee increase in an account's first year (1026.55); fees billed at each account's anniversary; reward savings only as customers spend or redeem; promotional interest only after the promo ends. Where a range was given, the midpoint is used.",
+    "earn_rate_reduction_pp": {
+      "months_to_start": 2,
+      "months_to_full_value": 3,
+      "year1_share": 0.8,
+      "rationale": "45 days' notice plus about a month to prepare; applies to new purchases only."
+    },
+    "excluded_spend_share": {
+      "months_to_start": 2,
+      "months_to_full_value": 3,
+      "year1_share": 0.8,
+      "rationale": "45 days' notice and merchant-code setup; applies to new transactions."
+    },
+    "bonus_category_cap_cut": {
+      "months_to_start": 2,
+      "months_to_full_value": 5,
+      "year1_share": 0.7,
+      "rationale": "45 days' notice; savings show once customers reach the quarterly cap, so full from the first full quarter (month 4-6)."
+    },
+    "redemption_steering_cut": {
+      "months_to_start": 1,
+      "months_to_full_value": 8,
+      "year1_share": 0.65,
+      "rationale": "Promoting cheaper options starts at once; new minimums or redemption values need 45 days' notice; builds as points are redeemed (month 6-9). Year 1: 60-70%."
+    },
+    "annual_fee_increase_usd": {
+      "months_to_start": 2,
+      "months_to_full_value": 14,
+      "year1_share": 0.45,
+      "rationale": "45 days' notice, then charged at each account's anniversary; accounts under a year old must wait (1026.55); customers can reject (1026.9(h)). Year 1: 40-50%."
+    },
+    "merchant_funded_share": {
+      "months_to_start": 4,
+      "months_to_full_value": 6,
+      "year1_share": 0.55,
+      "rationale": "No customer notice, but merchant agreements and the offers platform take about 3-6 months. Year 1: 50-60%."
+    },
+    "product_change_share": {
+      "months_to_start": 1,
+      "months_to_full_value": 4,
+      "year1_share": 0.7,
+      "rationale": "An opt-in offer is effective on acceptance (campaign month 1-3); a bank-initiated change needs 45 days' notice."
+    },
+    "revolving_balance_uplift": {
+      "months_to_start": 1,
+      "months_to_full_value": 13,
+      "year1_share": 0.3,
+      "rationale": "New offers, so month 1, and the balance-transfer fee is earned at once; full APR applies only after the 12-month promotional rate ends."
+    },
+    "signup_bonus_cost_cut": {
+      "months_to_start": 1,
+      "months_to_full_value": 15,
+      "year1_share": 0.4,
+      "rationale": "New applications only, effective when the new terms are published; savings come when bonuses would have been paid (3-6 months after opening) and build as new accounts open (month 12-18)."
+    }
+  },
   "excel_reference_baseline": {
     "accounts": {
       "optimizers": 20000,

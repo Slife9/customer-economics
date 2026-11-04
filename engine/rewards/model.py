@@ -19,6 +19,10 @@ capital by the balance and undrawn line; and so on). Migrated accounts earn
 non-rewards interchange on reduced spend and carry no reward or bonus cost.
 Fixed cost is held constant: closing accounts removes only variable cost.
 
+lever_values() splits a scenario's change across the nine levers (Shapley
+values, adding up exactly); year_one() phases them by each lever's year-1
+share (cfg['lever_timing'], planning estimates, not workbook values).
+
 All figures are EXPECTED values under assumptions (pilot required), not a
 forecast for any one customer. Segment 'unassigned' gets no lever (the
 workbook routes it to credit / operations levers instead).
@@ -37,19 +41,37 @@ def _per_account(t: pd.DataFrame, mapping: dict) -> np.ndarray:
     return t["segment"].map(mapping).fillna(0.0).astype(float).to_numpy()
 
 
+def _inputs(s: pd.DataFrame, cfg: dict) -> dict:
+    """The per-account arrays the formulas read (everything but the levers)."""
+    beh = cfg["behaviour"]
+    x = {"a10": _per_account(s, beh["attrition_per_10pct_value_cut"]),
+         "afee": _per_account(s, beh["attrition_per_100usd_fee_increase"]),
+         "s10": _per_account(s, beh["spend_change_per_10pct_value_cut"])}
+    for k in ["earn_rate", "revolving_balance", "credit_line", "weight", "spend", "interchange", "net_interest",
+              "annual_fee", "other_fee", "reward", "signup_bonus", "credit_loss", "network", "variable_opex",
+              "capital", "fixed_cost", "noncard_profit"]:
+        x[k] = s[k].to_numpy(dtype=float)
+    return x
+
+
 def apply(t: pd.DataFrame, cfg: dict, levers: dict, multiplier: float | None = None) -> pd.DataFrame:
     """Post-change expected P&L per screened account. `levers` is
     {lever: {segment: value}} (assumptions.levers_for or an edited copy)."""
     s = t[t["segment"].notna()].copy()
-    pf = cfg["portfolio"]
-    beh = cfg["behaviour"]
-    m = pf["behavioural_response_multiplier"] if multiplier is None else multiplier
+    m = cfg["portfolio"]["behavioural_response_multiplier"] if multiplier is None else multiplier
     L = {k: _per_account(s, levers[k]) for k in LEVERS}
-    a10 = _per_account(s, beh["attrition_per_10pct_value_cut"])
-    afee = _per_account(s, beh["attrition_per_100usd_fee_increase"])
-    s10 = _per_account(s, beh["spend_change_per_10pct_value_cut"])
+    post = pd.DataFrame(_lines(_inputs(s, cfg), cfg, L, m), index=s.index)
+    post["segment"] = s["segment"]
+    post["weight"] = s["weight"].to_numpy(dtype=float)
+    return post
 
-    earn = s["earn_rate"].to_numpy(dtype=float)
+
+def _lines(x: dict, cfg: dict, L: dict, m: float) -> dict:
+    """The workbook's formulas on arrays: `x` from _inputs, `L` one array per
+    lever, `m` the response multiplier. Returns the post-change lines."""
+    pf = cfg["portfolio"]
+    a10, afee, s10 = x["a10"], x["afee"], x["s10"]
+    earn = x["earn_rate"]
     new_earn = np.maximum(0.0, earn - L["earn_rate_reduction_pp"])
     ratio = np.divide(new_earn, earn, out=np.ones_like(earn), where=earn > 0)
     cut = np.where(earn > 0, 1 - ratio * (1 - L["excluded_spend_share"]) * (1 - L["bonus_category_cap_cut"])
@@ -61,7 +83,7 @@ def apply(t: pd.DataFrame, cfg: dict, levers: dict, multiplier: float | None = N
     mm = mig * (1 - pf["product_change_attrition"])
     u = L["revolving_balance_uplift"]
 
-    bal, line = s["revolving_balance"].to_numpy(dtype=float), s["credit_line"].to_numpy(dtype=float)
+    bal, line = x["revolving_balance"], x["credit_line"]
     ccf = pf["undrawn_ccf"]
     exposure0 = bal + ccf * np.maximum(0.0, line - bal)
     exposure1 = bal * (1 + u) + ccf * np.maximum(0.0, line - bal * (1 + u))
@@ -69,12 +91,8 @@ def apply(t: pd.DataFrame, cfg: dict, levers: dict, multiplier: float | None = N
     reward_factor = ratio * (1 - L["excluded_spend_share"]) * (1 - L["bonus_category_cap_cut"]) \
         * (1 - L["redemption_steering_cut"]) * (1 - L["merchant_funded_share"])
 
-    b = {k: s[k].to_numpy(dtype=float) for k in ["spend", "interchange", "net_interest", "annual_fee",
-                                                 "other_fee", "reward", "signup_bonus", "credit_loss",
-                                                 "network", "variable_opex", "capital", "fixed_cost",
-                                                 "noncard_profit"]}
-    w = s["weight"].to_numpy(dtype=float)
-    post = pd.DataFrame(index=s.index)
+    b, w = x, x["weight"]
+    post = {}
     # rewards accounts retained
     post["interchange"] = b["interchange"] * rr * (1 + dsp)
     post["net_interest"] = b["net_interest"] * rr * (1 + u)
@@ -111,9 +129,44 @@ def apply(t: pd.DataFrame, cfg: dict, levers: dict, multiplier: float | None = N
     post["perceived_value_cut"] = cut
     post["attrition"] = att
     post["spend_change"] = dsp
-    post["segment"] = s["segment"]
-    post["weight"] = w
     return post
+
+
+def lever_values(t: pd.DataFrame, cfg: dict, levers: dict, multiplier: float | None = None) -> pd.DataFrame:
+    """Each lever's share of the scenario's change in fully loaded card profit,
+    by segment (rows LEVERS, columns SEGMENTS).
+
+    The levers interact (attrition follows the combined value cut), so a
+    lever's value depends on which others are on. Each lever gets its Shapley
+    value: what it adds on top of the others, averaged over every order in
+    which the segment's levers could be switched on. The nine add up exactly to
+    the scenario's change for the segment. Levers at 0 for a segment get 0."""
+    from math import factorial
+    m = cfg["portfolio"]["behavioural_response_multiplier"] if multiplier is None else multiplier
+    out = pd.DataFrame(0.0, index=LEVERS, columns=SEGMENTS)
+    for seg in SEGMENTS:
+        s = t[t["segment"] == seg]
+        on = [k for k in LEVERS if levers[k][seg] != 0]
+        if s.empty or not on:
+            continue
+        x, n, zero = _inputs(s, cfg), len(on), np.zeros(len(s))
+        v = np.empty(2 ** n)
+        for mask in range(2 ** n):
+            L = {k: zero for k in LEVERS}
+            L.update({k: np.full(len(s), float(levers[k][seg])) for i, k in enumerate(on) if mask >> i & 1})
+            v[mask] = _lines(x, cfg, L, m)["fully_loaded_profit"].sum()
+        weight = [factorial(j) * factorial(n - j - 1) / factorial(n) for j in range(n)]
+        for i, k in enumerate(on):
+            out.loc[k, seg] = sum(weight[bin(mask).count("1")] * (v[mask | 1 << i] - v[mask])
+                                  for mask in range(2 ** n) if not mask >> i & 1)
+    return out
+
+
+def year_one(values: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """lever_values scaled by each lever's share of its annual value earned in
+    the first 12 months after launch (cfg['lever_timing'], planning estimates)."""
+    share = pd.Series({k: cfg["lever_timing"][k]["year1_share"] for k in LEVERS})
+    return values.mul(share, axis=0)
 
 
 def summary(t: pd.DataFrame, post: pd.DataFrame) -> pd.DataFrame:
