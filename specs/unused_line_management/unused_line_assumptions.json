@@ -1,0 +1,64 @@
+{
+  "_label": "Assumes the March 2026 Basel III endgame proposal is adopted as proposed; LCR outflow applied conservatively to all unused card lines. Capital ratio, cost of equity and carry are illustrative.",
+  "_note": "Working assumptions agreed in design review. Regulatory items marked 'assumed' are not current US law. Business items are illustrative and should be replaced by the bank's finance team.",
+  "bank_profile": {
+    "apply_to": "category_I_III",
+    "apply_to_options": ["category_I_III", "all_banks"],
+    "comparison_view_current_rules_enabled": true
+  },
+  "capital": {
+    "regime": "basel3_endgame_march2026_assumed_adopted",
+    "ccf_unused_card_lines": 0.10,
+    "zero_ccf_allowed_for_cards": false,
+    "risk_weight_transactor": 0.45,
+    "risk_weight_non_transactor": 0.75,
+    "risk_weight_dormant_zero_balance": 0.75,
+    "risk_weight_non_qualifying_retail": 1.00,
+    "regulatory_retail_aggregate_limit_usd": 1000000,
+    "transactor_months_required": 12,
+    "installment_balance_disqualifies_transactor": true,
+    "capital_ratio": 0.105,
+    "cost_of_equity": 0.12,
+    "phase_in": "none_effective_day_one",
+    "slr_calculated": false,
+    "operational_risk_in_account_economics": false,
+    "output_floor": false
+  },
+  "liquidity": {
+    "lcr_outflow_unused_card_lines": 0.05,
+    "treatment": "conservative_assumption_applied_to_all_unused_card_lines",
+    "negative_carry": 0.0075,
+    "applies_under": "bank_profile.apply_to"
+  },
+  "drawdown_risk": {
+    "pd_basis": "annual",
+    "lgd_source": "system",
+    "leq_by_segment": "read_from_workbook",
+    "cecl_allowance_on_unused_cancellable_lines": 0.0
+  },
+  "current_rules_comparison": {
+    "ccf_unconditionally_cancellable": 0.0,
+    "risk_weight_drawn_card_balances": 1.00,
+    "lcr_outflow_cancellable_card_lines": 0.0,
+    "slr_ccf": 0.10,
+    "slr_minimum": 0.03,
+    "slr_applies_to": ["category_I", "category_II", "category_III"]
+  },
+  "screen": {
+    "require_unprofitable": true,
+    "max_utilisation": 0.30,
+    "min_unused_usd": 5000,
+    "min_history_months": 12
+  },
+  "levers": {
+    "max_reduction_per_review": 0.25,
+    "dormant_closure_enabled": false,
+    "dormant_rightsizing_enabled": false,
+    "scope_mode": "workbook_unprofitable_low_use",
+    "scope_mode_options": ["workbook_unprofitable_low_use", "full_line_management"],
+    "segment_rules_and_lever_parameters": "read_from_workbook_into_this_file_during_stage_1"
+  },
+  "ml_model_role": "second_opinion_only",
+  "stress_test": {"multipliers": [1.0, 1.25, 1.5, 1.75, 2.0], "go_no_go_multiplier": 1.5},
+  "scenarios": ["conservative", "base", "aggressive"]
+}
