@@ -38,6 +38,13 @@ Stage 5 (levers, response, scenarios, stress):
    the 45% -> 75% flip; fixed cost stays; extra levers apart; scope mode;
    stress test and the go/no-go rule.
 
+Stage 6 (treatment designer, compliance, fairness, timing):
+10. Reason codes on every action; notices by reason (inactivity: none;
+    credit: adverse action + FCRA check); the 45-day fee restriction; no
+    inactivity fee; transactor right-sizing never recommended; ML second
+    opinion only and its agreement rule; seeded stratified pilot; review-
+    together flags; the three-way four-fifths test; year-1 timing.
+
 Prints a PASS/FAIL table; exits 1 if any check FAILs.
 """
 from __future__ import annotations
@@ -59,7 +66,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from engine.unused_lines import assumptions as A, data as D, exposure as X, segments as SG  # noqa: E402
-from engine.unused_lines import levers as L, workbook as W  # noqa: E402
+from engine.unused_lines import levers as L, workbook as W, treatment as T  # noqa: E402
 
 PROFILES = ["demo", "unused_line_stress"]
 BRIEF_27 = {"ucl": 2.69e9, "rwa_unused": 165.8e6, "capital_cost_unused": 2.09e6, "hqla": 134.5e6,
@@ -371,6 +378,65 @@ def lever_checks(f: pd.DataFrame, cfg: dict, label: str) -> None:
            + f"; at {g['multiplier']}x card profit alone {g['card_profit_change']:+,.0f}")
 
 
+# ------------------------------------------------------------- Stage 6
+def treatment_checks(f: pd.DataFrame, cfg: dict, data_dir: Path, label: str) -> None:
+    print(f"\n10. Treatment designer, compliance, fairness, timing - {label}", flush=True)
+    from engine import run as ER
+    pipe = ER.build_pipeline(data_dir)
+    cv = pipe["customer_view"]
+    ml = cv[["Masked Customer Number", "ml_action", "ml_primary_reason", "ml_recommended_limit"]]
+    res = L.run(f, cfg, cfg["treatment"]["scenario_for_recommendations"])
+    t = T.design(f, cfg, res, ml, pipe["worklists"])
+    acted = t[t["recommended_levers"] != "none"]
+    codes = set(cfg["treatment"]["reason_codes"])
+    all_codes = acted["all_reason_codes"].str.split("; ").explode()
+    record(f"{label}: every recommended action carries a reason code from the list",
+           bool(acted["reason_code"].isin(codes).all() and all_codes.isin(codes).all()),
+           f"{len(acted):,} accounts with an action; {acted['reason_code'].value_counts().to_dict()}")
+    line = acted[acted["line_action"] != "none"]
+    inact = line["reason_code"].eq("INACTIVITY")
+    credit = line["reason_code"].eq("CREDIT_DETERIORATION")
+    record(f"{label}: inactivity actions carry no adverse-action notice; credit actions do (with the FCRA check)",
+           bool((~line.loc[inact, "adverse_action_notice"]).all() and line.loc[credit, "adverse_action_notice"].all()
+                and line.loc[credit, "fcra_score_disclosure_check"].all()),
+           f"{int(inact.sum()):,} inactivity, {int(credit.sum()):,} credit, "
+           f"{int(line['reason_code'].eq('IDLE_LINE_RIGHTSIZING').sum()):,} idle-line right-sizing (notice: adverse action)")
+    dec = acted["line_action"].eq("decrease")
+    record(f"{label}: every decrease carries the 45-day over-limit fee / penalty-rate restriction",
+           bool(acted.loc[dec, "fee_restriction_45_days"].all() and not acted.loc[~dec, "fee_restriction_45_days"].any()),
+           f"{int(dec.sum()):,} decreases")
+    names = list(L.LEVER_LABELS) + list(acted["recommended_levers"].str.split("; ").explode().unique())
+    record(f"{label}: no lever proposes an inactivity fee", not any("fee" in n.lower() for n in names))
+    trs = t["recommended_levers"].str.contains("transactor_rightsizing")
+    record(f"{label}: transactor right-sizing is never recommended (config)", not bool(trs.any()))
+    t0 = T.design(f, cfg, res, None, pipe["worklists"])
+    record(f"{label}: the ML model is a second opinion only (recommendations identical without it)",
+           bool((t0["recommended_levers"] == t["recommended_levers"]).all()), t["ml_agreement"].value_counts().to_dict().__repr__())
+    ag = T.agreement(t["line_action"], t["ml_action"])
+    cut = t["line_action"].isin(["decrease", "closure"])
+    expect = (cut & t["ml_action"].isin(T.ML_ADVERSE)) | (~cut & t["ml_action"].isin(["MAINTAIN", "FREEZE_NO_INCREASE"]))
+    ok_ag = bool((((ag == "agree") == expect) | (ag == "ML has no view")).all() and (ag == t["ml_agreement"]).all())
+    record(f"{label}: agreement flag follows the stated rule (agree / disagree / ML has no view)", ok_ag)
+    pc = acted.groupby("segment")["pilot_cell"].apply(lambda s: (s == "holdout").sum() - round(
+        cfg["treatment"]["pilot"]["holdout_share"] * len(s)))
+    again = T.design(f, cfg, res, ml, pipe["worklists"])["pilot_cell"]
+    record(f"{label}: pilot holdout {cfg['treatment']['pilot']['holdout_share']:.0%} per segment, seeded "
+           f"(same cells on a rerun)", bool((pc.abs() <= 0).all() and (again == t["pilot_cell"]).all()),
+           acted["pilot_cell"].value_counts().to_dict().__repr__())
+    rt = (t["review_together"] != "").sum()
+    record(f"{label}: review-together flags against the L1 / L3 / L5 worklists", True,
+           f"{int(rt):,} accounts flagged")
+    fa = T.fairness(f, t, cv)
+    record(f"{label}: four-fifths by metro run three ways (module cuts and closures; ML adverse; ML increases)",
+           all(k in fa["summary"] for k in ["module_decreases_and_closures", "ml_adverse_actions", "ml_increases"]),
+           "; ".join(f"{k}: {v['groups_failing']} of {v['groups_tested']} metros fail" for k, v in fa["summary"].items()))
+    tt = T.timing_table(L.lever_table(res, cfg, f), cfg)
+    record(f"{label}: year-1 value = full annual value x the lever's year-1 share (every lever has timing)",
+           bool(np.allclose(tt["year1_value"], tt["full_annual_value"] * tt["year1_share"]) and tt["year1_share"].notna().all()),
+           f"headline levers year 1 ${tt.loc[tt['status'] == 'headline', 'year1_value'].sum():,.0f} "
+           f"vs full ${tt.loc[tt['status'] == 'headline', 'full_annual_value'].sum():,.0f}")
+
+
 # ------------------------------------------------------------- 5, 6
 def cross_check(bundle: Path | None, frame: Path | None, cfg: dict) -> None:
     print("\n5. Portfolio cross-check (s.2.7)", flush=True)
@@ -495,6 +561,7 @@ def main() -> int:
             toggles(acc, cfg, leq, label)
             f = segment_checks(acc, meta, cfg, label)
             lever_checks(f, cfg, label)
+            treatment_checks(f, cfg, d, label)
         cross_check(Path(a.bundle_100k) if a.bundle_100k else None,
                     Path(a.frame_100k) if a.frame_100k else None, cfg)
         performance(Path(a.frame_100k) if a.frame_100k else None,

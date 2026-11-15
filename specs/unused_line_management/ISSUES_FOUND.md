@@ -15,6 +15,10 @@ recorded for the owner of the code concerned.
 | 8 | Engine card ledger `capital_cost` | The old charge (Table9, current rules) is larger than the brief §2 charge on drawn balances (5k demo: $223,879 vs $45,508 a year), so replacing it raises card profit | Replaced, never added (answer 4); reported on the drill-down |
 | 9 | Table4 `Ending Balance` / `Utilization` | Measured after the cycle's payment, so a full payer shows $0 drawn at every month end | The module uses Ending Balance for exposure (the reporting-date balance); statement balance (Ending + Payment) for the segment rules and the calibration |
 
+| 10 | Fairness (four-fifths by metro, geography proxy) | Stress book: module decreases and closures fail in 14 of 64 metros, ML adverse actions in 17 of 66, ML increases in 59 of 66 (only 9 increases in the book, so the rates are noise). 5k demo: 19 of 48, 21 of 55, 34 of 55 | Flagged on the regulatory page; a fair-lending review is needed before any pilot. Synthetic data: metro effects come from the generator's population draws |
+| 11 | Engine cost split | `cost_to_serve_fixed_allocated` is about $17 per account (workbook fixed cost $30–60), so screened accounts have a negative variable contribution and attrition after a cut can add profit; transactor right-sizing does not lose money in system mode | Reported; transactor right-sizing kept out of recommendations |
+| 12 | Workbook vs system-mode screen | Without the undrawn-line loss, the workbook's own Credit-Deteriorating segment earns +$85 per account, so the system-mode screen keeps only its loss-making minority | Reported in the Stage 4 calibration; the drawdown sensitivity toggle shows the effect |
+
 ## Expected merge clashes (for the future integration)
 
 | File | Clash | Instruction |
