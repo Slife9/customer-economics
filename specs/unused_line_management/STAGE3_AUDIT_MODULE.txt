@@ -1,0 +1,103 @@
+python audit/audit_unused_line_module.py --bundle-100k <rebuilt 100k v2 bundle> --frame-100k <its per-account parquet> --frame-100k-json <build timing>   (15 Nov 2026; bundle and parquet local, not committed)
+
+assumptions sha256 9d4da64486aa
+
+1. Worked examples (brief s.7.1)
+  PASS  worked example: dormant $10,000 card  - exposure_unused 1,000.0, rwa_unused 750.0, capital_required_unused 78.75, capital_cost_unused 9.45, hqla 500.0, liquidity_cost 3.75, carrying_cost 13.2
+  PASS  worked example: $10,000 line, $2,000 balance (non-transactor)  - rwa_unused 600.0, capital_cost_unused 7.56, liquidity_cost 3.0, carrying_cost 10.56
+  PASS  worked example: $10,000 line, $2,000 balance (transactor)  - rwa_unused 360.0, capital_cost_unused 4.54, liquidity_cost 3.0, carrying_cost 7.54
+
+2. Workbook reproduction
+  PASS  baseline at the workbook's 85% / 55% weights within +/-1% of its Dashboard  - 11 items; largest difference 0.0000%; RWA $139,492,500, fully loaded $-9,044,043
+  PASS  baseline fully loaded profit by segment within +/-1%  - largest difference 0.0000%
+  PASS  RWA from undrawn lines (Dashboard regime table) within +/-1%  - $87,067,500 vs $87,067,500
+  PASS  corrected baseline (75% / 45%, segment-level) matches the brief's expectation  - RWA $117,937,500, capital cost $1,486,012, liquidity $487,688, fully loaded $-8,772,450
+
+   demo: 3,988 accounts, per-account file 5s, Unassigned LEQ (mean Behavioral CCF) 0.424
+
+3. Invariants - demo
+  PASS  demo: no card at a 0% CCF  - CCF [0.1]
+  PASS  demo: a 0% CCF configuration is refused
+  PASS  demo: every 45% account passes the transactor test (12 cycles, all paid or $0, not all $0, no plan / promo)  - {'plan_or_promotional_balance': 1102, 'dormant_zero_balance': 812, 'not_paid_in_full': 786, 'transactor': 658, 'short_history': 630}
+  PASS  demo: installment, promotional or BT balance -> 75% (or 100% above the retail limit)  - 1,316 accounts with a plan or promotional balance
+  PASS  demo: adding a plan balance flips a transactor from 45% to 75%  - 50 accounts flipped
+  PASS  demo: carrying cost = capital (unused part) + liquidity; drawdown loss separate; total = both
+  PASS  demo: drawdown loss = annual PD (Table8 PD 12 Month) x LGD x LEQ x unused line  - 426 accounts without a PD
+  PASS  demo: card profit = card_net with the old capital charge replaced and liquidity subtracted  - old capital $223,879 replaced by $45,508
+
+4. Toggles - demo
+  PASS  demo: bank outside Categories I-III -> no liquidity cost, capital unchanged  - liquidity $10,503 -> $0
+  PASS  demo: apply_to = all_banks restores liquidity for that bank; capital unchanged
+  PASS  demo: dormant risk weight (B5) changes only dormant zero-balance accounts  - 812 dormant accounts; RWA $313,719 -> $188,231
+  PASS  demo: current-rules view: 0% CCF, 100% on drawn balances, no liquidity; main view untouched  - RWA $3,611,769 (s.2) vs $2,347,366 (current); SLR capital $154,442 vs risk-based $379,236
+  PASS  demo: 'current' basis uses the reporting-date line and balance
+
+   unused_line_stress: 9,157 accounts, per-account file 13s, Unassigned LEQ (mean Behavioral CCF) 0.423
+
+3. Invariants - unused_line_stress
+  PASS  unused_line_stress: no card at a 0% CCF  - CCF [0.1]
+  PASS  unused_line_stress: a 0% CCF configuration is refused
+  PASS  unused_line_stress: every 45% account passes the transactor test (12 cycles, all paid or $0, not all $0, no plan / promo)  - {'plan_or_promotional_balance': 2722, 'dormant_zero_balance': 2330, 'transactor': 2078, 'not_paid_in_full': 1589, 'short_history': 438}
+  PASS  unused_line_stress: installment, promotional or BT balance -> 75% (or 100% above the retail limit)  - 2,848 accounts with a plan or promotional balance
+  PASS  unused_line_stress: adding a plan balance flips a transactor from 45% to 75%  - 50 accounts flipped
+  PASS  unused_line_stress: carrying cost = capital (unused part) + liquidity; drawdown loss separate; total = both
+  PASS  unused_line_stress: drawdown loss = annual PD (Table8 PD 12 Month) x LGD x LEQ x unused line  - 342 accounts without a PD
+  PASS  unused_line_stress: card profit = card_net with the old capital charge replaced and liquidity subtracted  - old capital $296,529 replaced by $134,298
+
+4. Toggles - unused_line_stress
+  PASS  unused_line_stress: bank outside Categories I-III -> no liquidity cost, capital unchanged  - liquidity $48,202 -> $0
+  PASS  unused_line_stress: apply_to = all_banks restores liquidity for that bank; capital unchanged
+  PASS  unused_line_stress: dormant risk weight (B5) changes only dormant zero-balance accounts  - 2,330 dormant accounts; RWA $1,562,390 -> $937,434
+  PASS  unused_line_stress: current-rules view: 0% CCF, 100% on drawn balances, no liquidity; main view untouched  - RWA $10,658,533 (s.2) vs $2,801,386 (current); SLR capital $469,659 vs risk-based $1,119,146
+  PASS  unused_line_stress: 'current' basis uses the reporting-date line and balance
+
+5. Portfolio cross-check (s.2.7)
+  PASS  s.2.7 reproduced from the 100k bundle by the brief's method (x5), +/-5%  - ucl $2,689.21M; rwa_unused $166.74M; capital_cost_unused $2.10M; hqla $134.46M; liquidity_cost $1.01M; carrying_cost $3.11M; largest difference 0.57%; transactor share 26.1% (brief 27%)
+  PASS  s.2.7 by L2 group (carrying cost; card profit after it) from the 100k bundle, +/-5%  - Dormant $1.163M / $-0.81M; Idle $0.473M / $-4.04M; Healthy $0.907M / $9.51M; Stretched $0.098M / $8.39M; largest difference 1.67%
+  PASS  s.2.7 from the module's own per-account file (x5): outside +/-5%, explained by the transactor test (with the plan / promotional rule off it is within +/-5%)  - ucl $2,716.04M (+1.0%); rwa_unused $180.26M (+8.7%); capital_cost_unused $2.27M (+8.7%); hqla $135.80M (+1.0%); liquidity_cost $1.02M (+0.8%); carrying_cost $3.29M (+6.1%); transactor share 16.5% (s.2.7: 26-27%); RW basis {'plan_or_promotional_balance': 0.268, 'dormant_zero_balance': 0.206, 'not_paid_in_full': 0.202, 'transactor': 0.165, 'short_history': 0.159}; plan / promo rule off: transactor share 29.6%, largest difference 3.5%
+
+6. Performance
+  PASS  100k per-account file built from the raw portfolio (offline step)  - 79,681 accounts; 131.0s; peak 15.551 GB; file 9.1 MB
+  PASS  100k per-account file loads with the cost layer in a fresh process under 2 GB  - 79,681 accounts; 0.2s; peak 0.295 GB
+
+====================================================================================================
+PASS  worked example: dormant $10,000 card
+PASS  worked example: $10,000 line, $2,000 balance (non-transactor)
+PASS  worked example: $10,000 line, $2,000 balance (transactor)
+PASS  baseline at the workbook's 85% / 55% weights within +/-1% of its Dashboard
+PASS  baseline fully loaded profit by segment within +/-1%
+PASS  RWA from undrawn lines (Dashboard regime table) within +/-1%
+PASS  corrected baseline (75% / 45%, segment-level) matches the brief's expectation
+PASS  demo: no card at a 0% CCF
+PASS  demo: a 0% CCF configuration is refused
+PASS  demo: every 45% account passes the transactor test (12 cycles, all paid or $0, not all $0, no plan / promo)
+PASS  demo: installment, promotional or BT balance -> 75% (or 100% above the retail limit)
+PASS  demo: adding a plan balance flips a transactor from 45% to 75%
+PASS  demo: carrying cost = capital (unused part) + liquidity; drawdown loss separate; total = both
+PASS  demo: drawdown loss = annual PD (Table8 PD 12 Month) x LGD x LEQ x unused line
+PASS  demo: card profit = card_net with the old capital charge replaced and liquidity subtracted
+PASS  demo: bank outside Categories I-III -> no liquidity cost, capital unchanged
+PASS  demo: apply_to = all_banks restores liquidity for that bank; capital unchanged
+PASS  demo: dormant risk weight (B5) changes only dormant zero-balance accounts
+PASS  demo: current-rules view: 0% CCF, 100% on drawn balances, no liquidity; main view untouched
+PASS  demo: 'current' basis uses the reporting-date line and balance
+PASS  unused_line_stress: no card at a 0% CCF
+PASS  unused_line_stress: a 0% CCF configuration is refused
+PASS  unused_line_stress: every 45% account passes the transactor test (12 cycles, all paid or $0, not all $0, no plan / promo)
+PASS  unused_line_stress: installment, promotional or BT balance -> 75% (or 100% above the retail limit)
+PASS  unused_line_stress: adding a plan balance flips a transactor from 45% to 75%
+PASS  unused_line_stress: carrying cost = capital (unused part) + liquidity; drawdown loss separate; total = both
+PASS  unused_line_stress: drawdown loss = annual PD (Table8 PD 12 Month) x LGD x LEQ x unused line
+PASS  unused_line_stress: card profit = card_net with the old capital charge replaced and liquidity subtracted
+PASS  unused_line_stress: bank outside Categories I-III -> no liquidity cost, capital unchanged
+PASS  unused_line_stress: apply_to = all_banks restores liquidity for that bank; capital unchanged
+PASS  unused_line_stress: dormant risk weight (B5) changes only dormant zero-balance accounts
+PASS  unused_line_stress: current-rules view: 0% CCF, 100% on drawn balances, no liquidity; main view untouched
+PASS  unused_line_stress: 'current' basis uses the reporting-date line and balance
+PASS  s.2.7 reproduced from the 100k bundle by the brief's method (x5), +/-5%
+PASS  s.2.7 by L2 group (carrying cost; card profit after it) from the 100k bundle, +/-5%
+PASS  s.2.7 from the module's own per-account file (x5): outside +/-5%, explained by the transactor test (with the plan / promotional rule off it is within +/-5%)
+PASS  100k per-account file built from the raw portfolio (offline step)
+PASS  100k per-account file loads with the cost layer in a fresh process under 2 GB
+====================================================================================================
+38/38 PASSED

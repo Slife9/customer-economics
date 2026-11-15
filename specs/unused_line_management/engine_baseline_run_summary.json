@@ -89,11 +89,89 @@
   ],
   "fairness_score_any_failure": true,
   "fairness_treatment_any_failure": false,
-  "negative_control_gate": null,
+  "negative_control_gate": [
+    {
+      "lever": "DEFECTS",
+      "status": "PASS",
+      "driver_demo": 369.0,
+      "driver_control": 0.0,
+      "driver_ratio": NaN,
+      "value_demo": NaN,
+      "value_control": NaN,
+      "value_ratio": NaN,
+      "detail": "control carries 0 planted defects (must be 0)"
+    },
+    {
+      "lever": "L1",
+      "status": "PASS",
+      "driver_demo": 324.19767615702887,
+      "driver_control": 299.4637543799242,
+      "driver_ratio": 0.9237,
+      "value_demo": 222376.01981409662,
+      "value_control": 189079.1132799445,
+      "value_ratio": 0.8503,
+      "detail": "value fell to 0.85x of demo; driver fell to 0.92x (+15% slack) - value tracked its cause"
+    },
+    {
+      "lever": "L2",
+      "status": "PASS",
+      "driver_demo": 1236.0714697027927,
+      "driver_control": 255.15294525406244,
+      "driver_ratio": 0.2064,
+      "value_demo": 31211.98,
+      "value_control": 4086.74,
+      "value_ratio": 0.1309,
+      "detail": "value fell to 0.13x of demo; driver fell to 0.21x (+15% slack) - value tracked its cause"
+    },
+    {
+      "lever": "L3",
+      "status": "PASS",
+      "driver_demo": 0.48555059327732686,
+      "driver_control": 0.46327314934227487,
+      "driver_ratio": 0.9541,
+      "value_demo": 3873.64,
+      "value_control": 1656.13,
+      "value_ratio": 0.4275,
+      "detail": "value fell to 0.43x of demo; driver fell to 0.95x (+15% slack) - value tracked its cause"
+    },
+    {
+      "lever": "L4",
+      "status": "PASS",
+      "driver_demo": 61931.0,
+      "driver_control": 58273.0,
+      "driver_ratio": 0.9409,
+      "value_demo": 62829.36,
+      "value_control": 52977.3,
+      "value_ratio": 0.8432,
+      "detail": "value fell to 0.84x of demo; driver fell to 0.94x (+15% slack) - value tracked its cause"
+    },
+    {
+      "lever": "L5",
+      "status": "INCONCLUSIVE",
+      "driver_demo": NaN,
+      "driver_control": NaN,
+      "driver_ratio": NaN,
+      "value_demo": NaN,
+      "value_control": NaN,
+      "value_ratio": NaN,
+      "detail": "the negative control does not vary L5's mechanism in this build - reported outstanding, not passed and not failed"
+    },
+    {
+      "lever": "L6",
+      "status": "INCONCLUSIVE",
+      "driver_demo": NaN,
+      "driver_control": NaN,
+      "driver_ratio": NaN,
+      "value_demo": NaN,
+      "value_control": NaN,
+      "value_ratio": NaN,
+      "detail": "the negative control does not vary L6's mechanism in this build - reported outstanding, not passed and not failed"
+    }
+  ],
   "leverage_audit": {
     "run_timestamp_utc": "<volatile>",
     "policy_file": "leverage_capital_policy.case_b_tier1_regional.json",
-    "policy_sha256": "72f1b2df83fd4b4303686c0e055a59824dce7ab9c11cf37db03524d3f9c770d7",
+    "policy_sha256": "1b9ff5e6f3bb9585efb1c711a3a9d9fee3958f2b3b95b720363ef7260389dfe2",
     "policy_version": "2.0.0",
     "case_label": "Case B: Tier 1 leverage community/regional bank",
     "slr_mode": false,

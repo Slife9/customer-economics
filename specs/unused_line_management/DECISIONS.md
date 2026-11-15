@@ -3,6 +3,29 @@
 Decisions received after the Stage 1 audit, newest first. Open decisions with the boss
 (B4–B8) are in `OPEN_DECISIONS.md` and stay behind config flags.
 
+## 15 Nov 2026: answers 2–9 and the Stage 2 notes
+
+| # | Decision | Where it lives |
+|---|---|---|
+| 2 | Word re-save discarded (`git stash drop`) | Done |
+| 3 | **Carrying cost** = capital + liquidity; **drawdown loss** beside it; **total unused-line cost** = all three. Three separate columns in every table and the drill-down; drawdown loss never under "carrying cost" | `engine/unused_lines/exposure.py` |
+| 4 | Profit view: start from `card_net`, **replace** the old capital charge with the new one, **subtract** the new liquidity cost; keep the **measured** credit cost; drawdown loss **beside** profit, not deducted; lever changes use annual PD × LGD × LEQ (Table8 `PD 12 Month`, never lifetime). A separate **workbook-reproduction mode** uses the workbook's modelled loss throughout | `exposure.account_costs`, `exposure.workbook_baseline` |
+| 5 | Regulatory transactor test (45%): a $0 statement cycle passes; all 12 cycles at $0 → 75%; any plan, promotional or BT balance, or a cycle not paid in full → 75%; under 12 months → 75%. The workbook's ≥ 10/12 rule stays a separate, labelled segment rule | `config/unused_line_assumptions.json` `transactor_test`, `exposure.risk_weights` |
+| 6 | Table29 / Table30 approved, additive, labelled synthetic; the score-drop and PD ≥ 4% rules are partly correlated by construction (both read Table8 PD), documented. Household and investments approximated (deposits + `Segment`), labelled | `DATA_ADDITIONS.md` |
+| 7 | Unassigned LEQ = portfolio mean Behavioral CCF (measured); automatic-increase suppression valued from Table20; non-reissue from Table3 reissue cost; all "assumption-based; not in the reference workbook", shown separately from the workbook levers in every total | config `drawdown_risk`, `levers.extra_levers` |
+| 8 | 100k bundle rebuilt locally, read-only, not committed, for §2.7 and the memory test | `STAGE3_REPORT.md` |
+| 9 | Build the `unused_line_stress` profile (synthetic stress data), new profile only, every parameter tagged `estimated - source: Unused Line RWA Scenario Model`; run the module on it and on the 5k demo | `generator/synth/unused_line_stress.py` |
+
+Stage 2 notes: the `negative_control` fix (`966988a`) is cherry-picked (`891bda2`) and
+`negative_control` is in the byte-identity check, baselined from the fix branch's code; the expected
+`generator/run.py` merge clashes are in `ISSUES_FOUND.md`; stale worktree records pruned.
+
+Settings added in Stage 3 that the brief did not specify (to confirm):
+- `bank_profile.bank_category` (default Categories I–III, as in §2.7): decides whether liquidity
+  applies under the default `apply_to`.
+- `screen.profit_basis` (default card profit less drawdown loss, the workbook's fully loaded basis):
+  the screen only; the displayed profit follows answer 4.
+
 ## 15 Nov 2026: base branch (replaces the earlier answer to Question 1)
 
 - `feature/unused-line-management` is created from `main` (`b660bb8`). Neither
@@ -26,19 +49,3 @@ Decisions received after the Stage 1 audit, newest first. Open decisions with th
   other branches or a local scratch area, read-only. The ML fairness re-run (adverse actions vs
   increases, saved to file).
 
-## Answers to Questions 2–9
-
-Referred to as "given" in the 15 Nov message but **not received in this session**. Until they
-arrive, the work below uses only what does not depend on them, and the Stage 1 proposals are
-**not** treated as accepted:
-
-| # | Question | Status |
-|---|---|---|
-| 2 | Word re-save of the strategy report | Parked in `git stash` on the docs branch, nothing lost |
-| 3 | Carrying cost = capital + liquidity, drawdown EL beside it | Pending |
-| 4 | Credit loss in the profit view | Pending |
-| 5 | Transactor test details | Pending |
-| 6 | New data | Table29 / Table30 confirmed by the 15 Nov message; household and investments pending |
-| 7 | Unassigned LEQ; valuation of the two levers without workbook values | Pending |
-| 8 | Rebuild the 100k bundle | Pending |
-| 9 | Unused-line stress generator profile | Pending (not built) |

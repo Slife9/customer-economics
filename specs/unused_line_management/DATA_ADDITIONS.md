@@ -65,13 +65,42 @@ Rules:
 
 What it is for: dormant confirmation (card never activated) and the non-reissue lever.
 
+## Stress profile `unused_line_stress` (Stage 3, answer 9)
+
+**Synthetic stress data**, never the illustrative bank's headline without that label.
+
+    python -m generator.run --profile unused_line_stress --out <dir>
+
+- New profile only (10,000 customers; the demo's bank dials and defects; fewer balance-transfer
+  promotions). Every existing profile stays byte-identical: its hooks run only when the profile
+  carries `unused_line_archetypes`, so no other profile draws an extra random number.
+- Code: `generator/synth/unused_line_stress.py`, plus profile-gated calls in `generator/run.py`
+  `build()`. No existing generator module is edited (fewer merge clashes).
+- Mechanism: 77% of customers are acquired as one of the workbook's **archetypes** (dormant,
+  sock-drawer, transactor, deteriorating, relationship), the rest are standard customers. The
+  archetype sets the population: latent traits (discipline, appetite, reliability, affluence,
+  spend level, spending mix), segment, credit line, annual fee, product for relationship
+  customers, account age, and when the card is used (dormant from some cycle, sock-drawer about
+  one month in five, transactors within a steady monthly budget). Balances, payments,
+  delinquency, PD, costs and profit still come from the generator's own logic.
+- Every parameter is tagged `estimated - source: Unused Line RWA Scenario Model`, tuned on the
+  10k book against the calibration report. The archetype is written to
+  `_ground_truth/Unused_Line_Archetype.csv` (evaluation only; never read by the engine).
+
 ## Calibration report (informational)
 
 `audit/unused_line_calibration_report.py` applies a simplified, independent reading of the workbook
-screen and segment rules to a portfolio (engine card ledger, trailing 12 cycles) and compares
-segment shares, line, balance, revolving balance, spend and PD with the workbook's *Assumptions*
-sheet (±25% band). It never fails the build. The module's own segment engine (Stage 4) will be
-cross-checked against it.
+screen and segment rules to a portfolio and compares segment shares, line, balance, utilisation,
+unused line, revolving balance, spend and PD with the workbook's *Assumptions* sheet (±25% band;
+a reference of exactly 0 allows $10 or 0.001). It never fails the build. The module's own segment
+engine (Stage 4) will be cross-checked against it.
+
+Since Stage 3 it uses the module's profit (engine/unused_lines): the rules run on every account,
+LEQ comes from the rule's segment, then the §2 costs, then the screen on the configured profit
+basis (default card profit less drawdown loss, the workbook's fully loaded basis). Two loss rows
+compare like with like: card profit against the workbook's profit without its undrawn-line loss
+(−$36.95 per account), and card profit less drawdown loss against its fully loaded profit
+(−$97.25).
 
 ## Audit
 

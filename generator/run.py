@@ -24,6 +24,7 @@ from generator.synth import (latents as L, population as POP, policy as P,
                              fees as FEES, defects as DEF, cards as CARDS,
                              installments as INST, timeline as TL)
 from generator import unused_line_additions as ULA
+from generator.synth import unused_line_stress as ULS
 
 ROOT = Path(__file__).parent
 CFG = ROOT / "config"
@@ -92,6 +93,24 @@ PROFILES = {
         "latent_tilt": {"affluence": 0.95},
         "channel_mix": [0.30, 0.28, 0.06, 0.24, 0.12],
     },
+    # Unused-line stress book for the Unused Credit Line Management module:
+    # SYNTHETIC STRESS DATA tuned toward the Unused Line RWA Scenario Model's
+    # screened population (synth/unused_line_stress.py). The demo's bank dials
+    # and defects, fewer balance-transfer promotions, and a share of customers
+    # acquired as one of the workbook's archetypes. Every value is
+    # `estimated - source: Unused Line RWA Scenario Model`.
+    "unused_line_stress": {
+        "n": 10000, "limit_generosity": 1.0, "promo_share": 0.05,
+        "digital_deflection_rate": 0.40, "waiver_rate": 0.14,
+        "review_discipline": 0.90, "fee_aligned_to_reward": False,
+        "line_review_uses_observed_behavior": False,
+        "repricing_tracks_risk": False,
+        "defect_prevalence": DEMO_DEFECT_PREVALENCE,
+        "unused_line_archetypes": {
+            "dormant": 0.15, "sock_drawer": 0.18, "transactor": 0.32,
+            "deteriorating": 0.07, "relationship": 0.05, "standard": 0.23,
+        },
+    },
 }
 
 
@@ -122,12 +141,24 @@ def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: in
     geo = pd.read_csv(CFG / "geography.csv", dtype={"ZIP3": str})
     age0 = np.clip(rng.gamma(5.2, 5.4, n) + 19, 19, 92).round().astype(int)
     lat = L.draw_latents(n, age0, rng, prof)
+    # unused_line_stress only: workbook archetypes (synth/unused_line_stress.py).
+    # No other profile reaches these calls, so their draws are unchanged.
+    arche = None
+    if "unused_line_archetypes" in prof:
+        arche = ULS.assign(n, rng, prof)
+        lat = ULS.adjust_latents(lat, arche, rng)
     cust = POP.build_customers(n, lat, geo, cycles, rng, prof)
+    if arche is not None:
+        cust = ULS.adjust_customers(cust, arche)
     accounts = POP.build_card_accounts(cust, lat, cycles, rng, prof)
+    if arche is not None:
+        accounts = ULS.adjust_accounts(accounts, cust, arche, rng)
     open_idx = accounts["Account Open Cycle Index"].to_numpy()
 
     mcc, rate_card = TX.load_config(CFG)
     tx = TX.generate(accounts, lat, cycles, open_idx, np.full(n, n_cyc), mcc, rate_card, rng)
+    if arche is not None:
+        tx = ULS.mask_activity(tx, arche, n_cyc, rng)
 
     sim = CY.simulate(accounts, cust, lat, tx, cycles, rng, prof)
     cyc = sim["cycles"]
@@ -209,10 +240,19 @@ def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: in
     # ---------------- deposits, loans, FTP -----------------------------------
     ftp_curve = FTP.build_curve(cycles, rng)
     dep_accts = DEP.build_accounts(cust, lat, n_cyc, rng, prof)
+    if arche is not None:
+        # Only the relationship archetype and standard customers keep deposit
+        # and loan products (the workbook's Relationship rule reads them).
+        keep = ULS.keep_deposits_for(arche)
+        dep_accts = dep_accts[dep_accts["_latent_ix"].isin(keep)].reset_index(drop=True)
     dep_cyc = DEP.simulate_cycles(dep_accts, lat, cycles, ftp_curve,
                                   cust["Stated Annual Income"].to_numpy(), rng) \
         if len(dep_accts) else pd.DataFrame()
     loan_accts, loan_cyc = LOAN.build_and_simulate(cust, lat, cycles, rng, prof)
+    if arche is not None and len(loan_accts):
+        kept = set(cust["Masked Customer Number"].to_numpy()[keep])
+        loan_accts = loan_accts[loan_accts["Masked Customer Number"].isin(kept)].reset_index(drop=True)
+        loan_cyc = loan_cyc[loan_cyc["Masked Customer Number"].isin(kept)].reset_index(drop=True)
 
     fee_recon = FEES.reconcile_entitled_vs_charged(fee_events, accounts, cyc,
                                                    pd.read_csv(CFG / "fee_schedule.csv"),
@@ -306,6 +346,10 @@ def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: in
     lat_gt.insert(1, "acquisition_channel", lat["channel_affinity"].to_numpy())
     lat_gt.to_csv(gtdir / "Latent_Ground_Truth.csv", index=False)
     ground_truth.to_csv(gtdir / "Defect_Ground_Truth.csv", index=False)
+    if arche is not None:
+        pd.DataFrame({"Masked Customer Number": cust["Masked Customer Number"].to_numpy(),
+                      "Unused Line Archetype": arche}).to_csv(
+            gtdir / "Unused_Line_Archetype.csv", index=False)
     (gtdir / "README.txt").write_text(
         "Evaluation-only. Never join into any table the analytical engine reads.\n"
         "Latents and the true default hazard are the causes.\n"

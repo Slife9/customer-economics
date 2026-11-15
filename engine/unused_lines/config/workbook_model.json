@@ -1,0 +1,434 @@
+{
+  "_source": "Unused Line RWA Scenario Model (workbook cached values)",
+  "_label": "estimated - source: Unused Line RWA Scenario Model (illustrative industry averages)",
+  "_workbook_sha256": "1829a254d2c83a21df3a37328a89b311f098aaf39c96d5d82c7dd7825cad6bdf",
+  "segments": {
+    "dormant": {
+      "accounts": 30000.0,
+      "credit_line": 8000.0,
+      "balance": 0.0,
+      "revolving_balance": 0.0,
+      "spend": 0.0,
+      "interchange_rate": 0.02,
+      "reward_rate": 0.01,
+      "apr": 0.24,
+      "annual_fee": 0.0,
+      "other_fee": 0.0,
+      "pd_annual": 0.01,
+      "leq": 0.4,
+      "variable_cost": 15.0,
+      "fixed_cost": 30.0,
+      "relationship_profit": 0.0,
+      "response_rate": 0.06,
+      "attrition_after_decrease": 0.02,
+      "spend_loss_after_decrease": 0.0,
+      "pd_increase_after_decrease": 0.0
+    },
+    "sock_drawer": {
+      "accounts": 20000.0,
+      "credit_line": 10000.0,
+      "balance": 300.0,
+      "revolving_balance": 100.0,
+      "spend": 1500.0,
+      "interchange_rate": 0.02,
+      "reward_rate": 0.01,
+      "apr": 0.24,
+      "annual_fee": 0.0,
+      "other_fee": 5.0,
+      "pd_annual": 0.015,
+      "leq": 0.5,
+      "variable_cost": 30.0,
+      "fixed_cost": 45.0,
+      "relationship_profit": 0.0,
+      "response_rate": 0.1,
+      "attrition_after_decrease": 0.05,
+      "spend_loss_after_decrease": 0.05,
+      "pd_increase_after_decrease": 0.0
+    },
+    "transactors": {
+      "accounts": 25000.0,
+      "credit_line": 20000.0,
+      "balance": 1500.0,
+      "revolving_balance": 0.0,
+      "spend": 18000.0,
+      "interchange_rate": 0.021,
+      "reward_rate": 0.015,
+      "apr": 0.22,
+      "annual_fee": 0.0,
+      "other_fee": 10.0,
+      "pd_annual": 0.005,
+      "leq": 0.2,
+      "variable_cost": 40.0,
+      "fixed_cost": 60.0,
+      "relationship_profit": 0.0,
+      "response_rate": 0.12,
+      "attrition_after_decrease": 0.08,
+      "spend_loss_after_decrease": 0.05,
+      "pd_increase_after_decrease": 0.0
+    },
+    "deteriorating": {
+      "accounts": 8000.0,
+      "credit_line": 12000.0,
+      "balance": 1500.0,
+      "revolving_balance": 1200.0,
+      "spend": 2500.0,
+      "interchange_rate": 0.02,
+      "reward_rate": 0.01,
+      "apr": 0.26,
+      "annual_fee": 0.0,
+      "other_fee": 15.0,
+      "pd_annual": 0.06,
+      "leq": 0.7,
+      "variable_cost": 45.0,
+      "fixed_cost": 60.0,
+      "relationship_profit": 0.0,
+      "response_rate": 0.05,
+      "attrition_after_decrease": 0.03,
+      "spend_loss_after_decrease": 0.1,
+      "pd_increase_after_decrease": 0.1
+    },
+    "relationship": {
+      "accounts": 10000.0,
+      "credit_line": 35000.0,
+      "balance": 3000.0,
+      "revolving_balance": 500.0,
+      "spend": 30000.0,
+      "interchange_rate": 0.022,
+      "reward_rate": 0.025,
+      "apr": 0.2,
+      "annual_fee": 95.0,
+      "other_fee": 10.0,
+      "pd_annual": 0.004,
+      "leq": 0.15,
+      "variable_cost": 50.0,
+      "fixed_cost": 60.0,
+      "relationship_profit": 300.0,
+      "response_rate": 0.1,
+      "attrition_after_decrease": 0.15,
+      "spend_loss_after_decrease": 0.1,
+      "pd_increase_after_decrease": 0.0
+    }
+  },
+  "portfolio": {
+    "cost_of_funds": 0.045,
+    "lgd": 0.85,
+    "capital_ratio": 0.105,
+    "cost_of_equity": 0.12,
+    "lcr_outflow": 0.05,
+    "negative_carry": 0.0075,
+    "promo_cost_rate": 0.03,
+    "incentive_per_responder": 25.0,
+    "minimum_line": 500.0,
+    "headroom_over_balance": 0.2,
+    "behavioural_response_multiplier": 1.0
+  },
+  "regimes": {
+    "basel_endgame_2023": {
+      "ccf": {
+        "dormant": 0.1,
+        "sock_drawer": 0.1,
+        "transactors": 0.1,
+        "deteriorating": 0.1,
+        "relationship": 0.1
+      },
+      "risk_weight": {
+        "dormant": 0.85,
+        "sock_drawer": 0.85,
+        "transactors": 0.55,
+        "deteriorating": 0.85,
+        "relationship": 0.55
+      }
+    },
+    "current_us_standardized": {
+      "ccf": {
+        "dormant": 0.0,
+        "sock_drawer": 0.0,
+        "transactors": 0.0,
+        "deteriorating": 0.0,
+        "relationship": 0.0
+      },
+      "risk_weight": {
+        "dormant": 1.0,
+        "sock_drawer": 1.0,
+        "transactors": 1.0,
+        "deteriorating": 1.0,
+        "relationship": 1.0
+      }
+    },
+    "internal_model_irb": {
+      "ccf": {
+        "dormant": 0.4,
+        "sock_drawer": 0.5,
+        "transactors": 0.2,
+        "deteriorating": 0.7,
+        "relationship": 0.15
+      },
+      "risk_weight": {
+        "dormant": 0.3,
+        "sock_drawer": 0.4,
+        "transactors": 0.18,
+        "deteriorating": 1.0,
+        "relationship": 0.15
+      }
+    }
+  },
+  "levers": {
+    "conservative": {
+      "decrease_share": {
+        "dormant": 0.3,
+        "sock_drawer": 0.1,
+        "transactors": 0.05,
+        "deteriorating": 0.3,
+        "relationship": 0.0
+      },
+      "decrease_cut": {
+        "dormant": 0.3,
+        "sock_drawer": 0.2,
+        "transactors": 0.15,
+        "deteriorating": 0.25,
+        "relationship": 0.0
+      },
+      "closure_share": {
+        "dormant": 0.1,
+        "sock_drawer": 0.0,
+        "transactors": 0.0,
+        "deteriorating": 0.0,
+        "relationship": 0.0
+      },
+      "campaign_share": {
+        "dormant": 0.3,
+        "sock_drawer": 0.3,
+        "transactors": 0.1,
+        "deteriorating": 0.0,
+        "relationship": 0.1
+      },
+      "incremental_spend": {
+        "dormant": 1500.0,
+        "sock_drawer": 1500.0,
+        "transactors": 2000.0,
+        "deteriorating": 0.0,
+        "relationship": 3000.0
+      },
+      "incremental_revolving": {
+        "dormant": 300.0,
+        "sock_drawer": 300.0,
+        "transactors": 200.0,
+        "deteriorating": 0.0,
+        "relationship": 500.0
+      },
+      "campaign_cost": {
+        "dormant": 5.0,
+        "sock_drawer": 5.0,
+        "transactors": 5.0,
+        "deteriorating": 5.0,
+        "relationship": 5.0
+      }
+    },
+    "base": {
+      "decrease_share": {
+        "dormant": 0.5,
+        "sock_drawer": 0.25,
+        "transactors": 0.15,
+        "deteriorating": 0.5,
+        "relationship": 0.05
+      },
+      "decrease_cut": {
+        "dormant": 0.5,
+        "sock_drawer": 0.3,
+        "transactors": 0.25,
+        "deteriorating": 0.4,
+        "relationship": 0.15
+      },
+      "closure_share": {
+        "dormant": 0.25,
+        "sock_drawer": 0.0,
+        "transactors": 0.0,
+        "deteriorating": 0.0,
+        "relationship": 0.0
+      },
+      "campaign_share": {
+        "dormant": 0.4,
+        "sock_drawer": 0.5,
+        "transactors": 0.25,
+        "deteriorating": 0.0,
+        "relationship": 0.2
+      },
+      "incremental_spend": {
+        "dormant": 2000.0,
+        "sock_drawer": 2000.0,
+        "transactors": 2500.0,
+        "deteriorating": 0.0,
+        "relationship": 4000.0
+      },
+      "incremental_revolving": {
+        "dormant": 400.0,
+        "sock_drawer": 400.0,
+        "transactors": 300.0,
+        "deteriorating": 0.0,
+        "relationship": 800.0
+      },
+      "campaign_cost": {
+        "dormant": 6.0,
+        "sock_drawer": 6.0,
+        "transactors": 6.0,
+        "deteriorating": 6.0,
+        "relationship": 6.0
+      }
+    },
+    "aggressive": {
+      "decrease_share": {
+        "dormant": 0.7,
+        "sock_drawer": 0.5,
+        "transactors": 0.3,
+        "deteriorating": 0.75,
+        "relationship": 0.1
+      },
+      "decrease_cut": {
+        "dormant": 0.7,
+        "sock_drawer": 0.5,
+        "transactors": 0.4,
+        "deteriorating": 0.6,
+        "relationship": 0.25
+      },
+      "closure_share": {
+        "dormant": 0.4,
+        "sock_drawer": 0.05,
+        "transactors": 0.0,
+        "deteriorating": 0.05,
+        "relationship": 0.0
+      },
+      "campaign_share": {
+        "dormant": 0.5,
+        "sock_drawer": 0.6,
+        "transactors": 0.4,
+        "deteriorating": 0.0,
+        "relationship": 0.3
+      },
+      "incremental_spend": {
+        "dormant": 2500.0,
+        "sock_drawer": 2500.0,
+        "transactors": 3000.0,
+        "deteriorating": 0.0,
+        "relationship": 5000.0
+      },
+      "incremental_revolving": {
+        "dormant": 500.0,
+        "sock_drawer": 500.0,
+        "transactors": 400.0,
+        "deteriorating": 0.0,
+        "relationship": 1000.0
+      },
+      "campaign_cost": {
+        "dormant": 8.0,
+        "sock_drawer": 8.0,
+        "transactors": 8.0,
+        "deteriorating": 8.0,
+        "relationship": 8.0
+      }
+    }
+  },
+  "dashboard_reference": {
+    "baseline": {
+      "accounts": 93000.0,
+      "credit_line": 1386000000.0,
+      "undrawn": 1300500000.0,
+      "rwa": 139492500.0,
+      "capital_charge": 1757605.5,
+      "liquidity_cost": 487687.5,
+      "expected_credit_loss": 6557750.0,
+      "revenue": 21799000.0,
+      "contribution": -4664043.0,
+      "fully_loaded_profit": -9044043.0,
+      "relationship_adjusted_profit": -6044043.0
+    },
+    "conservative": {
+      "accounts": 89566.0,
+      "credit_line": 1323554800.0,
+      "undrawn": 1237909014.8,
+      "rwa": 134470548.478,
+      "capital_charge": 1694328.9108228,
+      "liquidity_cost": 464215.88055,
+      "expected_credit_loss": 6171579.73502,
+      "revenue": 21828214.034,
+      "contribution": -4221378.408392799,
+      "fully_loaded_profit": -8601378.408392798,
+      "relationship_adjusted_profit": -5601378.408392798,
+      "change_in_fully_loaded_profit": 442664.5916072009,
+      "capital_released": 527304.9098099996,
+      "accounts_lost": 3434.0
+    },
+    "base": {
+      "accounts": 84530.0,
+      "credit_line": 1215179750.0,
+      "undrawn": 1129619810.0,
+      "rwa": 125941173.35000002,
+      "capital_charge": 1586858.7842100002,
+      "liquidity_cost": 423607.42875,
+      "expected_credit_loss": 5460431.9684999995,
+      "revenue": 21746742.3,
+      "contribution": -3334906.0814599996,
+      "fully_loaded_profit": -7714906.081459999,
+      "relationship_adjusted_profit": -4737406.081459999,
+      "change_in_fully_loaded_profit": 1329136.918540001,
+      "capital_released": 1422889.2982499981,
+      "accounts_lost": 8470.0
+    },
+    "aggressive": {
+      "accounts": 77952.0,
+      "credit_line": 1032411900.0,
+      "undrawn": 947974950.0,
+      "rwa": 111179128.65,
+      "capital_charge": 1400857.02099,
+      "liquidity_cost": 355490.60625,
+      "expected_credit_loss": 3972800.9367500003,
+      "revenue": 21423870.25,
+      "contribution": -1709378.5639900006,
+      "fully_loaded_profit": -6089378.563990001,
+      "relationship_adjusted_profit": -3134378.563990001,
+      "change_in_fully_loaded_profit": 2954664.4360099994,
+      "capital_released": 2972903.9917499996,
+      "accounts_lost": 15048.0
+    },
+    "base_by_segment": {
+      "dormant": {
+        "baseline_profit": -2513040.0,
+        "change_in_profit": 605145.4022400002,
+        "capital_released": 927980.8019999998
+      },
+      "sock_drawer": {
+        "baseline_profit": -2368034.0,
+        "change_in_profit": 121047.27000000048,
+        "capital_released": 123789.75
+      },
+      "transactors": {
+        "baseline_profit": -856325.0,
+        "change_in_profit": -7554.042599999113,
+        "capital_released": 146103.45749999842
+      },
+      "deteriorating": {
+        "baseline_profit": -2316784.0,
+        "change_in_profit": 601022.7440000006,
+        "capital_released": 193529.69999999998
+      },
+      "relationship": {
+        "baseline_profit": -989860.0,
+        "change_in_profit": 9475.544899998582,
+        "capital_released": 31485.58875
+      }
+    },
+    "regime_table": {
+      "basel_endgame_2023": {
+        "total_rwa": 139492500.0,
+        "undrawn_rwa": 87067500.0
+      },
+      "current_us_standardized": {
+        "total_rwa": 85500000.0,
+        "undrawn_rwa": 0.0
+      },
+      "internal_model_irb": {
+        "total_rwa": 175900000.0,
+        "undrawn_rwa": 150250000.0
+      }
+    }
+  }
+}

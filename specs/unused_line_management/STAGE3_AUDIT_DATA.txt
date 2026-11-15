@@ -1,0 +1,176 @@
+python audit/audit_unused_line_data_additions.py --workdir <scratch>   (15 Nov 2026, feature/unused-line-management)
+
+
+1. Byte-identity against the baseline
+  PASS  every pre-existing file byte-identical  - 197 baseline files; mismatched 0; missing 0 (75s)
+  PASS  only the new tables were added  - added: ['demo/Table29_Score_History.csv', 'demo/Table30_Card_Activation.csv', 'negative_control/Table29_Score_History.csv', 'negative_control/Table30_Card_Activation.csv', 'premium_heavy/Table29_Score_History.csv', 'premium_heavy/Table30_Card_Activation.csv', 'subprime_heavy/Table29_Score_History.csv', 'subprime_heavy/Table30_Card_Activation.csv', 'transactor_heavy/Table29_Score_History.csv', 'transactor_heavy/Table30_Card_Activation.csv']
+
+2. Engine regression
+  PASS  run_summary.json equals the engine baseline  - identical except data_dir and leverage_audit.run_timestamp_utc; policy_sha256 differs by line endings only (same policy file content) (20s)
+
+3. Integrity - demo
+  PASS  demo: Table29 rows 1:1 with Table8 account-cycles, customer matches  - 142,015 rows vs 142,015
+  PASS  demo: Behaviour Score reproducible from Table8 PD 12 Month
+  PASS  demo: scores in 300-850; 6-month change and months of history reproducible
+  PASS  demo: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)  - 4,912 of 5,000 accounts checked
+  PASS  demo: 40-point drops concentrate in recently delinquent accounts  - share of cycles with a drop >= 40: 55.5% after 30+ DPD vs 0.31% otherwise
+  PASS  demo: Table29 identifiers are masked (CUS / ACC) only
+  PASS  demo: Table30 rows 1:1 with Table3 cards, same order and keys  - 11,250 cards
+  PASS  demo: First Use and Months Live reproducible from Table5 / Table3 / Table4  - 7,360 cards used in the window
+  PASS  demo: every used card activated by first use; activation inside the card's life  - {'activated': 7797, 'not_observed': 2613, 'not_activated': 840}
+  PASS  demo: Activation Cycle Month matches the index (blank outside the window)
+  PASS  demo: Table30 identifiers are masked (CRD / ACC) only
+
+3. Integrity - negative_control
+  PASS  negative_control: Table29 rows 1:1 with Table8 account-cycles, customer matches  - 140,830 rows vs 140,830
+  PASS  negative_control: Behaviour Score reproducible from Table8 PD 12 Month
+  PASS  negative_control: scores in 300-850; 6-month change and months of history reproducible
+  PASS  negative_control: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)  - 4,911 of 5,000 accounts checked
+  PASS  negative_control: 40-point drops concentrate in recently delinquent accounts  - share of cycles with a drop >= 40: 55.4% after 30+ DPD vs 0.33% otherwise
+  PASS  negative_control: Table29 identifiers are masked (CUS / ACC) only
+  PASS  negative_control: Table30 rows 1:1 with Table3 cards, same order and keys  - 11,168 cards
+  PASS  negative_control: First Use and Months Live reproducible from Table5 / Table3 / Table4  - 7,300 cards used in the window
+  PASS  negative_control: every used card activated by first use; activation inside the card's life  - {'activated': 7754, 'not_observed': 2556, 'not_activated': 858}
+  PASS  negative_control: Activation Cycle Month matches the index (blank outside the window)
+  PASS  negative_control: Table30 identifiers are masked (CRD / ACC) only
+
+3. Integrity - transactor_heavy
+  PASS  transactor_heavy: Table29 rows 1:1 with Table8 account-cycles, customer matches  - 62,197 rows vs 62,197
+  PASS  transactor_heavy: Behaviour Score reproducible from Table8 PD 12 Month
+  PASS  transactor_heavy: scores in 300-850; 6-month change and months of history reproducible
+  PASS  transactor_heavy: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)  - 1,992 of 2,000 accounts checked
+  PASS  transactor_heavy: 40-point drops concentrate in recently delinquent accounts  - share of cycles with a drop >= 40: 59.7% after 30+ DPD vs 0.17% otherwise
+  PASS  transactor_heavy: Table29 identifiers are masked (CUS / ACC) only
+  PASS  transactor_heavy: Table30 rows 1:1 with Table3 cards, same order and keys  - 4,580 cards
+  PASS  transactor_heavy: First Use and Months Live reproducible from Table5 / Table3 / Table4  - 2,999 cards used in the window
+  PASS  transactor_heavy: every used card activated by first use; activation inside the card's life  - {'activated': 3208, 'not_observed': 965, 'not_activated': 407}
+  PASS  transactor_heavy: Activation Cycle Month matches the index (blank outside the window)
+  PASS  transactor_heavy: Table30 identifiers are masked (CRD / ACC) only
+
+3. Integrity - subprime_heavy
+  PASS  subprime_heavy: Table29 rows 1:1 with Table8 account-cycles, customer matches  - 48,897 rows vs 48,897
+  PASS  subprime_heavy: Behaviour Score reproducible from Table8 PD 12 Month
+  PASS  subprime_heavy: scores in 300-850; 6-month change and months of history reproducible
+  PASS  subprime_heavy: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)  - 1,935 of 2,000 accounts checked
+  PASS  subprime_heavy: 40-point drops concentrate in recently delinquent accounts  - share of cycles with a drop >= 40: 50.9% after 30+ DPD vs 0.36% otherwise
+  PASS  subprime_heavy: Table29 identifiers are masked (CUS / ACC) only
+  PASS  subprime_heavy: Table30 rows 1:1 with Table3 cards, same order and keys  - 4,316 cards
+  PASS  subprime_heavy: First Use and Months Live reproducible from Table5 / Table3 / Table4  - 2,789 cards used in the window
+  PASS  subprime_heavy: every used card activated by first use; activation inside the card's life  - {'activated': 2947, 'not_observed': 1068, 'not_activated': 301}
+  PASS  subprime_heavy: Activation Cycle Month matches the index (blank outside the window)
+  PASS  subprime_heavy: Table30 identifiers are masked (CRD / ACC) only
+
+3. Integrity - premium_heavy
+  PASS  premium_heavy: Table29 rows 1:1 with Table8 account-cycles, customer matches  - 62,178 rows vs 62,178
+  PASS  premium_heavy: Behaviour Score reproducible from Table8 PD 12 Month
+  PASS  premium_heavy: scores in 300-850; 6-month change and months of history reproducible
+  PASS  premium_heavy: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)  - 1,980 of 2,000 accounts checked
+  PASS  premium_heavy: 40-point drops concentrate in recently delinquent accounts  - share of cycles with a drop >= 40: 57.6% after 30+ DPD vs 0.19% otherwise
+  PASS  premium_heavy: Table29 identifiers are masked (CUS / ACC) only
+  PASS  premium_heavy: Table30 rows 1:1 with Table3 cards, same order and keys  - 4,669 cards
+  PASS  premium_heavy: First Use and Months Live reproducible from Table5 / Table3 / Table4  - 3,143 cards used in the window
+  PASS  premium_heavy: every used card activated by first use; activation inside the card's life  - {'activated': 3300, 'not_observed': 1029, 'not_activated': 340}
+  PASS  premium_heavy: Activation Cycle Month matches the index (blank outside the window)
+  PASS  premium_heavy: Table30 identifiers are masked (CRD / ACC) only
+
+4. Determinism
+  PASS  same seed -> byte-identical new tables (and equal to build()'s)
+  PASS  different new-stream seed changes only new-stream fields  - unchanged: Table29 ['Masked Customer Number', 'Masked Account Number', 'Cycle Month', 'Behaviour Score', 'Months Of Score History'], Table30 ['Masked Card Number', 'Masked Account Number', 'Card Sequence Number', 'Issue Cycle Index', 'Months Live In Window', 'First Use Cycle Index']
+  PASS  existing demo files untouched by the extra runs
+
+5. Calibration report - demo 5k
+  PASS  demo 5k: calibration report produced (informational, never fails)  - screened 948 of 3559; within 16, outside 27, not assessed 1 (6s)
+
+3. Integrity - unused_line_stress
+  PASS  unused_line_stress: Table29 rows 1:1 with Table8 account-cycles, customer matches  - 333,918 rows vs 333,918
+  PASS  unused_line_stress: Behaviour Score reproducible from Table8 PD 12 Month
+  PASS  unused_line_stress: scores in 300-850; 6-month change and months of history reproducible
+  PASS  unused_line_stress: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)  - 9,933 of 10,000 accounts checked
+  PASS  unused_line_stress: 40-point drops concentrate in recently delinquent accounts  - share of cycles with a drop >= 40: 59.5% after 30+ DPD vs 0.20% otherwise
+  PASS  unused_line_stress: Table29 identifiers are masked (CUS / ACC) only
+  PASS  unused_line_stress: Table30 rows 1:1 with Table3 cards, same order and keys  - 24,612 cards
+  PASS  unused_line_stress: First Use and Months Live reproducible from Table5 / Table3 / Table4  - 14,958 cards used in the window
+  PASS  unused_line_stress: every used card activated by first use; activation inside the card's life  - {'activated': 16635, 'not_observed': 5669, 'not_activated': 2308}
+  PASS  unused_line_stress: Activation Cycle Month matches the index (blank outside the window)
+  PASS  unused_line_stress: Table30 identifiers are masked (CRD / ACC) only
+
+5. Calibration report - unused_line_stress 10k
+  PASS  unused_line_stress 10k: calibration report produced (informational, never fails)  - screened 5836 of 8811; within 25, outside 18, not assessed 1 (15s)
+
+====================================================================================================
+PASS  every pre-existing file byte-identical
+PASS  only the new tables were added
+PASS  run_summary.json equals the engine baseline
+PASS  demo: Table29 rows 1:1 with Table8 account-cycles, customer matches
+PASS  demo: Behaviour Score reproducible from Table8 PD 12 Month
+PASS  demo: scores in 300-850; 6-month change and months of history reproducible
+PASS  demo: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)
+PASS  demo: 40-point drops concentrate in recently delinquent accounts
+PASS  demo: Table29 identifiers are masked (CUS / ACC) only
+PASS  demo: Table30 rows 1:1 with Table3 cards, same order and keys
+PASS  demo: First Use and Months Live reproducible from Table5 / Table3 / Table4
+PASS  demo: every used card activated by first use; activation inside the card's life
+PASS  demo: Activation Cycle Month matches the index (blank outside the window)
+PASS  demo: Table30 identifiers are masked (CRD / ACC) only
+PASS  negative_control: Table29 rows 1:1 with Table8 account-cycles, customer matches
+PASS  negative_control: Behaviour Score reproducible from Table8 PD 12 Month
+PASS  negative_control: scores in 300-850; 6-month change and months of history reproducible
+PASS  negative_control: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)
+PASS  negative_control: 40-point drops concentrate in recently delinquent accounts
+PASS  negative_control: Table29 identifiers are masked (CUS / ACC) only
+PASS  negative_control: Table30 rows 1:1 with Table3 cards, same order and keys
+PASS  negative_control: First Use and Months Live reproducible from Table5 / Table3 / Table4
+PASS  negative_control: every used card activated by first use; activation inside the card's life
+PASS  negative_control: Activation Cycle Month matches the index (blank outside the window)
+PASS  negative_control: Table30 identifiers are masked (CRD / ACC) only
+PASS  transactor_heavy: Table29 rows 1:1 with Table8 account-cycles, customer matches
+PASS  transactor_heavy: Behaviour Score reproducible from Table8 PD 12 Month
+PASS  transactor_heavy: scores in 300-850; 6-month change and months of history reproducible
+PASS  transactor_heavy: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)
+PASS  transactor_heavy: 40-point drops concentrate in recently delinquent accounts
+PASS  transactor_heavy: Table29 identifiers are masked (CUS / ACC) only
+PASS  transactor_heavy: Table30 rows 1:1 with Table3 cards, same order and keys
+PASS  transactor_heavy: First Use and Months Live reproducible from Table5 / Table3 / Table4
+PASS  transactor_heavy: every used card activated by first use; activation inside the card's life
+PASS  transactor_heavy: Activation Cycle Month matches the index (blank outside the window)
+PASS  transactor_heavy: Table30 identifiers are masked (CRD / ACC) only
+PASS  subprime_heavy: Table29 rows 1:1 with Table8 account-cycles, customer matches
+PASS  subprime_heavy: Behaviour Score reproducible from Table8 PD 12 Month
+PASS  subprime_heavy: scores in 300-850; 6-month change and months of history reproducible
+PASS  subprime_heavy: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)
+PASS  subprime_heavy: 40-point drops concentrate in recently delinquent accounts
+PASS  subprime_heavy: Table29 identifiers are masked (CUS / ACC) only
+PASS  subprime_heavy: Table30 rows 1:1 with Table3 cards, same order and keys
+PASS  subprime_heavy: First Use and Months Live reproducible from Table5 / Table3 / Table4
+PASS  subprime_heavy: every used card activated by first use; activation inside the card's life
+PASS  subprime_heavy: Activation Cycle Month matches the index (blank outside the window)
+PASS  subprime_heavy: Table30 identifiers are masked (CRD / ACC) only
+PASS  premium_heavy: Table29 rows 1:1 with Table8 account-cycles, customer matches
+PASS  premium_heavy: Behaviour Score reproducible from Table8 PD 12 Month
+PASS  premium_heavy: scores in 300-850; 6-month change and months of history reproducible
+PASS  premium_heavy: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)
+PASS  premium_heavy: 40-point drops concentrate in recently delinquent accounts
+PASS  premium_heavy: Table29 identifiers are masked (CUS / ACC) only
+PASS  premium_heavy: Table30 rows 1:1 with Table3 cards, same order and keys
+PASS  premium_heavy: First Use and Months Live reproducible from Table5 / Table3 / Table4
+PASS  premium_heavy: every used card activated by first use; activation inside the card's life
+PASS  premium_heavy: Activation Cycle Month matches the index (blank outside the window)
+PASS  premium_heavy: Table30 identifiers are masked (CRD / ACC) only
+PASS  same seed -> byte-identical new tables (and equal to build()'s)
+PASS  different new-stream seed changes only new-stream fields
+PASS  existing demo files untouched by the extra runs
+PASS  demo 5k: calibration report produced (informational, never fails)
+PASS  unused_line_stress: Table29 rows 1:1 with Table8 account-cycles, customer matches
+PASS  unused_line_stress: Behaviour Score reproducible from Table8 PD 12 Month
+PASS  unused_line_stress: scores in 300-850; 6-month change and months of history reproducible
+PASS  unused_line_stress: first-cycle Bureau Score equals Table1 Credit Score (no delinquency that cycle)
+PASS  unused_line_stress: 40-point drops concentrate in recently delinquent accounts
+PASS  unused_line_stress: Table29 identifiers are masked (CUS / ACC) only
+PASS  unused_line_stress: Table30 rows 1:1 with Table3 cards, same order and keys
+PASS  unused_line_stress: First Use and Months Live reproducible from Table5 / Table3 / Table4
+PASS  unused_line_stress: every used card activated by first use; activation inside the card's life
+PASS  unused_line_stress: Activation Cycle Month matches the index (blank outside the window)
+PASS  unused_line_stress: Table30 identifiers are masked (CRD / ACC) only
+PASS  unused_line_stress 10k: calibration report produced (informational, never fails)
+====================================================================================================
+74/74 PASSED
