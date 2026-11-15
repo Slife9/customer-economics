@@ -1,45 +1,45 @@
 Segment,Metric,Observed,Reference,Accounts,Reference Source,Note,Band Low,Band High,Within Band
-Screen,Screened share of open card accounts,0.662354,,5836,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)","No workbook reference (93,000 screened of an unstated book)",,,not assessed
-Screen,Card profit per screened account USD,-63.654276,-36.948043,5836,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)","Module card profit (new capital and liquidity, measured credit cost) vs the workbook's fully loaded profit without its loss on the undrawn line",-46.185054,-27.711032,outside
-Screen,Card profit less drawdown loss per screened account USD,-114.93983,-97.247774,5836,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",Workbook-comparable: the workbook's fully loaded profit includes the undrawn-line loss,-121.559718,-72.935831,within
-Credit-Deteriorating Low-Use,Share of screened accounts,0.055003,0.086022,321,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.064516,0.107527,outside
-Credit-Deteriorating Low-Use,Credit line USD,12347.975078,12000.0,321,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,9000.0,15000.0,within
-Credit-Deteriorating Low-Use,Balance USD,806.946552,1500.0,321,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,1125.0,1875.0,outside
-Credit-Deteriorating Low-Use,Utilisation,0.062608,0.125,321,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.09375,0.15625,outside
-Credit-Deteriorating Low-Use,Unused line USD,11541.028525,10500.0,321,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,7875.0,13125.0,within
-Credit-Deteriorating Low-Use,Revolving balance USD,616.914798,1200.0,321,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,900.0,1500.0,outside
-Credit-Deteriorating Low-Use,Annual spend USD,1990.161153,2500.0,321,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,1875.0,3125.0,within
-Credit-Deteriorating Low-Use,PD 12 month,0.088664,0.06,321,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.045,0.075,outside
-High-Line Relationship / Premium,Share of screened accounts,0.119774,0.107527,699,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.080645,0.134409,within
-High-Line Relationship / Premium,Credit line USD,27944.206009,35000.0,699,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,26250.0,43750.0,within
-High-Line Relationship / Premium,Balance USD,2259.509959,3000.0,699,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,2250.0,3750.0,within
-High-Line Relationship / Premium,Utilisation,0.079287,0.085714,699,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.064286,0.107143,within
-High-Line Relationship / Premium,Unused line USD,25684.696897,32000.0,699,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,24000.0,40000.0,within
-High-Line Relationship / Premium,Revolving balance USD,13.110325,500.0,699,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,375.0,625.0,outside
-High-Line Relationship / Premium,Annual spend USD,26122.702833,30000.0,699,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,22500.0,37500.0,within
-High-Line Relationship / Premium,PD 12 month,0.003663,0.004,699,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.003,0.005,within
-Dormant / Inactive,Share of screened accounts,0.318197,0.322581,1857,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.241935,0.403226,within
-Dormant / Inactive,Credit line USD,10403.984922,8000.0,1857,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,6000.0,10000.0,outside
-Dormant / Inactive,Balance USD,0.178791,0.0,1857,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0,10.0,within
-Dormant / Inactive,Utilisation,1.8e-05,0.0,1857,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0,0.001,within
-Dormant / Inactive,Unused line USD,10403.806131,8000.0,1857,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,6000.0,10000.0,outside
-Dormant / Inactive,Revolving balance USD,0.0,0.0,1857,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0,10.0,within
-Dormant / Inactive,Annual spend USD,0.0,0.0,1857,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0,10.0,within
-Dormant / Inactive,PD 12 month,0.008999,0.01,1857,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0075,0.0125,within
-Sock-Drawer Occasional Users,Share of screened accounts,0.165524,0.215054,966,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.16129,0.268817,within
-Sock-Drawer Occasional Users,Credit line USD,10745.341615,10000.0,966,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,7500.0,12500.0,within
-Sock-Drawer Occasional Users,Balance USD,116.275207,300.0,966,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,225.0,375.0,outside
-Sock-Drawer Occasional Users,Utilisation,0.011616,0.03,966,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0225,0.0375,outside
-Sock-Drawer Occasional Users,Unused line USD,10629.066408,9700.0,966,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,7275.0,12125.0,within
-Sock-Drawer Occasional Users,Revolving balance USD,38.397096,100.0,966,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,75.0,125.0,outside
-Sock-Drawer Occasional Users,Annual spend USD,888.906905,1500.0,966,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,1125.0,1875.0,outside
-Sock-Drawer Occasional Users,PD 12 month,0.011486,0.015,966,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.01125,0.01875,within
-Low-Utilization Transactors,Share of screened accounts,0.172892,0.268817,1009,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.201613,0.336022,outside
-Low-Utilization Transactors,Credit line USD,23173.191278,20000.0,1009,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,15000.0,25000.0,within
-Low-Utilization Transactors,Balance USD,1070.126487,1500.0,1009,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,1125.0,1875.0,outside
-Low-Utilization Transactors,Utilisation,0.048667,0.075,1009,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.05625,0.09375,outside
-Low-Utilization Transactors,Unused line USD,22103.064791,18500.0,1009,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,13875.0,23125.0,within
-Low-Utilization Transactors,Revolving balance USD,0.0,0.0,1009,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0,10.0,within
-Low-Utilization Transactors,Annual spend USD,12771.317691,18000.0,1009,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,13500.0,22500.0,outside
-Low-Utilization Transactors,PD 12 month,0.004227,0.005,1009,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.00375,0.00625,within
-Unassigned (review),Share of screened accounts (at most),0.168609,0.1,984,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,,0.1,outside
+Screen,Screened share of open card accounts,0.526661,,4652,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)","No workbook reference (93,000 screened of an unstated book)",,,not assessed
+Screen,Card profit per screened account USD,-74.138845,-36.948043,4652,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)","Module card profit (new capital and liquidity, measured credit cost) vs the workbook's fully loaded profit without its loss on the undrawn line",-46.185054,-27.711032,outside
+Screen,Card profit less drawdown loss per screened account USD,-115.719492,-97.247774,4652,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",Workbook-comparable: the workbook's fully loaded profit includes the undrawn-line loss,-121.559718,-72.935831,within
+Credit-Deteriorating Low-Use,Share of screened accounts,0.037188,0.086022,173,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.064516,0.107527,outside
+Credit-Deteriorating Low-Use,Credit line USD,11781.719653,12000.0,173,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,9000.0,15000.0,within
+Credit-Deteriorating Low-Use,Balance USD,441.439504,1500.0,173,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,1125.0,1875.0,outside
+Credit-Deteriorating Low-Use,Utilisation,0.033261,0.125,173,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.09375,0.15625,outside
+Credit-Deteriorating Low-Use,Unused line USD,11340.280149,10500.0,173,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,7875.0,13125.0,within
+Credit-Deteriorating Low-Use,Revolving balance USD,307.684523,1200.0,173,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,900.0,1500.0,outside
+Credit-Deteriorating Low-Use,Annual spend USD,1546.503121,2500.0,173,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,1875.0,3125.0,outside
+Credit-Deteriorating Low-Use,PD 12 month,0.097061,0.06,173,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.045,0.075,outside
+High-Line Relationship / Premium,Share of screened accounts,0.132846,0.107527,618,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.080645,0.134409,within
+High-Line Relationship / Premium,Credit line USD,28314.724919,35000.0,618,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,26250.0,43750.0,within
+High-Line Relationship / Premium,Balance USD,2407.494432,3000.0,618,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,2250.0,3750.0,within
+High-Line Relationship / Premium,Utilisation,0.082269,0.085714,618,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.064286,0.107143,within
+High-Line Relationship / Premium,Unused line USD,25907.230487,32000.0,618,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,24000.0,40000.0,within
+High-Line Relationship / Premium,Revolving balance USD,10.772225,500.0,618,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,375.0,625.0,outside
+High-Line Relationship / Premium,Annual spend USD,27676.419773,30000.0,618,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,22500.0,37500.0,within
+High-Line Relationship / Premium,PD 12 month,0.003568,0.004,618,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.003,0.005,within
+Dormant / Inactive,Share of screened accounts,0.321797,0.322581,1497,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.241935,0.403226,within
+Dormant / Inactive,Credit line USD,9482.46493,8000.0,1497,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,6000.0,10000.0,within
+Dormant / Inactive,Balance USD,0.067773,0.0,1497,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0,10.0,within
+Dormant / Inactive,Utilisation,7e-06,0.0,1497,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0,0.001,within
+Dormant / Inactive,Unused line USD,9482.397157,8000.0,1497,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,6000.0,10000.0,within
+Dormant / Inactive,Revolving balance USD,0.0,0.0,1497,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0,10.0,within
+Dormant / Inactive,Annual spend USD,0.0,0.0,1497,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0,10.0,within
+Dormant / Inactive,PD 12 month,0.008599,0.01,1497,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0075,0.0125,within
+Sock-Drawer Occasional Users,Share of screened accounts,0.147463,0.215054,686,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.16129,0.268817,outside
+Sock-Drawer Occasional Users,Credit line USD,9115.543003,10000.0,686,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,7500.0,12500.0,within
+Sock-Drawer Occasional Users,Balance USD,112.027721,300.0,686,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,225.0,375.0,outside
+Sock-Drawer Occasional Users,Utilisation,0.013164,0.03,686,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0225,0.0375,outside
+Sock-Drawer Occasional Users,Unused line USD,9003.515282,9700.0,686,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,7275.0,12125.0,within
+Sock-Drawer Occasional Users,Revolving balance USD,28.391382,100.0,686,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,75.0,125.0,outside
+Sock-Drawer Occasional Users,Annual spend USD,953.34328,1500.0,686,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,1125.0,1875.0,outside
+Sock-Drawer Occasional Users,PD 12 month,0.011427,0.015,686,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.01125,0.01875,within
+Low-Utilization Transactors,Share of screened accounts,0.186371,0.268817,867,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.201613,0.336022,outside
+Low-Utilization Transactors,Credit line USD,20784.313725,20000.0,867,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,15000.0,25000.0,within
+Low-Utilization Transactors,Balance USD,1004.600471,1500.0,867,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,1125.0,1875.0,outside
+Low-Utilization Transactors,Utilisation,0.050466,0.075,867,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.05625,0.09375,outside
+Low-Utilization Transactors,Unused line USD,19779.713255,18500.0,867,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,13875.0,23125.0,within
+Low-Utilization Transactors,Revolving balance USD,0.0,0.0,867,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.0,10.0,within
+Low-Utilization Transactors,Annual spend USD,11993.48669,18000.0,867,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,13500.0,22500.0,outside
+Low-Utilization Transactors,PD 12 month,0.004039,0.005,867,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,0.00375,0.00625,within
+Unassigned (review),Share of screened accounts (at most),0.174334,0.1,811,"estimated - source: Unused Line RWA Scenario Model, Assumptions sheet (illustrative inputs)",,,0.1,outside

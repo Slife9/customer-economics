@@ -107,8 +107,8 @@ PROFILES = {
         "repricing_tracks_risk": False,
         "defect_prevalence": DEMO_DEFECT_PREVALENCE,
         "unused_line_archetypes": {
-            "dormant": 0.15, "sock_drawer": 0.18, "transactor": 0.32,
-            "deteriorating": 0.07, "relationship": 0.05, "standard": 0.23,
+            "dormant": 0.14, "sock_drawer": 0.18, "transactor": 0.36,
+            "deteriorating": 0.07, "relationship": 0.05, "standard": 0.20,
         },
     },
 }

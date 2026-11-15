@@ -2,28 +2,61 @@
   "_label": "Assumes the March 2026 Basel III endgame proposal is adopted as proposed; LCR outflow applied conservatively to all unused card lines. Capital ratio, cost of equity and carry are illustrative.",
   "_note": "Working assumptions agreed in design review (specs/unused_line_management). Regulatory items marked 'assumed' are not current US law. Business items are illustrative and should be replaced by the bank's finance team. Workbook inputs (segment economics, levers, responses) are in workbook_model.json.",
   "_value_types": {
-    "regulatory_assumed": ["capital.ccf_unused_card_lines", "capital.risk_weight_transactor", "capital.risk_weight_non_transactor", "capital.risk_weight_dormant_zero_balance", "capital.risk_weight_non_qualifying_retail", "capital.regulatory_retail_aggregate_limit_usd", "capital.transactor_months_required", "liquidity.lcr_outflow_unused_card_lines"],
-    "regulatory_current_law": ["current_rules_comparison"],
-    "business_assumption": ["capital.capital_ratio", "capital.cost_of_equity", "liquidity.negative_carry", "bank_profile.bank_category"],
-    "workbook_estimate": ["drawdown_risk.leq_by_segment", "segments", "screen"],
-    "measured": ["drawdown_risk.leq_unassigned"]
+    "regulatory_assumed": [
+      "capital.ccf_unused_card_lines",
+      "capital.risk_weight_transactor",
+      "capital.risk_weight_non_transactor",
+      "capital.risk_weight_dormant_zero_balance",
+      "capital.risk_weight_non_qualifying_retail",
+      "capital.regulatory_retail_aggregate_limit_usd",
+      "capital.transactor_months_required",
+      "liquidity.lcr_outflow_unused_card_lines"
+    ],
+    "regulatory_current_law": [
+      "current_rules_comparison"
+    ],
+    "business_assumption": [
+      "capital.capital_ratio",
+      "capital.cost_of_equity",
+      "liquidity.negative_carry",
+      "bank_profile.bank_category"
+    ],
+    "workbook_estimate": [
+      "drawdown_risk.leq_by_segment",
+      "segments",
+      "screen"
+    ],
+    "measured": [
+      "drawdown_risk.leq_unassigned"
+    ]
   },
+  "mode": "system",
+  "mode_options": [
+    "system",
+    "workbook_reproduction"
+  ],
   "bank_profile": {
     "apply_to": "category_I_III",
-    "apply_to_options": ["category_I_III", "all_banks"],
+    "apply_to_options": [
+      "category_I_III",
+      "all_banks"
+    ],
     "bank_category": "category_I_III",
-    "bank_category_options": ["category_I_III", "category_IV_or_other"],
+    "bank_category_options": [
+      "category_I_III",
+      "category_IV_or_other"
+    ],
     "_bank_category_note": "Added in Stage 3: liquidity applies when apply_to = all_banks or the bank is in Categories I-III. The illustrative bank is assumed to be in Categories I-III (as in brief section 2.7). Capital uses 10% / 45% / 75% for every bank either way.",
     "comparison_view_current_rules_enabled": true
   },
   "capital": {
     "regime": "basel3_endgame_march2026_assumed_adopted",
-    "ccf_unused_card_lines": 0.10,
+    "ccf_unused_card_lines": 0.1,
     "zero_ccf_allowed_for_cards": false,
     "risk_weight_transactor": 0.45,
     "risk_weight_non_transactor": 0.75,
     "risk_weight_dormant_zero_balance": 0.75,
-    "risk_weight_non_qualifying_retail": 1.00,
+    "risk_weight_non_qualifying_retail": 1.0,
     "regulatory_retail_aggregate_limit_usd": 1000000,
     "transactor_months_required": 12,
     "installment_balance_disqualifies_transactor": true,
@@ -52,10 +85,10 @@
     "pd_source": "Table8 PD 12 Month at the reporting date",
     "lgd_source": "system",
     "leq_by_segment": {
-      "dormant": 0.40,
-      "sock_drawer": 0.50,
-      "transactors": 0.20,
-      "deteriorating": 0.70,
+      "dormant": 0.4,
+      "sock_drawer": 0.5,
+      "transactors": 0.2,
+      "deteriorating": 0.7,
       "relationship": 0.15
     },
     "leq_unassigned": "portfolio_average_behavioural_ccf",
@@ -64,27 +97,39 @@
   },
   "current_rules_comparison": {
     "ccf_unconditionally_cancellable": 0.0,
-    "risk_weight_drawn_card_balances": 1.00,
+    "risk_weight_drawn_card_balances": 1.0,
     "lcr_outflow_cancellable_card_lines": 0.0,
-    "slr_ccf": 0.10,
+    "slr_ccf": 0.1,
     "slr_minimum": 0.03,
-    "slr_applies_to": ["category_I", "category_II", "category_III"]
+    "slr_applies_to": [
+      "category_I",
+      "category_II",
+      "category_III"
+    ]
   },
   "screen": {
+    "_note": "System mode (answer 2, 16 Nov 2026): fully loaded card profit with the measured credit cost, the old capital charge replaced by the new one and the new liquidity cost subtracted. Expected drawdown loss is shown beside profit, not deducted (realised drawdown losses already flow into the measured credit cost).",
     "require_unprofitable": true,
-    "profit_basis": "card_profit_less_drawdown_loss",
-    "profit_basis_options": ["card_profit_less_drawdown_loss", "card_profit"],
-    "_profit_basis_note": "The workbook screens on fully loaded profit, which includes the loss on the undrawn line; the module's displayed profit keeps drawdown loss beside it (answer 4). Added in Stage 3; to confirm.",
-    "max_utilisation": 0.30,
+    "include_expected_drawdown_loss": false,
+    "_include_expected_drawdown_loss_note": "Sensitivity toggle 'Screen including expected drawdown loss' (default off). Workbook-reproduction mode always uses the workbook's own modelled loss.",
+    "max_utilisation": 0.3,
     "min_unused_usd": 5000,
     "min_history_months": 12,
     "exclude_charged_off": true,
     "exclude_closed": true,
-    "exclude_fraud_blocked_proxy": true
+    "exclude_fraud_blocked_proxy": true,
+    "_fraud_proxy_note": "Approximate: a Table3 FRAUD_COMPROMISE deactivation in the last 2 cycles (no fraud-block status exists in the data)."
   },
   "segments": {
     "_source": "Workbook Segment Definitions sheet; priority order",
-    "order": ["deteriorating", "relationship", "dormant", "sock_drawer", "transactors", "unassigned"],
+    "order": [
+      "deteriorating",
+      "relationship",
+      "dormant",
+      "sock_drawer",
+      "transactors",
+      "unassigned"
+    ],
     "labels": {
       "deteriorating": "Credit-Deteriorating Low-Use",
       "relationship": "High-Line Relationship / Premium",
@@ -94,12 +139,43 @@
       "unassigned": "Unassigned (review)"
     },
     "rules": {
-      "deteriorating": {"pd_annual_min": 0.04, "score_drop_6m_min": 40},
-      "relationship": {"noncard_profit_min_usd": 150, "deposits_plus_investments_min_usd": 25000, "premium_segments": ["Premier", "Private Banking"]},
-      "dormant": {"inactive_months_min": 12, "balance_max_usd": 0},
-      "sock_drawer": {"active_months_max": 4, "spend_max_usd": 2500},
-      "transactors": {"paid_in_full_months_min": 10, "peak_utilisation_max": 0.15, "spend_min_usd": 6000},
-      "unassigned": {"share_target_max": 0.10}
+      "deteriorating": {
+        "pd_annual_min": 0.04,
+        "score_drop_6m_min": 40
+      },
+      "relationship": {
+        "noncard_profit_min_usd": 150,
+        "deposits_plus_investments_min_usd": 25000,
+        "premium_segments": [
+          "Premier",
+          "Private Banking"
+        ],
+        "_investments_note": "Investments are not in the data: deposits only (labelled approximate)."
+      },
+      "dormant": {
+        "inactive_months_min": 12,
+        "balance_max_usd": 0,
+        "confirmation_signals": [
+          "current card not activated (Table30)",
+          "card due for reissue within 12 months (Table3)",
+          "no digital sessions in 12 months (Table12)"
+        ]
+      },
+      "sock_drawer": {
+        "active_months_max": 4,
+        "spend_max_usd": 2500
+      },
+      "transactors": {
+        "paid_in_full_months_min": 10,
+        "peak_utilisation_max": 0.15,
+        "spend_min_usd": 6000,
+        "nothing_due_counts_as_paid": true,
+        "peak_utilisation_basis": "statement_balance",
+        "_note": "Segmentation rule (>= 10 of 12), separate from the regulatory transactor test (12 of 12, capital.transactor_months_required)."
+      },
+      "unassigned": {
+        "share_target_max": 0.1
+      }
     }
   },
   "levers": {
@@ -107,21 +183,116 @@
     "dormant_closure_enabled": false,
     "dormant_rightsizing_enabled": false,
     "scope_mode": "workbook_unprofitable_low_use",
-    "scope_mode_options": ["workbook_unprofitable_low_use", "full_line_management"],
+    "scope_mode_options": [
+      "workbook_unprofitable_low_use",
+      "full_line_management"
+    ],
     "lever_parameters": "workbook_model.json levers (conservative / base / aggressive)",
     "extra_levers": {
       "_label": "assumption-based; not in the reference workbook",
-      "suppress_automatic_increases": {"valued_from": "Table20 PROACTIVE_INCREASE history"},
-      "non_reissue_expired_dormant": {"valued_from": "Table3 Reissue Cost USD"}
+      "suppress_automatic_increases": {
+        "valued_from": "Table20 PROACTIVE_INCREASE history",
+        "eligibility": "screened accounts with an automatic (PROACTIVE_INCREASE) line increase in the last 12 months",
+        "avoided_increase": "the same amount again next year (Table20 trailing 12 months)",
+        "revenue_effect": "none assumed (increases on unprofitable low-use lines)"
+      },
+      "non_reissue_expired_dormant": {
+        "valued_from": "Table3 Reissue Cost USD",
+        "eligibility": "dormant accounts eligible for closure (B6 flag) whose card expires within 12 months, not already closed by the closure lever",
+        "flag": "dormant_closure_enabled"
+      }
+    },
+    "system_mode": {
+      "_note": "System mode (default). Lever shares, response, attrition, spend loss and PD uplift come from workbook_model.json by scenario and segment; sizing and eligibility below follow the Lever Guide and the brief.",
+      "lever_by_segment": {
+        "deteriorating": "risk_based_decrease",
+        "relationship": "line_decrease",
+        "dormant": "dormant_rightsizing",
+        "sock_drawer": "line_decrease",
+        "transactors": "transactor_rightsizing"
+      },
+      "decrease_target": {
+        "sock_drawer": {
+          "basis": "peak_statement_balance",
+          "multiple": 3.5,
+          "minimum_usd": 0
+        },
+        "relationship": {
+          "basis": "peak_statement_balance",
+          "multiple": 3.5,
+          "minimum_usd": 0
+        },
+        "dormant": {
+          "basis": "peak_statement_balance",
+          "multiple": 3.5,
+          "minimum_usd": 0
+        },
+        "transactors": {
+          "basis": "peak_statement_balance",
+          "multiple": 1.5,
+          "minimum_usd": 5000
+        },
+        "deteriorating": {
+          "basis": "balance",
+          "multiple": 1.2,
+          "minimum_usd": 0
+        }
+      },
+      "_decrease_target_note": "Lever Guide: idle and sock-drawer lines to about 3-4x peak 12-month balance; transactors to peak plus headroom, at least $5,000; deteriorating to balance + 20%.",
+      "floor_minimum_line_usd": 500,
+      "floor_balance_multiple": 1.2,
+      "min_cut_share": 0.15,
+      "min_cut_usd": 500,
+      "reviews_in_year_one": 1,
+      "closure_min_inactive_months": 24,
+      "closure_requires_failed_reactivation": true,
+      "closure_reason_code": "INACTIVITY",
+      "_closure_note": "Closures are inactivity closures only (Reg B inactivity exception); the workbook's small sock-drawer and deteriorating closure shares find no eligible account.",
+      "selection": {
+        "decrease": "largest_unused_first",
+        "risk_based_decrease": "highest_pd_first",
+        "campaign": "seeded_random",
+        "closure": "longest_inactive_first",
+        "seed": 20261116
+      },
+      "stress_applies_to": {
+        "attrition": true,
+        "spend_loss": true,
+        "response_rate": true,
+        "pd_uplift": true
+      },
+      "_stress_note": "System mode: the multiplier raises attrition, spend loss and PD uplift and divides the response rate. Workbook-reproduction mode scales attrition and spend loss only.",
+      "transactor_rightsizing_in_recommendations": false,
+      "headline_value": "change_in_card_profit_plus_avoided_drawdown_loss",
+      "_headline_note": "Headline annual value = change in card profit + reduction in expected drawdown loss (drawdown loss is beside profit in the baseline; its change is the main benefit of a line cut). Both parts are shown."
     }
   },
   "workbook_reproduction": {
     "_note": "Answer 4: a separate mode that uses the workbook's modelled loss throughout, for the +/-1% test.",
     "original_regime": "basel_endgame_2023",
-    "corrected_risk_weights": {"dormant": 0.75, "sock_drawer": 0.75, "transactors": 0.45, "deteriorating": 0.75, "relationship": 0.45},
+    "corrected_risk_weights": {
+      "dormant": 0.75,
+      "sock_drawer": 0.75,
+      "transactors": 0.45,
+      "deteriorating": 0.75,
+      "relationship": 0.45
+    },
     "_corrected_note": "Brief section 7 expects about $117.9M RWA with Relationship at 45% (segment-level mapping of the 2023 55% weight); the account-level test in the module decides per account instead."
   },
   "ml_model_role": "second_opinion_only",
-  "stress_test": {"multipliers": [1.0, 1.25, 1.5, 1.75, 2.0], "go_no_go_multiplier": 1.5},
-  "scenarios": ["conservative", "base", "aggressive"]
+  "stress_test": {
+    "multipliers": [
+      1.0,
+      1.25,
+      1.5,
+      1.75,
+      2.0
+    ],
+    "go_no_go_multiplier": 1.5
+  },
+  "scenarios": [
+    "conservative",
+    "base",
+    "aggressive"
+  ]
 }

@@ -37,17 +37,17 @@ SOURCE = "estimated - source: Unused Line RWA Scenario Model"
 # card's usual month.
 ARCHETYPES = {
     "dormant": {
-        "line": 7000, "spend": 3000, "discipline": 0.90, "appetite": 0.10,
+        "line": 5500, "spend": 3000, "discipline": 0.90, "appetite": 0.10,
         "reliability": -0.4, "affluence": 0.0, "activity": "dormant",
         "keep_deposits": False,
     },
     "sock_drawer": {
-        "line": 10000, "spend": 1500, "discipline": 0.60, "appetite": 0.25,
+        "line": 8500, "spend": 2000, "discipline": 0.60, "appetite": 0.25,
         "reliability": -0.1, "affluence": 0.0, "activity": "occasional", "spend_sd": 0.20,
         "keep_deposits": False,
     },
     "transactor": {
-        "line": 20500, "spend": 23000, "discipline": 0.95, "appetite": 0.08,
+        "line": 18000, "spend": 23000, "discipline": 0.95, "appetite": 0.08,
         "reliability": 0.5, "affluence": 0.4, "activity": "all", "persona": "everyday",
         "spend_sd": 0.25, "monthly_budget": 1.6,
         "keep_deposits": False,

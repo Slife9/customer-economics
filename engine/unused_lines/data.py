@@ -9,6 +9,9 @@ never re-derived:
                       under current rules; the module REPLACES it with the
                       brief s.2 capital charge (exposure.py), never adds to it
     credit_cost       measured provision, kept for the baseline (answer 4)
+    fixed_cost        cost_to_serve_fixed_allocated (stays when an account
+                      leaves; variable contribution = card profit + fixed)
+    interchange       interchange_revenue
 Everything else is read from the published tables:
     Table4   line, balances, statement balance (Ending Balance + Payment
              Made), paid in full, promotional / BT balance, utilisation
@@ -56,7 +59,8 @@ def account_frame(data_dir: Path | str) -> tuple[pd.DataFrame, dict]:
         customer=(C, "first"), card_net=("net_economic_profit", "sum"),
         old_capital_cost=("capital_cost", "sum"), credit_cost=("credit_cost", "sum"),
         revenue=("revenue", "sum"), reward=("reward_expense", "sum"),
-        funding_cost=("funding_cost", "sum"), cost_to_serve=("cost_to_serve", "sum"))
+        funding_cost=("funding_cost", "sum"), cost_to_serve=("cost_to_serve", "sum"),
+        fixed_cost=("cost_to_serve_fixed_allocated", "sum"), interchange=("interchange_revenue", "sum"))
     bccf = L[L["Cycle Month"] == last].set_index(K)["Behavioral CCF"]
     t["behavioural_ccf"] = bccf.reindex(t.index)
 
@@ -82,6 +86,7 @@ def account_frame(data_dir: Path | str) -> tuple[pd.DataFrame, dict]:
     t["revolving_balance_avg_12m"] = g["rev"].mean()
     t["utilisation_avg_12m"] = g["Utilization"].mean()
     t["peak_statement_utilisation_12m"] = g["stmt_util"].max()
+    t["peak_statement_balance_12m"] = g["stmt"].max()
     t["months_with_balance_12m"] = (c12["Ending Balance"] > ZERO).groupby(c12[K]).sum()
     latest = cyc[cyc["Cycle Month"] == last].set_index(K)
     t["open_at_reporting_date"] = t.index.isin(latest.index)
@@ -161,6 +166,8 @@ def account_frame(data_dir: Path | str) -> tuple[pd.DataFrame, dict]:
     if cards3 is not None:
         cur = cards3.sort_values("Card Sequence Number").groupby(K).tail(1).set_index(K)
         t["current_card"] = cur["Masked Card Number"].reindex(t.index)
+        t["current_card_issue_reason"] = cur["Issue Reason"].reindex(t.index)
+        t["months_since_card_issue"] = last_ix - cur["Issue Cycle Index"].reindex(t.index)
         t["card_expiry_index"] = cur["Standard Expiry Cycle Index"].reindex(t.index)
         t["card_expires_within_12m"] = (t["card_expiry_index"] > last_ix) & (t["card_expiry_index"] <= last_ix + 12)
         fraud = cards3[(cards3["Deactivation Reason"] == "FRAUD_COMPROMISE")
@@ -173,6 +180,9 @@ def account_frame(data_dir: Path | str) -> tuple[pd.DataFrame, dict]:
         t["current_card_activation"] = t["current_card"].map(t30.set_index("Masked Card Number")["Activation Status"])
     else:
         t["current_card_activation"] = np.nan
+    drv = portfolio["Table12_Cost_Drivers.csv"]
+    t["digital_sessions_12m"] = drv[drv["Cycle Month"].isin(last12)].groupby(K)["Digital Sessions"].sum() \
+        .reindex(t.index).fillna(0).astype(int)
     t20 = portfolio.get("Table20_Limit_Change_Events.csv")
     if t20 is not None and len(t20):
         pi = t20[t20["Cycle Month"].isin(last12) & (t20["Reason Code"] == "PROACTIVE_INCREASE")]

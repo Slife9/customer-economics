@@ -9,27 +9,23 @@ portfolio directory). Informational only: an `outside` row is a known
 calibration gap, not a failure; the script exits 0 once it has written the
 report.
 
-Profit is the module's (engine/unused_lines): the engine's card_net with the
-old capital charge replaced by the brief s.2 charge and the liquidity cost
-subtracted; drawdown loss beside it (answers 3 and 4). Two loss rows compare
-like with like:
+Population and segments are the module's own (engine/unused_lines/segments.py):
+system-mode screen on card profit (measured credit cost, the old capital
+charge replaced, liquidity subtracted; drawdown loss beside it, answer 2) and
+the workbook's rules in priority order. This script also reads the rules
+independently and reports how often the two agree. Two loss rows compare like
+with like:
   card profit                     vs the workbook's fully loaded profit
                                   without its loss on the undrawn line
   card profit - drawdown loss     vs the workbook's fully loaded profit
                                   (-$97.25 per account)
-
-The segment rules here are an independent, simplified reading of the
-workbook's Segment Definitions (thresholds from the module's config), written
-before the module's own segment engine (Stage 4), which is cross-checked
-against it. Balance, utilisation and unused line are measured on the 12-month
-average statement balance (Ending Balance + Payment Made), the workbook's
-meaning; the screen uses Table4's own Utilization and the current unused line.
+Balance, utilisation and unused line are measured on the 12-month average
+statement balance (Ending Balance + Payment Made), the workbook's meaning.
 
 Population, per card account, trailing 12 cycles:
   screen    open at the reporting date, not charged off, open >= 12 months,
-            profit < 0 on the configured basis (default: card profit less
-            drawdown loss, the workbook's), average utilisation < 30%, current
-            unused line >= $5,000 (fraud-blocked proxy not applied here)
+            card profit < 0, average utilisation < 30%, current unused line
+            >= $5,000, no recent fraud-compromise event (proxy)
   1 Credit-Deteriorating  PD 12 Month >= 4%, or bureau score down >= 40
                           points over 6 months (Table29)
   2 Relationship          non-card profit >= $150 a year, or deposits >=
@@ -53,7 +49,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from engine.unused_lines import assumptions as A, data as D, exposure as X  # noqa: E402
+from engine.unused_lines import assumptions as A, data as D, exposure as X, segments as S  # noqa: E402
 
 REPORT = "Validation_Report_Unused_Line_Calibration.csv"
 SOURCE = ("estimated - source: Unused Line RWA Scenario Model, Assumptions sheet "
@@ -61,7 +57,6 @@ SOURCE = ("estimated - source: Unused Line RWA Scenario Model, Assumptions sheet
 BAND = 0.25
 ZERO_TOLERANCE = {"usd": 10.0, "rate": 0.001}  # for a reference of exactly 0
 ORDER = ["deteriorating", "relationship", "dormant", "sock_drawer", "transactors"]
-PROFIT_BASIS = {"card_profit_less_drawdown_loss": "profit_after_drawdown", "card_profit": "card_profit"}
 
 
 def references(cfg: dict) -> tuple[dict, dict]:
@@ -128,24 +123,17 @@ def rule_segment(t: pd.DataFrame, cfg: dict) -> np.ndarray:
 
 
 def frame(data_dir: Path, cfg: dict) -> pd.DataFrame:
-    """Rules on every account, then LEQ by the rule's segment (Unassigned:
-    the measured portfolio Behavioral CCF), then the s.2 costs."""
+    """The module's own screen and segments (engine/unused_lines/segments.py),
+    plus this script's independent reading of the rules as a cross-check."""
     acc, meta = D.account_frame(data_dir)
-    acc["rule_segment"] = rule_segment(acc, cfg)
-    acc["leq"] = acc["rule_segment"].map(cfg["drawdown_risk"]["leq_by_segment"]).fillna(
-        meta["leq_unassigned_measured"])
-    t = X.account_costs(acc, cfg)
+    t = S.build(acc, meta, cfg)
     t["profit_after_drawdown"] = t["card_profit"] - t["drawdown_el"]
+    t["independent_rule_segment"] = rule_segment(t, cfg)
     return t
 
 
 def assign(t: pd.DataFrame, cfg: dict) -> pd.DataFrame:
-    sc = cfg["screen"]
-    screened = (t["open_at_reporting_date"] & ~t["charged_off"]
-                & (t["account_age_months"] >= sc["min_history_months"])
-                & (t[PROFIT_BASIS[sc["profit_basis"]]] < 0) & (t["utilisation_avg_12m"] < sc["max_utilisation"])
-                & (t["ucl_current"] >= sc["min_unused_usd"]))
-    return t.assign(screened=screened, segment=np.where(screened, t["rule_segment"], ""))
+    return t
 
 
 def report(data_dir: Path, out_dir: Path) -> dict:
@@ -190,7 +178,9 @@ def report(data_dir: Path, out_dir: Path) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_dir / REPORT, index=False)
     v = df["Within Band"].value_counts()
+    agree = float((t["independent_rule_segment"] == t["rule_segment"]).mean())
     return {"screened_accounts": n, "open_card_accounts": open_n,
+            "rule_agreement_with_module": round(agree, 4),
             "segments": {labels.get(k, k): int(c) for k, c in sc["segment"].value_counts().items()},
             "within": int(v.get("within", 0)), "outside": int(v.get("outside", 0)),
             "not assessed": int(v.get("not assessed", 0)), "report": str(out_dir / REPORT)}

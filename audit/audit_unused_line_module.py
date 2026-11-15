@@ -23,6 +23,13 @@ Stage 3 (regulatory settings and the account exposure and cost layer):
 6. Performance: the per-account file on 100k, and loading it with the cost
    layer in a fresh process (what the app does), with peak memory.
 
+Stage 4 (screen and segments), on the same portfolios:
+7. Rules agree with the calibration report's independent reading; first
+   match wins; screened exactly when every criterion is met; the system screen
+   does not deduct drawdown loss and its sensitivity toggle only adds accounts;
+   summaries add up with carrying cost and drawdown loss apart; thresholds
+   from config; segmentation and regulatory transactor rules apart.
+
 Prints a PASS/FAIL table; exits 1 if any check FAILs.
 """
 from __future__ import annotations
@@ -43,7 +50,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from engine.unused_lines import assumptions as A, data as D, exposure as X  # noqa: E402
+from engine.unused_lines import assumptions as A, data as D, exposure as X, segments as SG  # noqa: E402
 
 PROFILES = ["demo", "unused_line_stress"]
 BRIEF_27 = {"ucl": 2.69e9, "rwa_unused": 165.8e6, "capital_cost_unused": 2.09e6, "hqla": 134.5e6,
@@ -187,6 +194,68 @@ def toggles(acc: pd.DataFrame, cfg: dict, leq: float, label: str) -> None:
            bool(np.allclose(now["ucl"], acc["ucl_current"].fillna(0)) and np.allclose(base["ucl"], acc["ucl_avg_12m"].fillna(0))))
 
 
+# ------------------------------------------------------------- Stage 4
+def segment_checks(acc: pd.DataFrame, meta: dict, cfg: dict, label: str) -> pd.DataFrame:
+    print(f"\n7. Screen and segments - {label}", flush=True)
+    sys.path.insert(0, str(ROOT / "audit"))
+    import unused_line_calibration_report as CAL  # the independent reading of the rules
+    f = SG.build(acc, meta, cfg)
+    indep = pd.Series(CAL.rule_segment(f, cfg), index=f.index)
+    record(f"{label}: module segment rules agree with the calibration report's independent reading",
+           bool((indep == f["rule_segment"]).all()), f"{(indep == f['rule_segment']).mean():.2%} of {len(f):,} accounts")
+    order = cfg["segments"]["order"]
+    first = pd.Series("unassigned", index=f.index)
+    groups = {"deteriorating": ["deteriorating.pd", "deteriorating.score_drop"],
+              "relationship": ["relationship.noncard_profit", "relationship.deposits", "relationship.premium"]}
+    hit = {"deteriorating": f["met:deteriorating.pd"] | f["met:deteriorating.score_drop"],
+           "relationship": f[[f"met:{k}" for k in groups["relationship"]]].any(axis=1),
+           "dormant": f["met:dormant.inactive"] & f["met:dormant.zero_balance"],
+           "sock_drawer": f["met:sock_drawer.active"] & f["met:sock_drawer.spend"],
+           "transactors": f["met:transactors.paid"] & f["met:transactors.peak"] & f["met:transactors.spend"]}
+    for seg in reversed(order[:5]):
+        first = first.where(~hit[seg], seg)
+    record(f"{label}: first match wins, in the workbook's priority order", bool((first == f["rule_segment"]).all()))
+    crit = [c for c in f.columns if c.startswith("met:screen.")]
+    allmet = f[crit].all(axis=1)
+    record(f"{label}: screened exactly when every screen criterion is met; segment only when screened",
+           bool((allmet == f["screened"]).all() and (f.loc[~f["screened"], "segment"] == "").all()
+                and (f.loc[f["screened"], "segment"] == f.loc[f["screened"], "rule_segment"]).all()),
+           f"{int(f['screened'].sum()):,} screened; failing: " + ", ".join(
+               f"{c[10:]} {int((~f[c]).sum()):,}" for c in crit))
+    ok_default = bool((f.loc[f["screened"], "card_profit"] < 0).all())
+    sens = SG.drawdown_sensitivity(f)
+    extra = f["screened_drawdown_sensitivity"] & ~f["screened"]
+    ok_toggle = bool((f.loc[extra, "card_profit"] >= 0).all()
+                     and (f.loc[extra, "card_profit"] - f.loc[extra, "drawdown_el"] < 0).all()
+                     and not (f["screened"] & ~f["screened_drawdown_sensitivity"]).any())
+    record(f"{label}: system screen does not deduct drawdown loss; the sensitivity toggle only adds accounts "
+           f"made unprofitable by it", ok_default and ok_toggle,
+           f"toggle on: +{sens['extra_accounts']:,} accounts, extra loss after drawdown "
+           f"${-sens['extra_loss_after_drawdown']:,.0f}")
+    s = SG.summary(f, cfg)
+    body = s.drop(index="Total")
+    record(f"{label}: segment summary adds up; carrying cost and drawdown loss in separate columns",
+           bool(np.allclose(body[SG.SUMMARY_COLS].sum(), s.loc["Total", SG.SUMMARY_COLS])
+                and np.isclose(s.loc["Total", "carrying_cost"],
+                               f.loc[f["screened"], ["capital_cost_unused", "liquidity_cost"]].sum().sum())
+                and np.isclose(s.loc["Total", "total_unused_line_cost"],
+                               s.loc["Total", "carrying_cost"] + s.loc["Total", "drawdown_el"])),
+           "; ".join(f"{i} {int(r.accounts):,}" for i, r in body.iterrows()))
+    raised = A.with_overrides(cfg, {"segments": {"rules": {"deteriorating": {"pd_annual_min": 0.02}}}})
+    f2 = SG.build(acc, meta, raised)
+    record(f"{label}: thresholds come from config (PD threshold 4% -> 2% moves accounts into Credit-Deteriorating)",
+           bool((f2["rule_segment"] == "deteriorating").sum() > (f["rule_segment"] == "deteriorating").sum()),
+           f"{int((f['rule_segment'] == 'deteriorating').sum()):,} -> {int((f2['rule_segment'] == 'deteriorating').sum()):,}")
+    tr = f[f["segment"] == "transactors"]
+    record(f"{label}: segmentation transactor rule (>= 10/12) kept apart from the regulatory test (12/12)",
+           bool(tr["met:transactors.paid"].all() and "rw_basis" in f),
+           f"{len(tr):,} in the Transactors segment, {(tr['rw_basis'] == 'transactor').mean():.0%} of them at 45%")
+    un = s.loc[cfg["segments"]["labels"]["unassigned"]]
+    record(f"{label}: Unassigned shows its economics", bool(un["accounts"] == 0 or un["card_profit"] != 0),
+           f"{int(un['accounts']):,} accounts, card profit ${un['card_profit']:,.0f}")
+    return f
+
+
 # ------------------------------------------------------------- 5, 6
 def cross_check(bundle: Path | None, frame: Path | None, cfg: dict) -> None:
     print("\n5. Portfolio cross-check (s.2.7)", flush=True)
@@ -308,6 +377,7 @@ def main() -> int:
                   f"Unassigned LEQ (mean Behavioral CCF) {leq:.3f}")
             invariants(costs, cfg, label)
             toggles(acc, cfg, leq, label)
+            segment_checks(acc, meta, cfg, label)
         cross_check(Path(a.bundle_100k) if a.bundle_100k else None,
                     Path(a.frame_100k) if a.frame_100k else None, cfg)
         performance(Path(a.frame_100k) if a.frame_100k else None,
