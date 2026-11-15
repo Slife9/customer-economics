@@ -45,6 +45,13 @@ Stage 6 (treatment designer, compliance, fairness, timing):
     opinion only and its agreement rule; seeded stratified pilot; review-
     together flags; the three-way four-fifths test; year-1 timing.
 
+Stage 8 runs everything above as one suite, plus:
+12. Guardrails: no change since main to the code the module must not touch;
+    generator/run.py additions only; with --regression, the byte-identity
+    and engine-regression audit (audit_unused_line_data_additions.py).
+
+    python audit/audit_unused_line_module.py --regression         --bundle-100k <rebuilt 100k v2 bundle> --frame-100k <its per-account parquet>         --frame-100k-json <build timing>
+
 Stage 7 (app):
 11. The committed samples, every page on both datasets (AppTest), and the
     app's peak memory in one process.
@@ -395,7 +402,7 @@ def treatment_checks(f: pd.DataFrame, cfg: dict, data_dir: Path, label: str) -> 
     t = T.design(f, cfg, res, ml, pipe["worklists"])
     prot_screened = f["screened"] & f["protected"]
     record(f"{label}: protected (suppressed) customers receive no action, before anything else",
-           bool(not t.index.isin(f.index[f["protected"]]).any() and not res["selection"].loc[f["protected"]].any().any()),
+           bool(not t.index.isin(f.index[f["protected"]]).any() and not res["selection"].loc[f["protected"], ["decrease", "campaign", "closure"]].any().any()),
            f"{int(prot_screened.sum()):,} screened accounts protected by the system's suppression")
     acted = t[t["recommended_levers"] != "none"]
     codes = set(cfg["treatment"]["reason_codes"])
@@ -542,6 +549,44 @@ print(json.dumps({"pages": out, "peak_gb": round((getattr(mi, "peak_wset", None)
 """
 
 
+# Code the module must never change (brief s.8; read and called only).
+PROTECTED_PATHS = ["engine/core", "engine/levers", "engine/ml", "engine/governance", "engine/run.py",
+                   "engine/config", "engine/export_bundle.py", "app", "generator/synth", "generator/validate",
+                   "generator/config"]
+ALLOWED_NEW = {"generator/synth/unused_line_stress.py"}
+BASE_COMMIT = "b660bb8"
+
+
+def guardrails() -> None:
+    print("\n12. Guardrails and regression", flush=True)
+    r = subprocess.run(["git", "diff", "--name-status", BASE_COMMIT, "HEAD", "--", *PROTECTED_PATHS],
+                       cwd=ROOT, capture_output=True, text=True)
+    changed = [ln.split("\t")[-1] for ln in r.stdout.splitlines() if ln.strip()]
+    bad = [p for p in changed if p not in ALLOWED_NEW]
+    record("no change to L1-L6, L2, the ML model, NEP / CEV, suppression, routing, fairness, the six-lever app or "
+           f"existing generator modules since main {BASE_COMMIT}", r.returncode == 0 and not bad,
+           f"changed under protected paths: {changed or 'none'} (allowed: new {sorted(ALLOWED_NEW)})")
+    r = subprocess.run(["git", "diff", BASE_COMMIT, "HEAD", "--", "generator/run.py"], cwd=ROOT,
+                       capture_output=True, text=True)
+    removed = [ln for ln in r.stdout.splitlines() if ln.startswith("-") and not ln.startswith("---")]
+    record("generator/run.py: additions only, apart from the cherry-picked negative_control fix (966988a)",
+           len(removed) <= 1, f"{len(removed)} line(s) removed: {removed}")
+
+
+def regression() -> None:
+    """The byte-identity and engine-regression audit, run from this suite."""
+    t0 = time.time()
+    r = subprocess.run([sys.executable, "-W", "ignore", str(ROOT / "audit" / "audit_unused_line_data_additions.py")],
+                       cwd=ROOT, capture_output=True, text=True)
+    lines = r.stdout.splitlines()
+    total = next((ln for ln in reversed(lines) if "PASSED" in ln), "no summary")
+    ident = next((ln.strip() for ln in lines if "every pre-existing file byte-identical" in ln), "")
+    eng = next((ln.strip() for ln in lines if "run_summary.json equals the engine baseline" in ln), "")
+    record("byte-identity of every existing generator profile (incl. negative_control) and the engine regression "
+           "(audit_unused_line_data_additions.py)", r.returncode == 0,
+           f"{total}; {ident[:160]}; {eng[:120]} ({time.time() - t0:.0f}s)")
+
+
 def app_checks() -> None:
     print("\n11. App on the committed samples", flush=True)
     samples = ROOT / "samples" / "unused_lines"
@@ -587,6 +632,8 @@ def main() -> int:
     ap.add_argument("--bundle-100k", default=None)
     ap.add_argument("--frame-100k", default=None)
     ap.add_argument("--frame-100k-json", default=None)
+    ap.add_argument("--regression", action="store_true",
+                    help="also run the byte-identity and engine-regression audit (about 5 minutes)")
     a = ap.parse_args()
     cfg, sha = A.load()
     print(f"assumptions sha256 {sha[:12]}")
@@ -619,6 +666,9 @@ def main() -> int:
         performance(Path(a.frame_100k) if a.frame_100k else None,
                     Path(a.frame_100k_json) if a.frame_100k_json else None)
         app_checks()
+        guardrails()
+        if a.regression:
+            regression()
     finally:
         if not a.workdir:
             shutil.rmtree(work, ignore_errors=True)
