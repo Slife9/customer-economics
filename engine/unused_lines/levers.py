@@ -274,10 +274,15 @@ def extra_levers(f: pd.DataFrame, cfg: dict, scope: pd.Series, closed: pd.Series
 def scope_mask(f: pd.DataFrame, cfg: dict) -> pd.Series:
     """B7: workbook scope = the screened population; full line management =
     every open, seasoned card account (the screen's profit, utilisation and
-    unused tests dropped). L2's increase valuation is not duplicated here."""
-    if cfg["levers"]["scope_mode"] == "workbook_unprofitable_low_use":
-        return f["screened"]
-    return f["met:screen.open"] & f["met:screen.history"] & f["met:screen.not_fraud_blocked"]
+    unused tests dropped). L2's increase valuation is not duplicated here.
+    Protected (suppressed) customers are outside scope in both modes."""
+    base = (f["screened"] if cfg["levers"]["scope_mode"] == "workbook_unprofitable_low_use"
+            else f["met:screen.open"] & f["met:screen.history"] & f["met:screen.not_fraud_blocked"])
+    # Protected customers (the system's suppression: hardship, SCRA, ...) get
+    # no action, before anything else (brief s.3).
+    if "protected" in f:
+        base = base & ~f["protected"].fillna(False).astype(bool)
+    return base
 
 
 def run(f: pd.DataFrame, cfg: dict, scenario: str = "base", multiplier: float = 1.0) -> dict:

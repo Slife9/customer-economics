@@ -45,6 +45,10 @@ Stage 6 (treatment designer, compliance, fairness, timing):
     opinion only and its agreement rule; seeded stratified pilot; review-
     together flags; the three-way four-fifths test; year-1 timing.
 
+Stage 7 (app):
+11. The committed samples, every page on both datasets (AppTest), and the
+    app's peak memory in one process.
+
 Prints a PASS/FAIL table; exits 1 if any check FAILs.
 """
 from __future__ import annotations
@@ -385,8 +389,14 @@ def treatment_checks(f: pd.DataFrame, cfg: dict, data_dir: Path, label: str) -> 
     pipe = ER.build_pipeline(data_dir)
     cv = pipe["customer_view"]
     ml = cv[["Masked Customer Number", "ml_action", "ml_primary_reason", "ml_recommended_limit"]]
+    sup = set(pipe["suppressed"].suppressed["Masked Customer Number"])
+    f = f.assign(protected=f["customer"].isin(sup))
     res = L.run(f, cfg, cfg["treatment"]["scenario_for_recommendations"])
     t = T.design(f, cfg, res, ml, pipe["worklists"])
+    prot_screened = f["screened"] & f["protected"]
+    record(f"{label}: protected (suppressed) customers receive no action, before anything else",
+           bool(not t.index.isin(f.index[f["protected"]]).any() and not res["selection"].loc[f["protected"]].any().any()),
+           f"{int(prot_screened.sum()):,} screened accounts protected by the system's suppression")
     acted = t[t["recommended_levers"] != "none"]
     codes = set(cfg["treatment"]["reason_codes"])
     all_codes = acted["all_reason_codes"].str.split("; ").explode()
@@ -511,6 +521,48 @@ print(json.dumps({"accounts": len(c), "seconds": round(time.time() - t0, 1),
 """
 
 
+_APP_STEP = r"""
+import json, sys, time
+sys.path.insert(0, sys.argv[1])
+import psutil
+from pathlib import Path
+from streamlit.testing.v1 import AppTest
+pages = sorted((Path(sys.argv[1]) / "unused_lines_app" / "pages").glob("*.py"))
+out = []
+for ds in ["stress", "demo"]:
+    for p in pages:
+        t0 = time.time()
+        at = AppTest.from_file(str(p), default_timeout=300)
+        at.session_state["dataset"] = ds
+        at.run()
+        out.append({"dataset": ds, "page": p.name, "seconds": round(time.time() - t0, 2),
+                    "exceptions": [str(e.value)[:200] for e in at.exception], "titles": len(at.title)})
+mi = psutil.Process().memory_info()
+print(json.dumps({"pages": out, "peak_gb": round((getattr(mi, "peak_wset", None) or mi.rss) / 1e9, 3)}))
+"""
+
+
+def app_checks() -> None:
+    print("\n11. App on the committed samples", flush=True)
+    samples = ROOT / "samples" / "unused_lines"
+    info = {d.name: json.loads((d / "meta.json").read_text()) for d in samples.iterdir() if (d / "meta.json").exists()}
+    record("committed samples present (stress book, 5k demo), small files only",
+           set(info) >= {"stress", "demo"} and all(sum(i["files_mb"].values()) < 25 for i in info.values()),
+           "; ".join(f"{k}: {i['card_accounts']:,} accounts, {sum(i['files_mb'].values()):.1f} MB, built in "
+                     f"{i['build_seconds']}s at peak {i['build_peak_memory_gb']} GB" for k, i in info.items()))
+    r = subprocess.run([sys.executable, "-W", "ignore", "-c", _APP_STEP, str(ROOT)], capture_output=True, text=True,
+                       env={**__import__("os").environ, "PYTHONIOENCODING": "utf-8"})
+    if r.returncode:
+        record("every app page runs on both datasets", False, r.stderr[-300:])
+        return
+    s = json.loads(r.stdout.strip().splitlines()[-1])
+    bad = [f"{p['dataset']}/{p['page']}" for p in s["pages"] if p["exceptions"] or not p["titles"]]
+    record("every app page runs on both datasets without an exception", not bad,
+           f"{len(s['pages'])} page runs; slowest {max(p['seconds'] for p in s['pages'])}s" + (f"; failing {bad}" if bad else ""))
+    record("app runtime on the committed samples under 2 GB (all pages, both datasets, one process)",
+           s["peak_gb"] < 2.0, f"peak {s['peak_gb']} GB")
+
+
 def performance(frame: Path | None, frame_json: Path | None) -> None:
     print("\n6. Performance", flush=True)
     if frame_json:
@@ -566,6 +618,7 @@ def main() -> int:
                     Path(a.frame_100k) if a.frame_100k else None, cfg)
         performance(Path(a.frame_100k) if a.frame_100k else None,
                     Path(a.frame_100k_json) if a.frame_100k_json else None)
+        app_checks()
     finally:
         if not a.workdir:
             shutil.rmtree(work, ignore_errors=True)

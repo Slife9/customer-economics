@@ -1,0 +1,24 @@
+{
+  "label": "Standard bank: 5k demo (5,000 customers)",
+  "profile": "demo",
+  "seed": 20260921,
+  "customers": 5000,
+  "card_accounts": 3988,
+  "cycles": 36,
+  "from": "2023-01",
+  "to": "2025-12",
+  "build_seconds": 16.0,
+  "account_frame_seconds": 5.5,
+  "build_peak_memory_gb": 0.91,
+  "machine": {
+    "os": "Windows-2025Server-10.0.26200-SP0",
+    "python": "3.13.12",
+    "cpus": 4,
+    "ram_gb": 34.4
+  },
+  "files_mb": {
+    "accounts.parquet": 0.55,
+    "engine_view.parquet": 0.03,
+    "monthly.parquet": 0.63
+  }
+}
