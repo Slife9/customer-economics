@@ -1,0 +1,145 @@
+# Unused Credit Line Management - methodology
+
+The module behind `unused_lines_app/` and `engine/unused_lines/`. Part 1 is for business readers;
+Part 2 is the technical reference. Every figure is an expected value under illustrative
+assumptions; the recommended next step is always a pilot with a holdout.
+
+> *Assumes the March 2026 Basel III endgame proposal is adopted as proposed; LCR outflow applied
+> conservatively to all unused card lines. Capital ratio, cost of equity and carry are illustrative.*
+
+---
+
+## Part 1 - in plain language
+
+### The question
+Credit card lines that customers do not use still cost the bank money:
+
+1. **Drawdown loss** - a customer in trouble may draw the line before defaulting.
+2. **Capital** - under the March 2026 proposal (treated as adopted) 10% of every unused card line
+   counts as exposure and needs capital.
+3. **Liquidity** - the bank holds a buffer of liquid assets against unused lines (a conservative
+   assumption: current law does not require it for cancellable card lines).
+
+The module finds the card accounts where these costs make the card unprofitable, groups them like
+the reference workbook (*Unused Line RWA Scenario Model*), values what line management could save,
+and proposes an action per customer with the notices it would need.
+
+### How it works, in five steps
+1. **Measure each account** over the last 12 months: line, balance, spend, payments, risk.
+2. **Price the unused line**: carrying cost (capital + liquidity) and expected drawdown loss, kept in
+   separate columns, never mixed under one label.
+3. **Screen**: unprofitable cards (after the new capital and liquidity costs) that use under 30% of
+   the line and have at least $5,000 unused.
+4. **Segment** in the workbook's order: Credit-Deteriorating, Relationship / Premium, Dormant,
+   Sock-Drawer, Low-Utilization Transactors, Unassigned.
+5. **Value the levers** (line decreases, reactivation campaigns; dormant right-sizing and closures
+   only once approved) with the workbook's customer responses, then propose an action per account
+   with its reason code, notice, the ML model's second opinion and a pilot cell.
+
+### Reading the results
+- **Annual value** = change in card profit + reduction in expected drawdown loss. Both parts are
+  always shown; the second is usually the larger.
+- **Capital released** is a one-time amount of capital freed up. It is never added to the annual
+  value.
+- **Pending approval** (dormant right-sizing, closures, non-reissue) and **extra levers**
+  (suppressing automatic increases) are valued in full but shown apart from the headline.
+- **The stress book** is synthetic stress data tuned toward the workbook's population; the **5k
+  demo** is the standard illustrative bank.
+
+### What to be careful about
+- Customer responses (attrition, spend loss, campaign response) are the workbook's illustrative
+  estimates, not measured on this portfolio.
+- The four-fifths fairness test by metro fails in several areas for both the module's cuts and the
+  ML model: a fair-lending review is needed before any pilot.
+- Regulatory references are a summary for discussion, to be confirmed by compliance.
+
+---
+
+## Part 2 - technical reference
+
+### Code map
+| File | Role |
+|---|---|
+| `engine/unused_lines/config/unused_line_assumptions.json` | Agreed settings: regulatory, business, screen, segments, levers, treatment, timing, open-decision flags |
+| `engine/unused_lines/config/workbook_model.json` | The workbook's inputs and Dashboard figures (`extract_workbook.py`; sha256 recorded) |
+| `assumptions.py` | Load and validate (no 0% CCF, annual PD only, segment coverage); session overrides |
+| `data.py` | The per-account file from the engine's card ledger (read only) and the published tables |
+| `exposure.py` | Transactor test, risk weights, exposure, RWA, capital, liquidity, drawdown loss, profit views, current-rules comparison, workbook baseline |
+| `segments.py` | Screen, rules, segments, rule trace, summaries, drawdown sensitivity |
+| `levers.py` | System-mode levers, response, scenarios, extra levers, stress test |
+| `workbook.py` | Workbook-reproduction mode (the Calc sheets) |
+| `treatment.py` | Recommendations, reason codes, notices, ML agreement, review-together, pilot, fairness, timing |
+| `generator/unused_line_additions.py` | Table29 score history, Table30 card activation (additive, own random stream) |
+| `generator/synth/unused_line_stress.py` | The `unused_line_stress` profile (synthetic stress data) |
+| `unused_lines_app/` | Streamlit app on precomputed samples (`build_sample.py`) |
+| `audit/audit_unused_line_module.py` | The acceptance suite (brief s.7) |
+
+### Per account (exposure.py)
+- `UCL = max(limit − balance, 0)`: 12-month average for cost, reporting date for actions. Balance is
+  Table4 `Ending Balance` (after the cycle's payment, the reporting-date balance).
+- **Risk weight** (answer 5): 45% only if, over the last 12 cycles, every cycle was paid in full or
+  had a $0 statement, not all 12 were $0, and there was no installment, promotional or BT balance,
+  with at least 12 months of history; 100% if the customer's aggregate retail exposure (card
+  balances + unused lines + loans) exceeds $1M; otherwise 75% (dormant zero-balance: config B5).
+- `E = balance + CCF × UCL`; `RWA = E × RW`; capital `= RWA × 10.5%` (a stock); capital cost
+  `= capital × 12%`.
+- HQLA `= UCL × 5%` when liquidity applies (Category I–III by default, or `all_banks`); liquidity cost
+  `= HQLA × 0.75%`.
+- Drawdown loss `= PD 12 Month × LGD × LEQ × UCL`; LEQ by segment (workbook), Unassigned = mean
+  Behavioral CCF (measured, assumption-based).
+- **Carrying cost** = capital cost on the unused part + liquidity cost; **total unused-line cost** =
+  carrying cost + drawdown loss.
+- **Card profit** = engine `card_net` + the old capital charge − the new capital cost − liquidity cost
+  (the old charge is replaced, never added to); measured credit cost kept; drawdown loss beside it.
+
+### Screen and segments (segments.py)
+Rules run on every account (first match wins), LEQ follows the rule's segment, then costs, then the
+screen: card profit < 0 (toggle: less drawdown loss), average utilisation < 30%, unused ≥ $5,000,
+open ≥ 12 months, open and not charged off, no recent fraud-compromise event (proxy). Each rule keeps
+value, threshold and met / not met. The segmentation transactor rule (≥ 10 of 12, $0 statement
+counts as nothing due) is not the regulatory test.
+
+### Levers (levers.py), system mode
+Selection per scenario and segment from the workbook's shares (decreases on the largest unused lines,
+deteriorating on the highest PD; campaigns in a seeded order; closures on the longest inactive).
+Line sizing: Lever Guide targets, new line ≥ max($500, balance × 1.2), cut ≤ 25% per review (one in
+year 1), ≥ 15% and ≥ $500 or no cut. Per account, in expected values: survivors keep the new line,
+lose spend × spend loss and take the PD uplift; leavers lose variable contribution (card profit +
+fixed cost) and relationship profit, fixed cost stays; closures only if not reactivated (inactive
+≥ 24 months, B6); campaign responders add spend and revolving balance and move from 45% to 75%.
+Stress: attrition, spend loss and PD uplift × multiplier, response ÷ multiplier. Value types:
+avoided loss, cost saving, revenue, lost profit. Capital released `= −ΔRWA × 10.5%`, one-time.
+Protected (suppressed) customers are outside scope.
+
+### Workbook-reproduction mode (workbook.py)
+The Calc sheets on the workbook's own inputs; the multiplier scales attrition and spend loss only.
+Reproduces the Dashboard to the cent (Base +$1,329,136.92, 8,470 accounts lost).
+
+### Treatment (treatment.py)
+Reason codes `INACTIVITY` / `CREDIT_DETERIORATION` / `IDLE_LINE_RIGHTSIZING` / `CUSTOMER_REQUEST` /
+`OTHER`; notices by reason (credit and idle-line: Reg B adverse action, FCRA check for credit;
+inactivity: Reg B exception); 45-day fee / penalty-rate restriction after a decrease; no inactivity
+fee. The ML model (seven actions; ≤ 25% per account, ≤ 5% of accounts per review, each cut ≥ 15% and
+≥ $500) is a second opinion with an agree / disagree / no-view flag. Four-fifths by metro on module
+cuts and closures, ML adverse actions and ML increases. Review-together flags from the L1 / L3 / L5
+worklists. Pilot: 10% holdout, seeded, stratified by segment. Timing: year-1 share per lever.
+
+### Data
+Table29 (score history) and Table30 (card activation) are synthetic additions: additive only, from
+`SeedSequence(seed + 104729)`; every existing table is byte-identical. The score-drop rule and the
+PD ≥ 4% rule are partly correlated by construction (both read Table8 PD). Investments and household
+are approximated (deposits + Segment).
+
+### Results on the committed samples (default settings)
+| | Stress book | 5k demo |
+|---|---|---|
+| Screened accounts | 4,652 | 890 |
+| Card profit | −$344,894 | −$61,296 |
+| Carrying cost / drawdown loss | $81,204 / $193,433 | $10,630 / $9,926 |
+| Base annual value (headline) | +$22,239 | +$817 |
+| Capital released, one-time (Base) | $14,228 | $1,307 |
+| Pending approval / extra levers | +$52,685 / +$25,078 | +$4,376 / +$2,568 |
+| 1.5× stress | +$19,708 (go) | +$635 (go) |
+
+Reconciliation, calibration, issues and decisions: `specs/unused_line_management/` (STAGE1–8
+reports, `ISSUES_FOUND.md`, `DECISIONS.md`, `EVALUATION_GUIDE.md`).

@@ -1,3 +1,26 @@
+# STATUS: Unused Credit Line Management module (`feature/unused-line-management`)
+
+Built in nine stages from `main` `b660bb8`; reports in `specs/unused_line_management/STAGE*_REPORT.md`,
+design in `ARCHITECTURE.md` §8b, method in `docs/UNUSED_LINE_METHODOLOGY.md`. Not pushed, merged or
+deployed.
+
+- **Done:** data additions (Table29, Table30), the `unused_line_stress` profile, regulatory settings
+  and the per-account cost layer, screen and segments, levers / response / scenarios / stress test
+  (system and workbook-reproduction modes), treatment designer with compliance, fairness and timing,
+  the standalone app with customer drill-down, the full acceptance suite, docs and the evaluation
+  guide (incl. Streamlit Community Cloud steps; not deployed).
+- **Tests:** `python audit/audit_unused_line_module.py --regression` (results in
+  `specs/unused_line_management/STAGE8_AUDIT_MODULE.txt`).
+- **Build requirements (offline, recorded):** on Windows Server 10.0.26200, 4 CPUs, 34.4 GB RAM,
+  Python 3.13.12: stress book sample 35 s / 2.35 GB; 5k demo sample 16 s / 0.91 GB; 100k portfolio
+  generation 357 s; 100k per-account file 131 s / **15.6 GB peak** (offline only; chunked
+  generation is a logged future improvement). The app at runtime: 0.29–0.42 GB.
+- **Open:** decisions B4–B8 (config only); fair-lending review of the four-fifths failures;
+  compliance confirmation of the regulatory summary; calibration gaps and engine cost split
+  (`ISSUES_FOUND.md`); merge order for integration (`ISSUES_FOUND.md`).
+
+---
+
 # STATUS: Pre-computed results bundle
 
 Built so the hosted Streamlit app (2 GB instance) can show a large portfolio
