@@ -23,6 +23,7 @@ from generator.synth import (latents as L, population as POP, policy as P,
                              deposits as DEP, loans as LOAN, ftp as FTP,
                              fees as FEES, defects as DEF, cards as CARDS,
                              installments as INST, timeline as TL)
+from generator import unused_line_additions as ULA
 
 ROOT = Path(__file__).parent
 CFG = ROOT / "config"
@@ -333,6 +334,13 @@ def build(profile_name: str, out: Path, seed: int, n_cycles: int, n_override: in
                 "never input parameters.",
     }
     (out / "build_manifest.json").write_text(json.dumps(meta, indent=2, default=str))
+
+    # Unused-line additions: reads the files written above and writes new
+    # tables only (Table29, Table30), from its own random stream
+    # (seed + 104729) - nothing above, and no draw from `rng`, depends on this
+    # step. Deliberately not recorded in build_manifest.json, which must stay
+    # byte-identical.
+    ULA.add_unused_line_tables(out, seed)
     return meta
 
 
