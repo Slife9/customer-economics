@@ -294,5 +294,93 @@
     "conservative",
     "base",
     "aggressive"
-  ]
+  ],
+  "treatment": {
+    "_note": "Stage 6. Recommendations come from the Base scenario's selection. Compliance references are a summary for discussion; to be confirmed by compliance.",
+    "scenario_for_recommendations": "base",
+    "reason_codes": [
+      "INACTIVITY",
+      "CREDIT_DETERIORATION",
+      "IDLE_LINE_RIGHTSIZING",
+      "CUSTOMER_REQUEST",
+      "OTHER"
+    ],
+    "reason_by_lever": {
+      "risk_based_decrease": "CREDIT_DETERIORATION",
+      "line_decrease": "IDLE_LINE_RIGHTSIZING",
+      "transactor_rightsizing": "IDLE_LINE_RIGHTSIZING",
+      "dormant_rightsizing": "INACTIVITY",
+      "dormant_closure": "INACTIVITY",
+      "non_reissue_expired_dormant": "INACTIVITY",
+      "engagement_campaign": "OTHER",
+      "suppress_automatic_increases": "OTHER"
+    },
+    "notices": {
+      "CREDIT_DETERIORATION": "Reg B adverse action notice within 30 days, with specific reasons or the right to request them (12 CFR 1002.9)",
+      "IDLE_LINE_RIGHTSIZING": "Reg B adverse action notice within 30 days: a reduction not made in connection with inactivity, default or delinquency (12 CFR 1002.2(c), 1002.9); confirm with compliance",
+      "INACTIVITY": "No adverse action notice (Reg B inactivity exception, 12 CFR 1002.2(c)(2)(ii)); reason code recorded",
+      "OTHER": "No notice; offer terms reviewed for UDAAP",
+      "CUSTOMER_REQUEST": "No adverse action notice (customer request)"
+    },
+    "fee_restriction_days_after_decrease": 45,
+    "fee_restriction_text": "No over-limit fee or penalty rate based on the lower limit until 45 days after notice (Reg Z 1026.9(c)(2)(vi), (g)(4))",
+    "fcra_flag_text": "FCRA score disclosure check: a bureau-based score was used in the decision",
+    "increase_check_text": "Reg Z ability-to-pay check (1026.51)",
+    "never_propose": [
+      "inactivity fee (inactivity penalty fees are prohibited, Reg Z 1026.52(b))"
+    ],
+    "review_together_levers": {
+      "L1": "L1 rewards worklist",
+      "L3": "L3 pricing worklist (e.g. a reprice combined with an engagement offer)",
+      "L5": "L5 retention worklist (e.g. a retention target combined with a line cut)"
+    },
+    "pilot": {
+      "holdout_share": 0.1,
+      "seed": 20261116,
+      "stratify_by": "segment"
+    }
+  },
+  "timing": {
+    "_note": "Year-1 realisation per lever (config). Line actions need approval but no prior notice; capital and liquidity savings start at the next reporting date.",
+    "line_decrease": {
+      "starts": "after approval; capital and liquidity saving from the next reporting date",
+      "full_value": "immediately after the cut; further reviews add more",
+      "year1_share": 0.85
+    },
+    "risk_based_decrease": {
+      "starts": "after approval; capital and liquidity saving from the next reporting date",
+      "full_value": "immediately after the cut",
+      "year1_share": 0.85
+    },
+    "dormant_rightsizing": {
+      "starts": "after approval",
+      "full_value": "immediately after the cut",
+      "year1_share": 0.85
+    },
+    "transactor_rightsizing": {
+      "starts": "after approval",
+      "full_value": "immediately after the cut",
+      "year1_share": 0.85
+    },
+    "dormant_closure": {
+      "starts": "after the campaign window (months 4-6)",
+      "full_value": "month 6",
+      "year1_share": 0.5
+    },
+    "engagement_campaign": {
+      "starts": "months 1-3",
+      "full_value": "months 4-6",
+      "year1_share": 0.6
+    },
+    "suppress_automatic_increases": {
+      "starts": "immediately",
+      "full_value": "as the increases would have happened",
+      "year1_share": 0.5
+    },
+    "non_reissue_expired_dormant": {
+      "starts": "at each card's expiry date",
+      "full_value": "over about 3 years (the card life)",
+      "year1_share": 0.3
+    }
+  }
 }

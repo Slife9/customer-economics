@@ -30,6 +30,14 @@ Stage 4 (screen and segments), on the same portfolios:
    summaries add up with carrying cost and drawdown loss apart; thresholds
    from config; segmentation and regulatory transactor rules apart.
 
+Stage 5 (levers, response, scenarios, stress):
+8. Workbook-reproduction scenarios within +/-1% of the Dashboard; corrected
+   weights reported (Relationship at 45% and at 75%).
+9. System mode on each portfolio: low <= base <= high; capital released never
+   in an annual value; value types reconcile; cut rules; closures and B6;
+   the 45% -> 75% flip; fixed cost stays; extra levers apart; scope mode;
+   stress test and the go/no-go rule.
+
 Prints a PASS/FAIL table; exits 1 if any check FAILs.
 """
 from __future__ import annotations
@@ -51,6 +59,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from engine.unused_lines import assumptions as A, data as D, exposure as X, segments as SG  # noqa: E402
+from engine.unused_lines import levers as L, workbook as W  # noqa: E402
 
 PROFILES = ["demo", "unused_line_stress"]
 BRIEF_27 = {"ucl": 2.69e9, "rwa_unused": 165.8e6, "capital_cost_unused": 2.09e6, "hqla": 134.5e6,
@@ -256,6 +265,112 @@ def segment_checks(acc: pd.DataFrame, meta: dict, cfg: dict, label: str) -> pd.D
     return f
 
 
+# ------------------------------------------------------------- Stage 5
+def workbook_scenarios(cfg: dict) -> None:
+    print("\n8. Workbook-reproduction scenarios", flush=True)
+    ref = cfg["workbook"]["dashboard_reference"]
+    worst, rows = 0.0, []
+    for scn in A.SCENARIOS:
+        g = W.dashboard(cfg)[scn]
+        for k in ["change_in_fully_loaded_profit", "accounts_lost", "capital_released"]:
+            worst = max(worst, abs(g[k] - ref[scn][k]) / abs(ref[scn][k]))
+        rows.append(f"{scn} {g['change_in_fully_loaded_profit']:+,.0f} / {g['accounts_lost']:,.0f} lost / "
+                    f"${g['capital_released']:,.0f} released")
+    record("Conservative / Base / Aggressive (85% / 55%): profit change, accounts lost, capital released "
+           "within +/-1%", worst <= 0.01, "; ".join(rows) + f"; largest difference {worst:.4%}")
+    base = W.scenario(cfg, "base")
+    seg_ref = ref["base_by_segment"]
+    ws = max(abs(base.loc[s, "change_in_fully_loaded_profit"] - v["change_in_profit"]) / abs(v["change_in_profit"])
+             for s, v in seg_ref.items())
+    record("Base by segment within +/-1%", ws <= 0.01, f"largest difference {ws:.4%}")
+    ccf = {s: cfg["capital"]["ccf_unused_card_lines"] for s in A.WORKBOOK_SEGMENTS}
+    cor = W.scenario(cfg, "base", risk_weights=cfg["workbook_reproduction"]["corrected_risk_weights"], ccf=ccf).loc["total"]
+    rel75 = dict(cfg["workbook_reproduction"]["corrected_risk_weights"], relationship=cfg["capital"]["risk_weight_non_transactor"])
+    cor75 = W.scenario(cfg, "base", risk_weights=rel75, ccf=ccf).loc["total"]
+    record("corrected weights reported (Relationship at 45%, and at 75% as the per-account test suggests)", True,
+           f"45%: baseline RWA ${cor['baseline_rwa']:,.0f}, Base {cor['change_in_fully_loaded_profit']:+,.0f}, "
+           f"capital released ${cor['capital_released']:,.0f}; Relationship 75%: baseline RWA "
+           f"${cor75['baseline_rwa']:,.0f}, Base {cor75['change_in_fully_loaded_profit']:+,.0f}")
+
+
+def lever_checks(f: pd.DataFrame, cfg: dict, label: str) -> None:
+    print(f"\n9. Levers, response, scenarios, stress - {label}", flush=True)
+    res = {s: L.run(f, cfg, s) for s in A.SCENARIOS}
+    summ = {s: L.summary(res[s], cfg, f) for s in A.SCENARIOS}
+    hv = [summ[s]["workbook_levers_headline"]["headline_value"] for s in A.SCENARIOS]
+    record(f"{label}: low <= base <= high (headline annual value)", hv[0] <= hv[1] <= hv[2],
+           " <= ".join(f"{v:+,.0f}" for v in hv))
+    b = res["base"]
+    comb = b["combined"]
+    ident = np.allclose(comb["headline_value"], comb["card_profit_change"] - comb["drawdown_change"])
+    keys = set(summ["base"]["workbook_levers_headline"])
+    record(f"{label}: capital released never inside an annual value", bool(ident and "capital_released" not in keys),
+           f"Base: annual {summ['base']['workbook_levers_headline']['headline_value']:+,.0f}; "
+           f"capital released ${summ['base']['capital_released_one_time']:,.0f} (one-time, separate)")
+    vt = np.allclose(comb["card_profit_change"], comb["cost_saving"] + comb["revenue"] + comb["lost_profit"]
+                     + comb["avoided_loss"] + comb["drawdown_change"])
+    record(f"{label}: value types reconcile to the change in card profit", bool(vt),
+           ", ".join(f"{k} {summ['base']['workbook_levers_headline'][k]:+,.0f}" for k in L.VALUE_TYPES))
+    sel = b["selection"]
+    d = sel[sel["decrease"]]
+    lim = f.loc[d.index, "limit_current"]
+    floor = np.maximum(cfg["levers"]["system_mode"]["floor_minimum_line_usd"],
+                       f.loc[d.index, "balance_current"].clip(lower=0) * cfg["levers"]["system_mode"]["floor_balance_multiple"])
+    cut_ok = bool((d["cut"] <= lim * cfg["levers"]["max_reduction_per_review"] + 1e-6).all()
+                  and (d["cut"] >= lim * cfg["levers"]["system_mode"]["min_cut_share"] - 1e-6).all()
+                  and (d["cut"] >= cfg["levers"]["system_mode"]["min_cut_usd"]).all()
+                  and (d["new_line"] >= floor - 1e-6).all())
+    record(f"{label}: every cut <= 25% of the line, >= 15% and >= $500, new line >= max($500, balance x 1.2)",
+           cut_ok, f"{len(d):,} accounts cut (Base)")
+    cl = sel["closure"]
+    record(f"{label}: closures only on dormant accounts inactive >= 24 months; closure and dormant right-sizing "
+           "out of the headline while B6 is off", bool(
+               (f.loc[cl, "rule_segment"] == "dormant").all()
+               and (f.loc[cl, "months_since_last_transaction"] >= cfg["levers"]["system_mode"]["closure_min_inactive_months"]).all()
+               and np.isclose(summ["base"]["pending_approval"]["headline_value"],
+                              sum(L.lever_table(b, cfg, f).query("status == 'pending approval'")["headline_value"]))
+               and not (b["combined"].loc[cl, "accounts_leaving"] > 0).any()),
+           f"{int(cl.sum()):,} closures selected; pending approval {summ['base']['pending_approval']['headline_value']:+,.0f}")
+    on = A.with_overrides(cfg, {"levers": {"dormant_closure_enabled": True, "dormant_rightsizing_enabled": True}})
+    s_on = L.summary(L.run(f, on, "base"), on, f)
+    record(f"{label}: switching B6 on moves those levers into the headline (config change only)",
+           bool(s_on["workbook_levers_headline"]["accounts_leaving"] > summ["base"]["workbook_levers_headline"]["accounts_leaving"]
+                and s_on["pending_approval"]["headline_value"] == 0),
+           f"headline {summ['base']['workbook_levers_headline']['headline_value']:+,.0f} -> "
+           f"{s_on['workbook_levers_headline']['headline_value']:+,.0f}")
+    tr = f["rw"] == cfg["capital"]["risk_weight_transactor"]
+    P = b["params"]
+    st = L._state(f[tr], cfg, 0.0, P.loc[tr, "incr_rev"].where(P.loc[tr, "incr_rev"] > 0, 100.0), 1.0, 0.0)
+    flip = bool(len(st["rwa"]) == 0 or (st["rwa"] > 0).all()) and bool(
+        (L._state(f[tr], cfg, 0.0, 100.0, 1.0, 0.0)["rwa"]
+         >= (f.loc[tr, "balance"] + 100 + cfg["capital"]["ccf_unused_card_lines"] * (f.loc[tr, "ucl"] - 100).clip(lower=0))
+         * cfg["capital"]["risk_weight_non_transactor"] - 1e-6).all())
+    record(f"{label}: a campaign / installment balance moves a transactor from 45% to 75%", flip,
+           f"{int(tr.sum()):,} accounts at 45%")
+    cl_only = b["per_lever"]["dormant_closure"]
+    stay = np.allclose(cl_only.loc[cl, "card_profit_change"],
+                       -cl_only.loc[cl, "accounts_leaving"] * (f.loc[cl, "card_profit"] + f.loc[cl, "fixed_cost"]))
+    record(f"{label}: leavers lose variable contribution; fixed cost stays", bool(stay))
+    ex = summ["base"]["extra_levers"]["headline_value"]
+    lt = L.lever_table(b, cfg, f)
+    extra_sum = lt.loc[(lt["group"] != "workbook") & (lt["status"] == "headline"), "headline_value"].sum()
+    wb_only = b["combined"][b["scope"]]["headline_value"].sum()
+    record(f"{label}: extra levers reported apart from the workbook levers",
+           bool(np.isclose(summ["base"]["workbook_levers_headline"]["headline_value"], wb_only)
+                and np.isclose(ex, extra_sum)),
+           f"workbook levers {wb_only:+,.0f}; extra {ex:+,.0f} (assumption-based; not in the reference workbook)")
+    full = A.with_overrides(cfg, {"levers": {"scope_mode": "full_line_management"}})
+    rf = L.run(f, full, "base")
+    record(f"{label}: scope mode (B7) changes only the population", bool(
+        rf["scope"].sum() >= b["scope"].sum() and (rf["scope"] | ~b["scope"]).all()),
+           f"workbook scope {int(b['scope'].sum()):,} accounts; full line management {int(rf['scope'].sum()):,}")
+    stv = L.stress(f, cfg)
+    g = stv.attrs["go_no_go"]
+    record(f"{label}: stress test 1x-2x; go/no-go (Base improves at {g['multiplier']}x)", g["go"],
+           "; ".join(f"{m}x {v:+,.0f}" for m, v in stv["wb_headline_value"].items())
+           + f"; at {g['multiplier']}x card profit alone {g['card_profit_change']:+,.0f}")
+
+
 # ------------------------------------------------------------- 5, 6
 def cross_check(bundle: Path | None, frame: Path | None, cfg: dict) -> None:
     print("\n5. Portfolio cross-check (s.2.7)", flush=True)
@@ -361,6 +476,7 @@ def main() -> int:
     try:
         worked_examples(cfg)
         workbook(cfg)
+        workbook_scenarios(cfg)
         dirs = [Path(d) for d in a.data] if a.data else []
         if not dirs:
             for p in PROFILES:
@@ -377,7 +493,8 @@ def main() -> int:
                   f"Unassigned LEQ (mean Behavioral CCF) {leq:.3f}")
             invariants(costs, cfg, label)
             toggles(acc, cfg, leq, label)
-            segment_checks(acc, meta, cfg, label)
+            f = segment_checks(acc, meta, cfg, label)
+            lever_checks(f, cfg, label)
         cross_check(Path(a.bundle_100k) if a.bundle_100k else None,
                     Path(a.frame_100k) if a.frame_100k else None, cfg)
         performance(Path(a.frame_100k) if a.frame_100k else None,
