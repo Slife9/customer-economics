@@ -197,12 +197,12 @@ def header(title: str) -> None:
 def md(text: str, where=st, **kw) -> None:
     """st.markdown with dollar signs escaped: Streamlit reads text between two
     "$" as a math formula. Raw HTML (unsafe_allow_html) is not affected."""
-    where.markdown(text if kw.get("unsafe_allow_html") else text.replace("$", "\$"), **kw)
+    where.markdown(text if kw.get("unsafe_allow_html") else text.replace("$", "\\$"), **kw)
 
 
 def cap(text: str, where=st) -> None:
     """st.caption with dollar signs escaped (see md)."""
-    where.caption(text.replace("$", "\$"))
+    where.caption(text.replace("$", "\\$"))
 
 
 def caveat() -> None:
