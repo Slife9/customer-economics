@@ -59,13 +59,13 @@ def subtotal(mask):
 wbk = (lt["group"] == "workbook") & (lt["status"] == "headline")
 ext = (lt["group"] != "workbook") & (lt["status"] == "headline")
 pend = lt["status"] == "pending approval"
-st.markdown(
+S.md(
     f"- **Workbook levers (headline):** full {S.signed(subtotal(wbk)[0])} · year 1 {S.signed(subtotal(wbk)[1])} "
     f"(combined with interactions: {S.signed(h['headline_value'])})\n"
     f"- **Extra levers (assumption-based; not in the reference workbook):** full {S.signed(subtotal(ext)[0])} · "
     f"year 1 {S.signed(subtotal(ext)[1])}\n"
     f"- **Pending approval (B6):** full {S.signed(subtotal(pend)[0])} · year 1 {S.signed(subtotal(pend)[1])}")
-st.caption("Value by type for the headline: " + ", ".join(
+S.cap("Value by type for the headline: " + ", ".join(
     f"{k.replace('_', ' ')} {S.signed(h[k])}" for k in L.VALUE_TYPES) + ". Transactor right-sizing is valued to "
     "show its effect and is never recommended.")
 
@@ -100,7 +100,7 @@ fig.add_hline(y=0, line_color="#334155", line_width=1)
 fig.update_layout(height=420, margin=dict(t=30, b=20), yaxis=dict(title="USD per year"),
                   legend=dict(orientation="h", y=-0.25))
 st.plotly_chart(fig, width="stretch")
-st.markdown(f"**Go/no-go:** at {g['multiplier']}x the Base scenario is worth {S.signed(g['headline_value'])} a year - "
+S.md(f"**Go/no-go:** at {g['multiplier']}x the Base scenario is worth {S.signed(g['headline_value'])} a year - "
             + ("**go**." if g["go"] else "**no-go**.")
             + f" On card profit alone it is {S.signed(g['card_profit_change'])}: the value comes from avoided drawdown loss.")
 S.caveat()
@@ -114,5 +114,5 @@ with st.expander("Workbook-reproduction mode (the reference workbook's own formu
                              "Accounts lost": d[sc]["accounts_lost"],
                              "Capital released (one-time)": d[sc]["capital_released"]} for sc in SCENARIOS}).T
     st.dataframe(rep.map(lambda v: f"{v:,.0f}"), width="stretch")
-    st.caption("Original 85% / 55% weights and the workbook's modelled loss, used for the ±1% test only. The system's "
+    S.cap("Original 85% / 55% weights and the workbook's modelled loss, used for the ±1% test only. The system's "
                "results above come from account data with the corrected rules.")

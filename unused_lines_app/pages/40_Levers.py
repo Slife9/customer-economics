@@ -31,7 +31,7 @@ new["levers"]["scope_mode"] = c3.radio("B7 - scope", cfg["levers"]["scope_mode_o
                                        index=cfg["levers"]["scope_mode_options"].index(cfg["levers"]["scope_mode"]),
                                        format_func={"workbook_unprofitable_low_use": "Workbook scope (default)",
                                                     "full_line_management": "Full line management"}.get)
-st.caption("B8: the ML credit-limit model stays a second opinion only. B4: capital ratio and cost of equity below.")
+S.cap("B8: the ML credit-limit model stays a second opinion only. B4: capital ratio and cost of equity below.")
 new["screen"]["include_expected_drawdown_loss"] = st.toggle(
     "Screen including expected drawdown loss (sensitivity; default off)", value=cfg["screen"]["include_expected_drawdown_loss"])
 

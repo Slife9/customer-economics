@@ -11,7 +11,7 @@ S.header("🧪 Datasets & calibration")
 i = S.info()
 
 Y.band("The dataset in use")
-st.markdown(
+S.md(
     f"- **{i['label']}** - generator profile `{i['profile']}`, seed {i['seed']}, {i['customers']:,} customers, "
     f"{i['card_accounts']:,} card accounts, {i['cycles']} months ({i['from']} to {i['to']}).\n"
     f"- Precomputed offline by `python -m unused_lines_app.build_sample` in {i['build_seconds']} s, peak memory "
@@ -39,14 +39,16 @@ csv = S.ROOT / "specs" / "unused_line_management" / (
 if csv.exists():
     cal = pd.read_csv(csv)
     v = cal["Within Band"].value_counts()
-    st.markdown(f"**{int(v.get('within', 0))}** of {int(v.get('within', 0) + v.get('outside', 0))} metrics within ±25% of "
-                "the workbook's segment inputs. Reasons for every metric outside the band: "
+    S.md(f"**{int(v.get('within', 0))}** of {int(v.get('within', 0) + v.get('outside', 0))} metrics within ±25% of "
+                "the workbook's segment inputs" + (" (measured when the stress profile was tuned, on its 10,000-customer "
+                "book; the 100,000-customer book uses the same profile)" if S.dataset() == "stress" else "")
+                + ". Reasons for every metric outside the band: "
                 "`specs/unused_line_management/STAGE4_REPORT.md`.")
     st.dataframe(cal[["Segment", "Metric", "Observed", "Reference", "Within Band", "Accounts", "Note"]],
                  width="stretch", hide_index=True)
 
 Y.band("Your own portfolio")
-st.markdown("Generate or export a portfolio folder in the system's table format, then build a dataset offline:\n\n"
+S.md("Generate or export a portfolio folder in the system's table format, then build a dataset offline:\n\n"
             "```\npython -m unused_lines_app.build_sample --data <portfolio dir> --name mine --label \"My bank\"\n```\n"
             "and add it to `DATASETS` in `unused_lines_app/lib/state.py`. The full build reads every raw table "
-            "(a 100k-customer portfolio peaks at about 15.6 GB); the app itself stays well under 2 GB.")
+            "(a 100k-customer portfolio peaks at about 15-22 GB); the app itself stays well under 2 GB.")

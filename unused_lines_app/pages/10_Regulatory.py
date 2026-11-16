@@ -28,7 +28,7 @@ if (apply_to, category) != (bp["apply_to"], bp["bank_category"]):
     new["bank_profile"]["apply_to"], new["bank_profile"]["bank_category"] = apply_to, category
     S.set_cfg(new)
     st.rerun()
-st.caption(f"Liquidity cost applies: **{'yes' if A.liquidity_applies(cfg) else 'no'}**. Capital uses the 10% CCF and "
+S.cap(f"Liquidity cost applies: **{'yes' if A.liquidity_applies(cfg) else 'no'}**. Capital uses the 10% CCF and "
            "45% / 75% / 100% risk weights for every bank under the working assumptions.")
 
 # ---------------------------------------------------- parameters
@@ -48,7 +48,7 @@ rows = [
     ("Operational risk", "excluded", "regulatory", "Bank-level only: not in account or lever economics"),
     ("SLR", "not calculated", "regulatory", "Risk-based capital assumed to bind; shown in the comparison view"),
 ]
-st.markdown("<table><tr><th>Parameter</th><th>Value</th><th>Type</th><th>Note</th></tr>" + "".join(
+S.md("<table><tr><th>Parameter</th><th>Value</th><th>Type</th><th>Note</th></tr>" + "".join(
     f"<tr><td>{a}</td><td><b>{b}</b></td><td>{Y.vt(c)}</td><td>{d}</td></tr>" for a, b, c, d in rows)
     + "</table>", unsafe_allow_html=True)
 
@@ -61,8 +61,8 @@ ex = [("Dormant $10,000 card", 10000, 0, cap["risk_weight_dormant_zero_balance"]
 cols = st.columns(3)
 for col, (name, lim, bal, rw) in zip(cols, ex):
     e = X.worked_example(lim, bal, rw, cfg)
-    col.markdown(f"**{name}**")
-    col.markdown(
+    S.md(where=col, text=f"**{name}**")
+    S.md(where=col, text=
         f"- Unused line: {S.usd(e['ucl'])}\n"
         f"- Exposure on it: {S.usd(e['ucl'])} × {cap['ccf_unused_card_lines']:.0%} = **{S.usd(e['exposure_unused'])}**\n"
         f"- RWA: × {rw:.0%} = **{S.usd(e['rwa_unused'])}**\n"
@@ -87,7 +87,7 @@ if show_cmp:
     }, index=["RWA", "RWA from unused lines", "Capital cost a year", "Liquidity cost a year",
               "SLR capital (10% CCF, 3%; Category I-III)"])
     st.dataframe(comp.map(S.usd), width="stretch")
-    st.caption("Current law: 0% CCF on unconditionally cancellable lines, 100% on drawn balances, no LCR outflow on "
+    S.cap("Current law: 0% CCF on unconditionally cancellable lines, 100% on drawn balances, no LCR outflow on "
                "cancellable lines. The comparison shows how much of the value depends on the assumptions.")
 
 # ---------------------------------------------------- fairness
@@ -98,7 +98,7 @@ names = {"module_decreases_and_closures": "Module decreases and closures", "ml_a
          "ML adverse actions (decrease, freeze)", "ml_increases": "ML increases"}
 fails = {k: v for k, v in fa["summary"].items() if v["groups_failing"]}
 if fails:
-    st.markdown('<div class="flag"><b>Four-fifths failures - review before any pilot.</b><ul>' + "".join(
+    S.md('<div class="flag"><b>Four-fifths failures - review before any pilot.</b><ul>' + "".join(
         f"<li>{names.get(k, k)}: <b>{v['groups_failing']}</b> of {v['groups_tested']} metros fail</li>"
         for k, v in fails.items()) + "</ul></div>", unsafe_allow_html=True)
 tabs = st.tabs([names[k] for k in names if k in fa])
@@ -106,7 +106,7 @@ for tab, k in zip(tabs, [k for k in names if k in fa]):
     with tab:
         df = fa[k].copy()
         st.dataframe(df, width="stretch", hide_index=True)
-st.caption(fa["proxy_method"] + ". Selection rates are compared with the population rate; groups under 30 "
+S.cap(fa["proxy_method"] + ". Selection rates are compared with the population rate; groups under 30 "
            "customers are not tested (the system's fairness module).")
 with st.expander("The ML credit-limit model (second opinion only)"):
-    st.markdown("\n".join(f"- {x}" for x in T.ml_rules_text()))
+    S.md("\n".join(f"- {x}" for x in T.ml_rules_text()))

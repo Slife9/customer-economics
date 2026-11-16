@@ -28,7 +28,7 @@ Y.cards([
     ("Expected drawdown loss (beside profit)", S.usd(sc["drawdown_el"].sum()),
      "annual PD × LGD × LEQ × unused line - not deducted from card profit", Y.RED),
 ])
-st.markdown(f"Value types: {Y.vt('measured')} card profit, unused lines · {Y.vt('regulatory')} "
+S.md(f"Value types: {Y.vt('measured')} card profit, unused lines · {Y.vt('regulatory')} "
             f"{Y.vt('business')} carrying cost · {Y.vt('workbook')} drawdown loss (LEQ)", unsafe_allow_html=True)
 
 # ---------------------------------------------------- scenarios (expected)
@@ -86,7 +86,7 @@ points = [
     f"({S.usd(-sens['extra_loss_after_drawdown'])} more loss after drawdown) - the sensitivity toggle on "
     f"<b>Levers & assumptions</b>.",
 ]
-st.markdown('<div class="takeaways"><b>Key takeaways</b><ul>' + "".join(f"<li>{p}</li>" for p in points)
+S.md('<div class="takeaways"><b>Key takeaways</b><ul>' + "".join(f"<li>{p}</li>" for p in points)
             + "</ul></div>", unsafe_allow_html=True)
 S.caveat()
 

@@ -57,7 +57,7 @@ Y.cards([
      f"spend {S.usd(a['spend_12m'])} · {int(a['account_age_months'])} months open · score {a['credit_score']}", Y.GREY),
 ])
 if a.get("protected", False):
-    st.markdown(f'<div class="flag"><b>Protected customer ({a["suppression_reason"]}):</b> suppressed by the system '
+    S.md(f'<div class="flag"><b>Protected customer ({a["suppression_reason"]}):</b> suppressed by the system '
                 "before anything else - no unused-line action.</div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------- exposure trace
@@ -86,7 +86,7 @@ lines = [
     ("Card profit (module)", f"card_net {S.signed(a['card_net'])} + old capital {S.usd(a['old_capital_cost'])} − new capital "
      f"${a['capital_cost']:,.2f} − liquidity ${a['liquidity_cost']:,.2f}", S.signed(a["card_profit"]), "derived"),
 ]
-st.markdown("<table><tr><th>Item</th><th>Formula</th><th>Value</th><th>Type</th></tr>" + "".join(
+S.md("<table><tr><th>Item</th><th>Formula</th><th>Value</th><th>Type</th></tr>" + "".join(
     f"<tr><td>{i}</td><td>{fml}</td><td><b>{v}</b></td><td>{Y.vt(k)}</td></tr>" for i, fml, v, k in lines)
     + "</table>", unsafe_allow_html=True)
 
@@ -104,7 +104,7 @@ if len(m):
     show = m[["Cycle Month", "Credit Limit", "Statement Balance", "Payment Made", "Paid In Full Indicator",
               "Promotional Balance", "Plan Balance", "Result"]]
     st.dataframe(show, width="stretch", hide_index=True)
-st.markdown(f"**Result:** {X.RW_BASIS_LABELS.get(a['rw_basis'], a['rw_basis'])} → **{a['rw']:.0%}**. "
+S.md(f"**Result:** {X.RW_BASIS_LABELS.get(a['rw_basis'], a['rw_basis'])} → **{a['rw']:.0%}**. "
             f"Separately, the segmentation rule counts {int(a['cycles_paid_in_full_12m'] + a['cycles_zero_statement_12m'])} "
             f"of 12 cycles paid in full or nothing due (needs {cfg['segments']['rules']['transactors']['paid_in_full_months_min']}).")
 
@@ -125,7 +125,7 @@ for k, (val, thr, met) in trace.items():
                  "Met": "✅" if bool(met.iloc[0]) else "❌"})
 st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
 if a["rule_segment"] == "dormant":
-    st.caption("Dormant confirmation signals (informational): card not activated "
+    S.cap("Dormant confirmation signals (informational): card not activated "
                f"{'yes' if a['confirm_card_not_activated'] else 'no'} · card due for reissue within 12 months "
                f"{'yes' if a['confirm_card_due_for_reissue'] else 'no'} · no digital sessions "
                f"{'yes' if a['confirm_no_digital_sessions'] else 'no'}")
@@ -137,7 +137,7 @@ if t is None:
     st.write("No recommendation: the account is outside the module's scope "
              + ("(protected customer)." if a.get("protected", False) else "(not screened)."))
 else:
-    st.markdown(
+    S.md(
         f"- **Recommended:** {t['recommended_levers'].replace('_', ' ')}"
         + (" - **pending approval (B6)**" if t["pending_approval"] else "") + "\n"
         f"- **Line action:** {t['line_action']}" + (f" - new line {S.usd(t['new_line'])} (cut {S.usd(t['cut'])})"
@@ -148,7 +148,7 @@ else:
         + (f"- {cfg['treatment']['fcra_flag_text']}\n" if t["fcra_score_disclosure_check"] else "")
         + f"- **Pilot cell:** {t['pilot_cell']}")
     Y.band("ML credit-limit model - second opinion only")
-    st.markdown(f"- **ML action:** {t['ml_action'] if pd.notna(t['ml_action']) else 'no score'}"
+    S.md(f"- **ML action:** {t['ml_action'] if pd.notna(t['ml_action']) else 'no score'}"
                 + (f" ({t['ml_primary_reason']})" if pd.notna(t.get('ml_primary_reason')) else "") + "\n"
                 f"- **Agreement with the module:** **{t['ml_agreement']}**\n"
                 "- Never a decision input. Its treatment fairness test fails the four-fifths rule in several metros "

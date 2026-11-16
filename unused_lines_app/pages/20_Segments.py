@@ -16,7 +16,7 @@ r, sc = cfg["segments"]["rules"], cfg["screen"]
 
 # ---------------------------------------------------- screen and rules
 Y.band("The screen (system mode)")
-st.markdown(
+S.md(
     f"- Card profit below $0: measured credit cost, the old capital charge **replaced** by the new one, the new "
     f"liquidity cost subtracted; expected drawdown loss **beside** it (toggle on **Levers & assumptions**: currently "
     f"**{'on' if sc['include_expected_drawdown_loss'] else 'off'}**)\n"
@@ -43,7 +43,7 @@ mapping = [
 ]
 st.dataframe(pd.DataFrame(mapping, columns=["#", "Segment", "Rule", "Mapping to system data"]),
              width="stretch", hide_index=True)
-st.caption("The segmentation transactor rule (≥ 10 of 12) is separate from the **regulatory transactor test** "
+S.cap("The segmentation transactor rule (≥ 10 of 12) is separate from the **regulatory transactor test** "
            "(12 of 12, no plan or promotional balance) that sets the 45% risk weight.")
 
 # ---------------------------------------------------- economics
@@ -59,10 +59,10 @@ show = show.apply(lambda col: col.map(fmt[col.name]))
 show.columns = ["Accounts", "Share", "Unused lines", "Carrying cost (capital + liquidity)", "Expected drawdown loss",
                 "Total unused-line cost", "Card profit", "Relationship-adjusted profit", "Card profit per account"]
 st.dataframe(show, width="stretch")
-st.markdown(f"{Y.vt('measured')} accounts, unused lines, card profit · {Y.vt('regulatory')}{Y.vt('business')} "
+S.md(f"{Y.vt('measured')} accounts, unused lines, card profit · {Y.vt('regulatory')}{Y.vt('business')} "
             f"carrying cost · {Y.vt('workbook')} drawdown loss (LEQ)", unsafe_allow_html=True)
 sens = SG.drawdown_sensitivity(f)
-st.caption(f"Screen including expected drawdown loss: {sens['accounts_screened_toggle']:,} accounts instead of "
+S.cap(f"Screen including expected drawdown loss: {sens['accounts_screened_toggle']:,} accounts instead of "
            f"{sens['accounts_screened_default']:,} (+{sens['extra_accounts']:,}; "
            f"{S.usd(-sens['extra_loss_after_drawdown'])} more loss after drawdown).")
 
@@ -86,5 +86,5 @@ Y.band("What each segment is, and the actions the workbook suggests")
 for k in keys:
     a = G.SEGMENT_ACTIONS[k]
     with st.expander(S.seg_label(k)):
-        st.markdown(f"**Why:** {a['why']}\n\n" + "\n".join(f"- {x}" for x in a["actions"])
+        S.md(f"**Why:** {a['why']}\n\n" + "\n".join(f"- {x}" for x in a["actions"])
                     + f"\n\n**Watch:** {a['watch']}")
