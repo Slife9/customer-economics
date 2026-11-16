@@ -12,7 +12,7 @@ python -m streamlit run unused_lines_app/Home.py --theme.baseFontSize 18
 ```
 
 The app loads only the committed samples in `samples/unused_lines/` and stays under 2 GB (measured
-peak 1.5 GB with the 100k stress book, all pages, both datasets, one process).
+peak 0.62 GB with the 100k stress book, all pages, both datasets, two sessions).
 
 **Which dataset:** start with the **stress book** (sidebar, default): synthetic stress data tuned
 toward the reference workbook's population, so every segment has accounts. Then switch to the **5k
@@ -52,7 +52,7 @@ Machine: Windows Server 10.0.26200, 4 CPUs, 34.4 GB RAM, Python 3.13.12.
 | 100k portfolio generation | 357 s | not recorded |
 | 100k bundle export (lever-valuation branch code) | 197 s | not recorded |
 | 100k per-account file | 131 s | **15.6 GB** (offline only; chunked generation logged as a future improvement) |
-| App at runtime (committed samples) | first Overview load 6.4 s, then cached | 1.5 GB (AppTest, all pages, both datasets) |
+| App at runtime (committed samples) | first Overview load about 4 s, then shared across sessions | 0.62 GB (AppTest, all pages, both datasets, two sessions) |
 
 ## 2. What to check, page by page (stress book, default settings)
 

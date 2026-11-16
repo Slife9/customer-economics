@@ -32,7 +32,12 @@ PAGES: dict = {}  # url_path -> st.Page, registered by Home.py on every run
 
 
 # ------------------------------------------------------------------ data
-@st.cache_data(show_spinner=False, max_entries=4)
+# Memory: every cache below is st.cache_resource - one copy per server
+# process, shared by all sessions, never copied on access - and holds either
+# the dataset itself or small result tables. A 100k-customer frame is about
+# 0.2 GB; keeping one per session (or full per-lever tables per run) is what
+# exhausted the hosted instance. Treat every returned object as read-only.
+@st.cache_resource(show_spinner=False, max_entries=2)
 def _load(name: str):
     d = DATASETS[name]
     acc, meta = D.load_account_frame(d / "accounts.parquet")
@@ -41,9 +46,12 @@ def _load(name: str):
     return acc, meta, info, ev
 
 
-@st.cache_data(show_spinner=False, max_entries=2)
-def monthly(name: str) -> pd.DataFrame:
-    return pd.read_parquet(DATASETS[name] / "monthly.parquet")
+def monthly_for(name: str, account: str) -> pd.DataFrame:
+    """The 12 cycles of one account, read straight from the file (no copy of
+    the whole table in memory)."""
+    import pyarrow.parquet as pq
+    t = pq.read_table(DATASETS[name] / "monthly.parquet", filters=[("Masked Account Number", "=", account)])
+    return t.to_pandas()
 
 
 def dataset() -> str:
@@ -85,37 +93,52 @@ def scenario() -> str:
     return st.session_state.get("scenario", "base")
 
 
-def _key(*parts) -> str:
-    return json.dumps([dataset(), cfg()] + list(parts), sort_keys=True, default=str)
+def _cfg_json() -> str:
+    return json.dumps(cfg(), sort_keys=True)
 
 
 # ----------------------------------------------------------------- results
+@st.cache_resource(show_spinner="Segmenting the accounts…", max_entries=3)
+def _frame(name: str, cfg_json: str) -> pd.DataFrame:
+    acc, meta, _, ev = _load(name)
+    acc = acc.copy()
+    prot = ev.set_index("Masked Customer Number")
+    acc["protected"] = acc["customer"].map(prot["protected"]).fillna(False).astype(bool)
+    acc["suppression_reason"] = acc["customer"].map(prot["suppression_reason"]).fillna("")
+    return SG.build(acc, meta, json.loads(cfg_json))
+
+
 def frame() -> pd.DataFrame:
-    """The segmented, costed account frame (recomputed only when the dataset
-    or the assumptions change). Treat as read-only."""
-    k = _key("frame")
-    if st.session_state.get("_frame_key") != k:
-        acc, meta, _, ev = data()
-        acc = acc.copy()
-        prot = ev.set_index("Masked Customer Number")
-        acc["protected"] = acc["customer"].map(prot["protected"]).fillna(False).astype(bool)
-        acc["suppression_reason"] = acc["customer"].map(prot["suppression_reason"]).fillna("")
-        st.session_state["_frame"] = SG.build(acc, meta, cfg())
-        st.session_state["_frame_key"] = k
-    return st.session_state["_frame"]
+    """The segmented, costed account frame (shared; recomputed only when the
+    dataset or the assumptions change). Read-only."""
+    return _frame(dataset(), _cfg_json())
+
+
+@st.cache_resource(show_spinner="Valuing the levers…", max_entries=10)
+def _run(name: str, cfg_json: str, scn: str, multiplier: float) -> dict:
+    c = json.loads(cfg_json)
+    f = _frame(name, cfg_json)
+    res = L.run(f, c, scn, multiplier)
+    out = {"summary": L.summary(res, c, f), "levers": L.lever_table(res, c, f),
+           "segments": L.segment_table(res, c, f)}
+    # Only what the treatment designer needs is kept from the per-account run.
+    out["res"] = {"scope": res["scope"],
+                  "selection": res["selection"][["decrease", "campaign", "closure", "cut", "new_line"]],
+                  "per_lever": {k: res["per_lever"][k][["eligible"]] for k in L.EXTRA_LEVERS}}
+    return out
 
 
 def run(scn: str | None = None, multiplier: float = 1.0) -> dict:
-    k = _key("run", scn or scenario(), multiplier)
-    cache = st.session_state.setdefault("_runs", {})
-    if k not in cache:
-        if len(cache) > 6:
-            cache.clear()
-        f = frame()
-        res = L.run(f, cfg(), scn or scenario(), multiplier)
-        cache[k] = {"res": res, "summary": L.summary(res, cfg(), f), "levers": L.lever_table(res, cfg(), f),
-                    "segments": L.segment_table(res, cfg(), f)}
-    return cache[k]
+    return _run(dataset(), _cfg_json(), scn or scenario(), float(multiplier))
+
+
+@st.cache_resource(show_spinner="Running the stress test…", max_entries=3)
+def _stress(name: str, cfg_json: str, scn: str) -> pd.DataFrame:
+    return L.stress(_frame(name, cfg_json), json.loads(cfg_json), scn)
+
+
+def stress(scn: str = "base") -> pd.DataFrame:
+    return _stress(dataset(), _cfg_json(), scn)
 
 
 def worklists() -> dict:
@@ -124,27 +147,31 @@ def worklists() -> dict:
             if f"in_{code}" in ev}
 
 
+@st.cache_resource(show_spinner="Designing the treatments…", max_entries=3)
+def _treatment(name: str, cfg_json: str) -> pd.DataFrame:
+    c = json.loads(cfg_json)
+    f = _frame(name, cfg_json)
+    res = _run(name, cfg_json, c["treatment"]["scenario_for_recommendations"], 1.0)["res"]
+    ev = _load(name)[3]
+    wl = {code: ev.loc[ev[f"in_{code}"], ["Masked Customer Number"]] for code in ["L1", "L3", "L5"]
+          if f"in_{code}" in ev}
+    return T.design(f, c, res, ev, wl)
+
+
 def treatment() -> pd.DataFrame:
-    k = _key("treatment")
-    if st.session_state.get("_treat_key") != k:
-        f = frame()
-        res = run(cfg()["treatment"]["scenario_for_recommendations"])["res"]
-        ev = data()[3]
-        st.session_state["_treat"] = T.design(f, cfg(), res, ev, worklists())
-        st.session_state["_treat_key"] = k
-    return st.session_state["_treat"]
+    return _treatment(dataset(), _cfg_json())
+
+
+@st.cache_resource(show_spinner="Running the fairness test…", max_entries=3)
+def _fairness(name: str, cfg_json: str) -> dict:
+    acc, _, _, ev = _load(name)
+    cv = ev.merge(acc[["customer", "metro"]].drop_duplicates("customer").rename(
+        columns={"customer": "Masked Customer Number", "metro": "Metro Name"}), on="Masked Customer Number", how="left")
+    return T.fairness(_frame(name, cfg_json), _treatment(name, cfg_json), cv)
 
 
 def fairness() -> dict:
-    k = _key("fairness")
-    if st.session_state.get("_fair_key") != k:
-        ev = data()[3]
-        acc = data()[0]
-        cv = ev.merge(acc[["customer", "metro"]].drop_duplicates("customer").rename(
-            columns={"customer": "Masked Customer Number", "metro": "Metro Name"}), on="Masked Customer Number", how="left")
-        st.session_state["_fair"] = T.fairness(frame(), treatment(), cv)
-        st.session_state["_fair_key"] = k
-    return st.session_state["_fair"]
+    return _fairness(dataset(), _cfg_json())
 
 
 # ------------------------------------------------------------------ page bits

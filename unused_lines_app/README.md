@@ -12,7 +12,7 @@ python -m streamlit run unused_lines_app/Home.py --theme.baseFontSize 18
 ```
 
 - Loads only the committed samples in `samples/unused_lines/` (stress book 100,000 customers,
-  synthetic stress data; the 5k demo). Runtime peak about 1.5 GB.
+  synthetic stress data; the 5k demo). Runtime peak about 0.6 GB.
 - Build a dataset offline from a portfolio folder:
   `python -m unused_lines_app.build_sample --data <dir> --name <name> --label "<label>"`.
 - Assumptions edited on **Levers & assumptions** apply to the session only (exploration).

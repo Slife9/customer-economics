@@ -13,7 +13,6 @@ S.header("🔎 Customer drill-down")
 cfg = S.cfg()
 f = S.frame()
 tr = S.treatment()
-mon = S.monthly(S.dataset())
 
 
 def examples(seg: str) -> dict:
@@ -94,7 +93,7 @@ st.markdown("<table><tr><th>Item</th><th>Formula</th><th>Value</th><th>Type</th>
 # ---------------------------------------------------- transactor test
 st.divider()
 Y.band("Regulatory transactor test (12 of 12) - month by month")
-m = mon[mon["Masked Account Number"] == acct].copy()
+m = S.monthly_for(S.dataset(), acct)
 if len(m):
     zero = m["Statement Balance"] <= 0.005
     paid = m["Paid In Full Indicator"].astype(bool) & ~zero

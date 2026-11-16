@@ -88,7 +88,7 @@ st.dataframe(seg, width="stretch")
 # ---------------------------------------------------- stress
 st.divider()
 Y.band("Stress test - Base scenario")
-stv = L.stress(f, cfg, "base")
+stv = S.stress("base")
 g = stv.attrs["go_no_go"]
 fig = go.Figure()
 fig.add_bar(x=[f"{m}x" for m in stv.index], y=stv["wb_headline_value"], name="Annual value (headline)",
