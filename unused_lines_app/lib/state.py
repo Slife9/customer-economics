@@ -109,7 +109,7 @@ def run(scn: str | None = None, multiplier: float = 1.0) -> dict:
     k = _key("run", scn or scenario(), multiplier)
     cache = st.session_state.setdefault("_runs", {})
     if k not in cache:
-        if len(cache) > 12:
+        if len(cache) > 6:
             cache.clear()
         f = frame()
         res = L.run(f, cfg(), scn or scenario(), multiplier)
@@ -158,19 +158,10 @@ def page_link(url_path: str, label: str, icon: str, where=st, **kw) -> None:
 
 
 def header(title: str) -> None:
-    """Title, dataset line, the assumption label (every page) and the
-    value-type legend."""
-    from unused_lines_app.lib import style as Y
-    i = info()
+    """Page title, and a warning when assumptions are edited in this
+    session. The dataset name and the assumption label sit in the sidebar
+    (Home.py); the value-type key is on the Lever guide page."""
     st.title(title)
-    st.caption(f"{i['label']} · {i['card_accounts']:,} card accounts · trailing 12 months to {i['to']}")
-    st.info(LABEL, icon="⚖️")
-    st.markdown("Values are tagged " + " ".join(Y.vt(k) for k in Y.VALUE_TYPE_LABELS)
-                + " - measured from the data, assumed (regulatory or business), from the reference workbook, "
-                  "or derived from those.", unsafe_allow_html=True)
-    if dataset() == "stress":
-        st.caption("Synthetic stress data: a book tuned toward the reference workbook's population, "
-                   "not the illustrative bank's headline.")
     if cfg_edited():
         st.warning("Assumptions edited in this session (exploration only) - figures differ from the agreed "
                    "defaults. Reset on **Levers & assumptions**.")

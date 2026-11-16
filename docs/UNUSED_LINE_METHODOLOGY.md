@@ -131,15 +131,15 @@ PD ≥ 4% rule are partly correlated by construction (both read Table8 PD). Inve
 are approximated (deposits + Segment).
 
 ### Results on the committed samples (default settings)
-| | Stress book | 5k demo |
+| | Stress book (100k customers) | 5k demo |
 |---|---|---|
-| Screened accounts | 4,652 | 890 |
-| Card profit | −$344,894 | −$61,296 |
-| Carrying cost / drawdown loss | $81,204 / $193,433 | $10,630 / $9,926 |
-| Base annual value (headline) | +$22,239 | +$817 |
-| Capital released, one-time (Base) | $14,228 | $1,307 |
-| Pending approval / extra levers | +$52,685 / +$25,078 | +$4,376 / +$2,568 |
-| 1.5× stress | +$19,708 (go) | +$635 (go) |
+| Screened accounts | 40,530 | 890 |
+| Card profit | −$2,579,382 | −$61,296 |
+| Carrying cost / drawdown loss | $693,984 / $1,633,129 | $10,630 / $9,926 |
+| Base annual value (headline) | +$175,389 | +$817 |
+| Capital released, one-time (Base) | $113,865 | $1,307 |
+| Pending approval / extra levers | +$519,808 / +$191,794 | +$4,376 / +$2,568 |
+| 1.5× stress | +$155,257 (go) | +$635 (go) |
 
 Reconciliation, calibration, issues and decisions: `specs/unused_line_management/` (STAGE1–8
 reports, `ISSUES_FOUND.md`, `DECISIONS.md`, `EVALUATION_GUIDE.md`).

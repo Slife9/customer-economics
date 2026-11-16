@@ -14,9 +14,9 @@ Not merged.
 - **Tests:** `python audit/audit_unused_line_module.py --regression` (results in
   `specs/unused_line_management/STAGE8_AUDIT_MODULE.txt`).
 - **Build requirements (offline, recorded):** on Windows Server 10.0.26200, 4 CPUs, 34.4 GB RAM,
-  Python 3.13.12: stress book sample 35 s / 2.35 GB; 5k demo sample 16 s / 0.91 GB; 100k portfolio
+  Python 3.13.12: stress book (100,000 customers) generation 442 s and sample 374 s / 22.2 GB; 5k demo sample 16 s / 0.91 GB; 100k portfolio
   generation 357 s; 100k per-account file 131 s / **15.6 GB peak** (offline only; chunked
-  generation is a logged future improvement). The app at runtime: 0.29–0.42 GB.
+  generation is a logged future improvement). The app at runtime: up to 1.5 GB (100k stress book, all pages, both datasets).
 - **Open:** decisions B4–B8 (config only); fair-lending review of the four-fifths failures;
   compliance confirmation of the regulatory summary; calibration gaps and engine cost split
   (`ISSUES_FOUND.md`); merge order for integration (`ISSUES_FOUND.md`).

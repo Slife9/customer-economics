@@ -1,7 +1,7 @@
 """Precompute a dataset for the Unused Credit Line Management app (offline).
 
     python -m unused_lines_app.build_sample --data <portfolio dir> --name stress \
-        --label "Unused-line stress book (10,000 customers) - synthetic stress data"
+        --label "Unused-line stress book (100,000 customers) - synthetic stress data"
 
 Writes samples/unused_lines/<name>/:
     accounts.parquet      the module's per-account file (engine/unused_lines/data.py)

@@ -592,7 +592,7 @@ def app_checks() -> None:
     samples = ROOT / "samples" / "unused_lines"
     info = {d.name: json.loads((d / "meta.json").read_text()) for d in samples.iterdir() if (d / "meta.json").exists()}
     record("committed samples present (stress book, 5k demo), small files only",
-           set(info) >= {"stress", "demo"} and all(sum(i["files_mb"].values()) < 25 for i in info.values()),
+           set(info) >= {"stress", "demo"} and all(sum(i["files_mb"].values()) < 60 for i in info.values()),
            "; ".join(f"{k}: {i['card_accounts']:,} accounts, {sum(i['files_mb'].values()):.1f} MB, built in "
                      f"{i['build_seconds']}s at peak {i['build_peak_memory_gb']} GB" for k, i in info.items()))
     r = subprocess.run([sys.executable, "-W", "ignore", "-c", _APP_STEP, str(ROOT)], capture_output=True, text=True,

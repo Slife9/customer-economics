@@ -41,5 +41,8 @@ with st.sidebar:
     if choice != S.dataset():
         st.session_state["dataset"] = choice
         st.rerun()
-    st.caption(S.info()["label"])
+    i = S.info()
+    st.caption(f"{i['label']} · {i['card_accounts']:,} card accounts · trailing 12 months to {i['to']}")
+    st.divider()
+    st.caption(f"⚖️ {S.LABEL}")
 nav.run()
