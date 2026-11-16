@@ -1,8 +1,10 @@
 # STATUS: Unused Credit Line Management module (`feature/unused-line-management`)
 
 Built in nine stages from `main` `b660bb8`; reports in `specs/unused_line_management/STAGE*_REPORT.md`,
-design in `ARCHITECTURE.md` §8b, method in `docs/UNUSED_LINE_METHODOLOGY.md`. Not pushed, merged or
-deployed.
+design in `ARCHITECTURE.md` §8b, method in `docs/UNUSED_LINE_METHODOLOGY.md`. Pushed to
+`origin/feature/unused-line-management` and deployed on Streamlit Community Cloud (16 Nov 2026):
+**https://profitinsight-unused-lines.streamlit.app** (main file `unused_lines_app/Home.py`, Python 3.13).
+Not merged.
 
 - **Done:** data additions (Table29, Table30), the `unused_line_stress` profile, regulatory settings
   and the per-account cost layer, screen and segments, levers / response / scenarios / stress test

@@ -94,13 +94,13 @@ if show_cmp:
 st.divider()
 Y.band("Fair lending - four-fifths test by metro (geography proxy, not BISG)")
 fa = S.fairness()
+names = {"module_decreases_and_closures": "Module decreases and closures", "ml_adverse_actions":
+         "ML adverse actions (decrease, freeze)", "ml_increases": "ML increases"}
 fails = {k: v for k, v in fa["summary"].items() if v["groups_failing"]}
 if fails:
     st.markdown('<div class="flag"><b>Four-fifths failures - review before any pilot.</b><ul>' + "".join(
-        f"<li>{k.replace('_', ' ').capitalize()}: <b>{v['groups_failing']}</b> of {v['groups_tested']} metros fail</li>"
+        f"<li>{names.get(k, k)}: <b>{v['groups_failing']}</b> of {v['groups_tested']} metros fail</li>"
         for k, v in fails.items()) + "</ul></div>", unsafe_allow_html=True)
-names = {"module_decreases_and_closures": "Module decreases and closures", "ml_adverse_actions":
-         "ML adverse actions (decrease, freeze)", "ml_increases": "ML increases"}
 tabs = st.tabs([names[k] for k in names if k in fa])
 for tab, k in zip(tabs, [k for k in names if k in fa]):
     with tab:

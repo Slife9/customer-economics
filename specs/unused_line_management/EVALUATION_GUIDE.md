@@ -1,6 +1,6 @@
 # Evaluation guide - Unused Credit Line Management
 
-For whoever signs the module off. Everything below runs locally; nothing is deployed.
+For whoever signs the module off. Live app: https://profitinsight-unused-lines.streamlit.app; everything below also runs locally.
 
 ## 1. Run it
 
@@ -127,8 +127,10 @@ together).
 - [ ] Decisions B4–B8 taken (config only)
 - [ ] Pilot design agreed (10% holdout, stratified by segment)
 
-## 5. Deployment preparation (not deployed)
-Streamlit Community Cloud, like the L1 Rewards app:
+## 5. Deployment
+Deployed on 16 Nov 2026: **https://profitinsight-unused-lines.streamlit.app** (branch
+`feature/unused-line-management`, Python 3.13). It redeploys on every push to the branch. Steps used,
+for a redeploy elsewhere:
 
 1. Push the branch (only when asked) to the GitHub repository.
 2. On share.streamlit.io: **New app** → repository and branch `feature/unused-line-management` →
