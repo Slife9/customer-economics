@@ -96,8 +96,6 @@ with tab[0]:
                         "Expected drawdown loss", "Total unused-line cost", "Card profit under the assumed capital rules",
                         "Relationship-adjusted profit", "Card profit per account"]
         st.dataframe(show, width="stretch")
-        S.md(f"{Y.vt('measured')} accounts, unused lines, card profit · {Y.vt('regulatory')}{Y.vt('business')} "
-             f"carrying cost · {Y.vt('workbook')} drawdown loss (LEQ)", unsafe_allow_html=True)
     else:
         show = pd.DataFrame({"Group": [S.seg_label(k) for k in order] + ["Total"],
                              "Accounts": [f"{int(v):,}" for v in summ["accounts"]],
