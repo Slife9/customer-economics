@@ -1,7 +1,14 @@
 # Decisions log
 
 Decisions received after the Stage 1 audit, newest first. Open decisions with the boss
-(B4–B8) are in `OPEN_DECISIONS.md` and stay behind config flags.
+(B4–B7) are in `OPEN_DECISIONS.md` and stay behind config flags.
+
+## 17 Nov 2026: B8 final - the ML model plays no role in this module
+
+| Decision | Where it lives |
+|---|---|
+| **B8: ML model not used in this module.** The agreement flag, the ML columns (`ml_action`, `ml_primary_reason`, `ml_recommended_limit`), the ML rule text and the two ML fairness tests (adverse actions, increases) are removed from `engine/unused_lines/`, `unused_lines_app/`, the tests, the docs and the per-account sample files. `engine/ml/` is not modified; the module simply stops reading it | `treatment.py`, `build_sample.py`, `samples/unused_lines/*/engine_view.parquet`, audit check "B8" |
+| Fairness covers the module's own actions only: decreases and closures, and increases if the module ever produces any. A metro with fewer than 30 selected accounts (config `treatment.fairness.min_selected_per_group`) shows "insufficient sample" instead of pass / fail | `treatment.fairness`, config `treatment.fairness` |
 
 ## 15 Nov 2026: answers 2–9 and the Stage 2 notes
 

@@ -573,8 +573,8 @@ the one loading the bundle).
 
 An L2 deep-dive built on branch `feature/unused-line-management` (from `main` `b660bb8`), as a
 **standalone module and app** like the L1 Rewards system: its own engine, pages, per-account file
-and precomputed samples. It reads the core engine (card ledger, ML credit-limit model, suppression,
-L1/L3/L5 worklists, the fairness test) and never changes it; `audit/audit_unused_line_module.py`
+and precomputed samples. It reads the core engine (card ledger, suppression, L1/L3/L5 worklists,
+the fairness test) and never changes it; the ML credit-limit model plays no part (decision B8); `audit/audit_unused_line_module.py`
 checks that by git diff against `main`.
 
 - **What it does:** prices unused card lines per account under the agreed working assumptions (March
@@ -586,7 +586,7 @@ checks that by git diff against `main`.
   (`workbook.py`, the workbook's Calc sheets on its own inputs, exact to the cent).
 - **Config only:** every rate and threshold is in `config/unused_line_assumptions.json` and
   `config/workbook_model.json` (extracted from the workbook, sha256 recorded); the open decisions
-  (B4–B8) are flags.
+  (B4–B7) are flags.
 - **Data:** two additive generator tables (Table29 score history, Table30 card activation) from
   their own random stream (`generator/unused_line_additions.py`), and a new generator profile
   `unused_line_stress` (synthetic stress data). Every existing profile stays byte-identical
@@ -600,8 +600,8 @@ checks that by git diff against `main`.
 Invariants specific to this module: no card line at a 0% CCF; drawdown loss never inside "carrying
 cost"; capital released never added to an annual value; the old capital charge in `card_net` is
 replaced, never added to; annual PD only; every action has a reason code; inactivity actions carry no
-adverse-action notice, credit actions do; protected customers get no action; the ML model is a
-second opinion only.
+adverse-action notice, credit actions do; protected customers get no action; the ML model is never
+read (B8); fairness covers the module's own actions only.
 
 ## 9. Open items — real gaps, not yet built
 

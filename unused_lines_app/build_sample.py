@@ -6,11 +6,11 @@
 Writes samples/unused_lines/<name>/:
     accounts.parquet      the module's per-account file (engine/unused_lines/data.py)
     monthly.parquet       the 12 cycles behind each account's transactor test
-    engine_view.parquet   per customer: the ML model's action (second opinion),
-                          protected customers (the system's suppression: they
-                          receive no action) and membership of the system's
-                          L1 / L3 / L5 worklists,
-                          from engine.run.build_pipeline (read only)
+    engine_view.parquet   per customer: protected customers (the system's
+                          suppression: they receive no action) and membership
+                          of the system's L1 / L3 / L5 worklists, from
+                          engine.run.build_pipeline (read only). The ML
+                          credit-limit model is not used (decision B8).
     meta.json             label, sizes, build time, peak memory, machine
 
 The app loads only these files; it never runs this build (the full build needs
@@ -58,7 +58,7 @@ def engine_view(data_dir: Path) -> pd.DataFrame:
     from engine import run as ER
     pipe = ER.build_pipeline(data_dir)
     cv = pipe["customer_view"]
-    keep = [C] + [c for c in ["ml_action", "ml_primary_reason", "ml_recommended_limit"] if c in cv]
+    keep = [C]
     supp = pipe["suppressed"].suppressed
     # The customer view is the population after suppression; add the
     # suppressed customers back so they can be shown as protected.

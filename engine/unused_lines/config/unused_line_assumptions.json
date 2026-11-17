@@ -279,7 +279,6 @@
     },
     "_corrected_note": "Brief section 7 expects about $117.9M RWA with Relationship at 45% (segment-level mapping of the 2023 55% weight); the account-level test in the module decides per account instead."
   },
-  "ml_model_role": "second_opinion_only",
   "stress_test": {
     "multipliers": [
       1.0,
@@ -333,6 +332,10 @@
       "L1": "L1 rewards worklist",
       "L3": "L3 pricing worklist (e.g. a reprice combined with an engagement offer)",
       "L5": "L5 retention worklist (e.g. a retention target combined with a line cut)"
+    },
+    "fairness": {
+      "_note": "Four-fifths by metro on the module's own actions only (decision B8: the ML model is not used in this module). A metro with fewer selected accounts than this shows 'insufficient sample' instead of pass / fail.",
+      "min_selected_per_group": 30
     },
     "pilot": {
       "holdout_share": 0.1,

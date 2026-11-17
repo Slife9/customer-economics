@@ -74,7 +74,7 @@ Machine: Windows Server 10.0.26200, 4 CPUs, 34.4 GB RAM, Python 3.13.12.
 | Regulatory settings | Worked examples | $13.20 (dormant), $10.56 (revolver), $7.54 (transactor) a year |
 | | "Category IV or other" with default scope | Liquidity cost goes to $0; capital unchanged |
 | | Current US rules view | RWA from unused lines $0; no liquidity cost; SLR shown |
-| | Fairness | Failures flagged in red for module cuts and closures, ML adverse actions and ML increases |
+| | Fairness | Four-fifths by metro on the module's own decreases and closures; failures flagged in red; metros with fewer than 30 selected accounts show "insufficient sample" |
 | Levers & assumptions | Any edit | "Exploration only" warning on every page; Reset restores the defaults |
 | | B6 on | Pending levers move into the headline (Base becomes about +$500,700) |
 | Lever guide | Every lever | Status, reason code, compliance column, timing column |
@@ -121,11 +121,11 @@ together).
 - [ ] B6 levers outside the headline while their flags are off
 - [ ] Every action has a reason code; inactivity actions have no adverse-action notice; credit ones do
 - [ ] No inactivity fee anywhere
-- [ ] ML model shown as a second opinion only
+- [ ] No ML output anywhere in the module (B8: ML model not used)
 - [ ] Fairness failures reviewed by fair lending
 - [ ] Compliance has confirmed the regulatory summary (Reg B, Reg Z, FCRA, LCR, capital)
 - [ ] Finance has replaced the illustrative capital ratio, cost of equity and carry, or accepted them
-- [ ] Decisions B4–B8 taken (config only)
+- [ ] Decisions B4–B7 taken (config only); B8 decided
 - [ ] Pilot design agreed (10% holdout, stratified by segment)
 
 ## 5. Deployment

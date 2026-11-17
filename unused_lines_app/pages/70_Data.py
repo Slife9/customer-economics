@@ -29,7 +29,7 @@ st.dataframe(pd.DataFrame([
     ("Table29 score history", "Behaviour and bureau score by month (score-drop rule) - SYNTHETIC addition, partly "
      "correlated with PD by construction", "synthetic"),
     ("Table30 card activation", "Activation of every plastic (dormant confirmation) - SYNTHETIC addition", "synthetic"),
-    ("Engine (read only)", "Card ledger (card_net), ML credit-limit model, suppression, L1 / L3 / L5 worklists", "measured"),
+    ("Engine (read only)", "Card ledger (card_net), suppression, L1 / L3 / L5 worklists", "measured"),
     ("Reference workbook", "Segment rules, LEQ, lever shares, response rates", "workbook"),
 ], columns=["Source", "Used for", "Type"]), width="stretch", hide_index=True)
 

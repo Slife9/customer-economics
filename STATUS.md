@@ -17,7 +17,7 @@ Not merged.
   Python 3.13.12: stress book (100,000 customers) generation 442 s and sample 374 s / 22.2 GB; 5k demo sample 16 s / 0.91 GB; 100k portfolio
   generation 357 s; 100k per-account file 131 s / **15.6 GB peak** (offline only; chunked
   generation is a logged future improvement). The app at runtime: about 0.6 GB (100k stress book; results cached once per server and shared by all sessions).
-- **Open:** decisions B4–B8 (config only); fair-lending review of the four-fifths failures;
+- **Open:** decisions B4–B7 (config only; B8 decided: the ML model is not used); fair-lending review of the four-fifths failures;
   compliance confirmation of the regulatory summary; calibration gaps and engine cost split
   (`ISSUES_FOUND.md`); merge order for integration (`ISSUES_FOUND.md`).
 

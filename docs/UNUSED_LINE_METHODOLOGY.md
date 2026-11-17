@@ -34,7 +34,7 @@ and proposes an action per customer with the notices it would need.
    Sock-Drawer, Low-Utilization Transactors, Unassigned.
 5. **Value the levers** (line decreases, reactivation campaigns; dormant right-sizing and closures
    only once approved) with the workbook's customer responses, then propose an action per account
-   with its reason code, notice, the ML model's second opinion and a pilot cell.
+   with its reason code, notice and a pilot cell. The ML credit-limit model plays no part (decision B8).
 
 ### Reading the results
 - **Annual value** = change in card profit + reduction in expected drawdown loss. Both parts are
@@ -49,8 +49,9 @@ and proposes an action per customer with the notices it would need.
 ### What to be careful about
 - Customer responses (attrition, spend loss, campaign response) are the workbook's illustrative
   estimates, not measured on this portfolio.
-- The four-fifths fairness test by metro fails in several areas for both the module's cuts and the
-  ML model: a fair-lending review is needed before any pilot.
+- The four-fifths fairness test by metro on the module's own cuts and closures fails in some areas
+  (metros with too few selected accounts show "insufficient sample"): a fair-lending review is needed
+  before any pilot.
 - Regulatory references are a summary for discussion, to be confirmed by compliance.
 
 ---
@@ -68,7 +69,7 @@ and proposes an action per customer with the notices it would need.
 | `segments.py` | Screen, rules, segments, rule trace, summaries, drawdown sensitivity |
 | `levers.py` | System-mode levers, response, scenarios, extra levers, stress test |
 | `workbook.py` | Workbook-reproduction mode (the Calc sheets) |
-| `treatment.py` | Recommendations, reason codes, notices, ML agreement, review-together, pilot, fairness, timing |
+| `treatment.py` | Recommendations, reason codes, notices, review-together, pilot, fairness, timing |
 | `generator/unused_line_additions.py` | Table29 score history, Table30 card activation (additive, own random stream) |
 | `generator/synth/unused_line_stress.py` | The `unused_line_stress` profile (synthetic stress data) |
 | `unused_lines_app/` | Streamlit app on precomputed samples (`build_sample.py`) |
@@ -119,10 +120,11 @@ Reproduces the Dashboard to the cent (Base +$1,329,136.92, 8,470 accounts lost).
 Reason codes `INACTIVITY` / `CREDIT_DETERIORATION` / `IDLE_LINE_RIGHTSIZING` / `CUSTOMER_REQUEST` /
 `OTHER`; notices by reason (credit and idle-line: Reg B adverse action, FCRA check for credit;
 inactivity: Reg B exception); 45-day fee / penalty-rate restriction after a decrease; no inactivity
-fee. The ML model (seven actions; ≤ 25% per account, ≤ 5% of accounts per review, each cut ≥ 15% and
-≥ $500) is a second opinion with an agree / disagree / no-view flag. Four-fifths by metro on module
-cuts and closures, ML adverse actions and ML increases. Review-together flags from the L1 / L3 / L5
-worklists. Pilot: 10% holdout, seeded, stratified by segment. Timing: year-1 share per lever.
+fee. The ML credit-limit model is not used (decision B8). Four-fifths by metro on the module's own
+actions only: decreases and closures (and increases, if the module ever produces any; it produces
+none today). A metro with fewer than `treatment.fairness.min_selected_per_group` (30) selected
+accounts shows "insufficient sample" instead of pass / fail. Review-together flags from the L1 / L3 /
+L5 worklists. Pilot: 10% holdout, seeded, stratified by segment. Timing: year-1 share per lever.
 
 ### Data
 Table29 (score history) and Table30 (card activation) are synthetic additions: additive only, from

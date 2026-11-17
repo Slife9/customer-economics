@@ -155,7 +155,7 @@ def _treatment(name: str, cfg_json: str) -> pd.DataFrame:
     ev = _load(name)[3]
     wl = {code: ev.loc[ev[f"in_{code}"], ["Masked Customer Number"]] for code in ["L1", "L3", "L5"]
           if f"in_{code}" in ev}
-    return T.design(f, c, res, ev, wl)
+    return T.design(f, c, res, wl)
 
 
 def treatment() -> pd.DataFrame:
@@ -164,10 +164,7 @@ def treatment() -> pd.DataFrame:
 
 @st.cache_resource(show_spinner="Running the fairness test…", max_entries=3)
 def _fairness(name: str, cfg_json: str) -> dict:
-    acc, _, _, ev = _load(name)
-    cv = ev.merge(acc[["customer", "metro"]].drop_duplicates("customer").rename(
-        columns={"customer": "Masked Customer Number", "metro": "Metro Name"}), on="Masked Customer Number", how="left")
-    return T.fairness(_frame(name, cfg_json), _treatment(name, cfg_json), cv)
+    return T.fairness(_frame(name, cfg_json), _treatment(name, cfg_json), json.loads(cfg_json))
 
 
 def fairness() -> dict:

@@ -2,17 +2,19 @@
 
 Per account in scope, from the Base scenario's selection (levers.run):
     recommended lever(s), a mandatory reason code, the notice it triggers,
-    the 45-day fee / penalty-rate restriction after a decrease, the ML
-    model's view and an agreement flag (second opinion only, never an input),
-    "review together" flags for the system's L1 / L3 / L5 worklists, and a
-    pilot cell (seeded, stratified holdout).
+    the 45-day fee / penalty-rate restriction after a decrease, "review
+    together" flags for the system's L1 / L3 / L5 worklists, and a pilot cell
+    (seeded, stratified holdout).
 Compliance text is a summary for discussion; to be confirmed by compliance.
 No lever ever proposes an inactivity fee.
 
-The ML model and the worklists come from the existing engine
-(engine.run.build_pipeline), read only; the fairness test is the existing
-engine.governance.fairness.four_fifths_test, called with three selections:
-module decreases and closures, ML adverse actions, ML increases.
+The ML credit-limit model plays no part in this module (decision B8). The
+worklists come from the existing engine (engine.run.build_pipeline), read
+only. Fairness covers the module's own actions only: the existing
+engine.governance.fairness.four_fifths_test on decreases and closures, and on
+increases if the module ever produces any; a metro with fewer selected
+accounts than `treatment.fairness.min_selected_per_group` is reported as
+"insufficient sample" rather than pass or fail.
 """
 from __future__ import annotations
 import hashlib
@@ -23,22 +25,6 @@ import pandas as pd
 from . import levers as L
 
 LINE_DECREASE_LEVERS = ["line_decrease", "risk_based_decrease", "dormant_rightsizing", "transactor_rightsizing"]
-ML_ADVERSE = ["DECREASE_UNUSED_EXPOSURE", "FREEZE_NO_INCREASE"]
-ML_NO_VIEW = ["INSUFFICIENT_HISTORY", "NOT_ELIGIBLE", "MANUAL_REVIEW"]
-ML_ACTIONS = ["INSUFFICIENT_HISTORY", "NOT_ELIGIBLE", "FREEZE_NO_INCREASE", "MANUAL_REVIEW",
-              "DECREASE_UNUSED_EXPOSURE", "INCREASE", "MAINTAIN"]
-
-
-def ml_rules_text() -> list[str]:
-    """The ML model's cut rules, read from its own policy and code."""
-    from engine.ml import decisions as MLDEC
-    p, _ = MLDEC.load_policy()
-    return [f"At most {p['maximum_percentage_reduction']:.0%} cut per account",
-            f"At most {p['maximum_reduction_share_per_review']:.0%} of accounts cut per review",
-            f"Each cut at least {1 - MLDEC.REDUCTION_CUT_FLOOR:.0%} of the line and at least "
-            f"${p['minimum_reduction_amount']:,.0f}",
-            f"Seven actions: {', '.join(ML_ACTIONS)}"]
-
 
 def _hash_rank(keys, seed) -> np.ndarray:
     return np.array([int(hashlib.sha256(f"{seed}:{k}".encode()).hexdigest()[:12], 16) for k in keys], dtype=float)
@@ -59,17 +45,7 @@ def pilot_cells(f: pd.DataFrame, mask: pd.Series, cfg: dict) -> pd.Series:
     return out
 
 
-def agreement(module_line_action: pd.Series, ml_action: pd.Series) -> pd.Series:
-    cut = module_line_action.isin(["decrease", "closure"])
-    ml = ml_action.fillna("NO_SCORE")
-    no_view = ml.isin(ML_NO_VIEW + ["NO_SCORE"])
-    ml_cut = ml.isin(ML_ADVERSE)
-    agree = (cut & ml_cut) | (~cut & ml.isin(["MAINTAIN", "FREEZE_NO_INCREASE"]))
-    return pd.Series(np.where(no_view, "ML has no view", np.where(agree, "agree", "disagree")), index=module_line_action.index)
-
-
-def design(f: pd.DataFrame, cfg: dict, res: dict, ml: pd.DataFrame | None = None,
-           worklists: dict | None = None) -> pd.DataFrame:
+def design(f: pd.DataFrame, cfg: dict, res: dict, worklists: dict | None = None) -> pd.DataFrame:
     """One row per account in scope with a recommendation (or 'none')."""
     tc = cfg["treatment"]
     sel, scope = res["selection"], res["scope"]
@@ -117,13 +93,6 @@ def design(f: pd.DataFrame, cfg: dict, res: dict, ml: pd.DataFrame | None = None
     t["ability_to_pay_check"] = False                       # no increases in this module
     t["new_line"] = np.where(dec, sel.loc[t.index, "new_line"], np.where(clo, 0.0, f.loc[t.index, "limit_current"]))
     t["cut"] = np.where(dec, sel.loc[t.index, "cut"], 0.0)
-    if ml is not None and len(ml):
-        m = ml.set_index("Masked Customer Number")
-        for c in ["ml_action", "ml_primary_reason", "ml_recommended_limit"]:
-            t[c] = t["customer"].map(m[c]) if c in m else np.nan
-    else:
-        t["ml_action"] = t["ml_primary_reason"] = t["ml_recommended_limit"] = np.nan
-    t["ml_agreement"] = agreement(t["line_action"], t["ml_action"])
     rt = []
     members = {k: set(v["Masked Customer Number"]) for k, v in (worklists or {}).items()
                if k in tc["review_together_levers"] and len(v)}
@@ -136,19 +105,45 @@ def design(f: pd.DataFrame, cfg: dict, res: dict, ml: pd.DataFrame | None = None
     return t
 
 
-def fairness(f: pd.DataFrame, treat: pd.DataFrame, cv: pd.DataFrame | None) -> dict:
-    """Four-fifths by metro, three selections, with the existing test."""
+FAIRNESS_TESTS = {"module_decreases_and_closures": "Decreases and closures", "module_increases": "Increases"}
+
+
+def _four_fifths(pop: pd.DataFrame, selected: pd.Series, min_selected: int) -> pd.DataFrame:
+    """The existing test, plus every metro it leaves out, with a status:
+    pass / fail, or insufficient sample (fewer than `min_selected` selected
+    accounts, or under the test's own minimum group size)."""
     from engine.governance import fairness as FAIR
-    out = {"proxy_method": "geography-only (Metro Name), as in the system's fairness module; not BISG"}
+    res = FAIR.four_fifths_test(pop, selected).set_index("group")
+    g = pd.DataFrame({"n": pop.groupby("Metro Name").size(),
+                      "selected": selected.groupby(pop["Metro Name"]).sum().astype(int)})
+    g["selection_rate"] = g["selected"] / g["n"]
+    g["ratio_to_population"] = res["ratio_to_population"].reindex(g.index)
+    ok = g.index.isin(res.index) & (g["selected"] >= min_selected)
+    g["status"] = np.where(~ok, "insufficient sample",
+                           np.where(res["passes"].reindex(g.index).fillna(False).astype(bool), "pass", "fail"))
+    return g.rename_axis("group").reset_index().sort_values(["status", "ratio_to_population"])
+
+
+def fairness(f: pd.DataFrame, treat: pd.DataFrame, cfg: dict) -> dict:
+    """Four-fifths by metro on the module's own actions only: decreases and
+    closures, and increases if the module ever produces any."""
+    k = cfg["treatment"]["fairness"]["min_selected_per_group"]
+    out = {"proxy_method": "geography-only (Metro Name), as in the system's fairness module; not BISG",
+           "min_selected_per_group": k}
     pop = f[f["open_at_reporting_date"] & ~f["charged_off"]].rename(columns={"metro": "Metro Name"})
-    sel = pop.index.isin(treat.index[treat["line_action"].isin(["decrease", "closure"])])
-    out["module_decreases_and_closures"] = FAIR.four_fifths_test(pop, pd.Series(sel, index=pop.index))
-    if cv is not None and "ml_action" in cv:
-        out["ml_adverse_actions"] = FAIR.four_fifths_test(cv, cv["ml_action"].isin(ML_ADVERSE))
-        out["ml_increases"] = FAIR.four_fifths_test(cv, cv["ml_action"].eq("INCREASE"))
-    out["summary"] = {k: {"groups_tested": int(len(v)), "groups_failing": int((~v["passes"]).sum()) if len(v) else 0,
-                          "failing_groups": v.loc[~v["passes"], "group"].tolist() if len(v) else []}
-                      for k, v in out.items() if isinstance(v, pd.DataFrame)}
+    cut = pd.Series(pop.index.isin(treat.index[treat["line_action"].isin(["decrease", "closure"])]), index=pop.index)
+    out["module_decreases_and_closures"] = _four_fifths(pop, cut, k)
+    up = pd.Series(pop.index.isin(treat.index[treat["line_action"].eq("increase")]), index=pop.index)
+    if up.any():
+        out["module_increases"] = _four_fifths(pop, up, k)
+    out["summary"] = {key: {"groups": int(len(v)), "groups_tested": int((v["status"] != "insufficient sample").sum()),
+                            "groups_failing": int((v["status"] == "fail").sum()),
+                            "groups_insufficient": int((v["status"] == "insufficient sample").sum()),
+                            "failing_groups": v.loc[v["status"] == "fail", "group"].tolist(),
+                            "selected": int(v["selected"].sum())}
+                      for key, v in out.items() if isinstance(v, pd.DataFrame)}
+    out["increases_note"] = ("The module produces no line increases, so there is no increase test."
+                             if not up.any() else "")
     return out
 
 

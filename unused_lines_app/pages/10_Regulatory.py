@@ -94,8 +94,7 @@ if show_cmp:
 st.divider()
 Y.band("Fair lending - four-fifths test by metro (geography proxy, not BISG)")
 fa = S.fairness()
-names = {"module_decreases_and_closures": "Module decreases and closures", "ml_adverse_actions":
-         "ML adverse actions (decrease, freeze)", "ml_increases": "ML increases"}
+names = T.FAIRNESS_TESTS
 fails = {k: v for k, v in fa["summary"].items() if v["groups_failing"]}
 if fails:
     S.md('<div class="flag"><b>Four-fifths failures - review before any pilot.</b><ul>' + "".join(
@@ -106,7 +105,6 @@ for tab, k in zip(tabs, [k for k in names if k in fa]):
     with tab:
         df = fa[k].copy()
         st.dataframe(df, width="stretch", hide_index=True)
-S.cap(fa["proxy_method"] + ". Selection rates are compared with the population rate; groups under 30 "
-           "customers are not tested (the system's fairness module).")
-with st.expander("The ML credit-limit model (second opinion only)"):
-    S.md("\n".join(f"- {x}" for x in T.ml_rules_text()))
+S.cap(fa["proxy_method"] + ". Selection rates are compared with the population rate. A metro with fewer than "
+      f"{fa['min_selected_per_group']} selected accounts (or under 30 accounts) shows 'insufficient sample'. "
+      + fa["increases_note"])

@@ -147,12 +147,6 @@ else:
         + (f"- {cfg['treatment']['fee_restriction_text']}\n" if t["fee_restriction_45_days"] else "")
         + (f"- {cfg['treatment']['fcra_flag_text']}\n" if t["fcra_score_disclosure_check"] else "")
         + f"- **Pilot cell:** {t['pilot_cell']}")
-    Y.band("ML credit-limit model - second opinion only")
-    S.md(f"- **ML action:** {t['ml_action'] if pd.notna(t['ml_action']) else 'no score'}"
-                + (f" ({t['ml_primary_reason']})" if pd.notna(t.get('ml_primary_reason')) else "") + "\n"
-                f"- **Agreement with the module:** **{t['ml_agreement']}**\n"
-                "- Never a decision input. Its treatment fairness test fails the four-fifths rule in several metros "
-                "(see Regulatory settings).")
     Y.band("Other worklists this customer is in")
     st.write(t["review_together"] or "None of L1, L3 or L5 - no review-together flag.")
 
@@ -167,7 +161,7 @@ notes = [f"# Review notes - account {acct}", "", "**Review notes, not an approva
 if t is not None:
     notes += [f"- Recommended: {t['recommended_levers']}" + (" (pending approval)" if t["pending_approval"] else ""),
               f"- Reason code: {t['reason_code']}; notice: {t['notice']}",
-              f"- ML: {t['ml_action']} ({t['ml_agreement']}); other worklists: {t['review_together'] or 'none'}",
+              f"- Other worklists: {t['review_together'] or 'none'}",
               f"- Pilot cell: {t['pilot_cell']}"]
 notes += ["", G.COMPLIANCE_NOTE, "Expected values under illustrative assumptions; pilot with a holdout before acting."]
 st.download_button("Download review notes (not an approval record)", "\n".join(notes).encode("utf-8"),

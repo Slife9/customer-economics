@@ -18,7 +18,7 @@
   },
   "files_mb": {
     "accounts.parquet": 9.98,
-    "engine_view.parquet": 0.41,
+    "engine_view.parquet": 0.24,
     "monthly.parquet": 12.12
   }
 }
