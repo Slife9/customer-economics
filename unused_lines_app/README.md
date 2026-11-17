@@ -11,11 +11,18 @@ python -m pip install -r unused_lines_app/requirements.txt
 python -m streamlit run unused_lines_app/Home.py --theme.baseFontSize 18
 ```
 
+- **Two views** (sidebar): **Executive** (default) - five decision pages in plain language
+  (Executive summary, Where the cost sits, Actions and value, Risks and checks, Customer evidence);
+  **Analyst** - the same pages with formulas, value types and full tables, plus Explore & reference
+  (What-if, Lever guide & regulation, Data & calibration, Technical).
+- Every decision page follows one template: headline sentence, at most four cards (one dominant),
+  one chart, "What this means", "What to decide / do", Details.
 - Loads only the committed samples in `samples/unused_lines/` (stress book 100,000 customers,
-  synthetic stress data; the 5k demo). Runtime peak about 0.6 GB.
+  synthetic stress data; the 5k demo). Runtime peak about 0.85 GB (all pages, both views, both
+  datasets, one process).
 - Build a dataset offline from a portfolio folder:
   `python -m unused_lines_app.build_sample --data <dir> --name <name> --label "<label>"`.
-- Assumptions edited on **Levers & assumptions** apply to the session only (exploration).
+- Assumptions edited on **What-if** (analyst view) apply to the session only (exploration).
 - Streamlit Community Cloud: main file `unused_lines_app/Home.py`; requirements next to it; no
   secrets. Deployed: https://profitinsight-unused-lines.streamlit.app (steps in
   `specs/unused_line_management/EVALUATION_GUIDE.md`).

@@ -7,7 +7,8 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from unused_lines_app.lib import state as S, style as Y  # noqa: E402
 
-S.header("🧪 Datasets & calibration")
+S.header("🧪 Data & calibration")
+S.analyst_only()
 i = S.info()
 
 Y.band("The dataset in use")
@@ -24,8 +25,10 @@ Y.band("Data used, and what is synthetic")
 st.dataframe(pd.DataFrame([
     ("Table4 account cycles", "Line, balances, statement balance, paid in full, promotional / BT balance", "measured"),
     ("Table5 / Table5b", "Spend and activity; installment plan balances", "measured"),
-    ("Table8 risk parameters", "PD 12 Month (annual) and LGD at the reporting date - never lifetime PD", "measured"),
-    ("Table9", "Behavioral CCF: the measured LEQ for Unassigned", "measured"),
+    ("Table8 risk parameters", "PD 12 Month (annual) and LGD at the reporting date - never lifetime PD; a missing "
+     "PD takes the segment average (B1)", "measured"),
+    ("Table9", "Behavioral CCF: each account's LEQ under the default setting (B2); a generator parameter on this "
+     "synthetic data (0.42 / 0.798)", "measured"),
     ("Table29 score history", "Behaviour and bureau score by month (score-drop rule) - SYNTHETIC addition, partly "
      "correlated with PD by construction", "synthetic"),
     ("Table30 card activation", "Activation of every plastic (dormant confirmation) - SYNTHETIC addition", "synthetic"),
@@ -34,10 +37,8 @@ st.dataframe(pd.DataFrame([
 ], columns=["Source", "Used for", "Type"]), width="stretch", hide_index=True)
 
 Y.band("Calibration against the reference workbook (informational; never a failure)")
-csv = S.ROOT / "specs" / "unused_line_management" / (
-    "CALIBRATION_unused_line_stress.csv" if S.dataset() == "stress" else "CALIBRATION_demo.csv")
-if csv.exists():
-    cal = pd.read_csv(csv)
+cal = S.calibration()
+if cal is not None:
     v = cal["Within Band"].value_counts()
     S.md(f"**{int(v.get('within', 0))}** of {int(v.get('within', 0) + v.get('outside', 0))} metrics within ±25% of "
                 "the workbook's segment inputs" + (" (measured when the stress profile was tuned, on its 10,000-customer "

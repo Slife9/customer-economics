@@ -62,9 +62,11 @@ Stage 8 runs everything above as one suite, plus:
 
     python audit/audit_unused_line_module.py --regression         --bundle-100k <rebuilt 100k v2 bundle> --frame-100k <its per-account parquet>         --frame-100k-json <build timing>
 
-Stage 7 (app):
-11. The committed samples, every page on both datasets (AppTest), and the
-    app's peak memory in one process.
+Stage 7 (app; revision C):
+11. The committed samples, every page in both views (executive, analyst) on
+    both datasets (AppTest), no value-type badge, technical label or
+    analyst-only page in the executive view, and the app's peak memory in
+    one process.
 
 Prints a PASS/FAIL table; exits 1 if any check FAILs.
 """
@@ -608,16 +610,23 @@ from streamlit.testing.v1 import AppTest
 pages = sorted((Path(sys.argv[1]) / "unused_lines_app" / "pages").glob("*.py"))
 out = []
 for ds in ["stress", "demo"]:
-    for p in pages:
-        t0 = time.time()
-        at = AppTest.from_file(str(p), default_timeout=300)
-        at.session_state["dataset"] = ds
-        at.run()
-        out.append({"dataset": ds, "page": p.name, "seconds": round(time.time() - t0, 2),
-                    "exceptions": [str(e.value)[:200] for e in at.exception], "titles": len(at.title)})
+    for view in ["executive", "analyst"]:
+        for p in pages:
+            t0 = time.time()
+            at = AppTest.from_file(str(p), default_timeout=300)
+            at.session_state["dataset"] = ds
+            at.session_state["view"] = view
+            at.run()
+            text = [m.value for m in at.markdown] + [c.value for c in at.caption]
+            out.append({"dataset": ds, "view": view, "page": p.name, "seconds": round(time.time() - t0, 2),
+                        "exceptions": [str(e.value)[:200] for e in at.exception], "titles": len(at.title),
+                        "text": text, "infos": [i.value for i in at.info]})
 mi = psutil.Process().memory_info()
 print(json.dumps({"pages": out, "peak_gb": round((getattr(mi, "peak_wset", None) or mi.rss) / 1e9, 3)}))
 """
+DECISION_PAGES = ["01_Summary.py", "02_Cost.py", "03_Actions.py", "04_Risks.py", "05_Customers.py"]
+TECHNICAL_LABELS = ["Screened accounts", "Carrying cost", "Drawdown loss", "Headline value", "Go/no-go",
+                    "Pending approval (B6)", "Capital released"]
 
 
 # Code the module must never change (brief s.8; read and called only).
@@ -677,10 +686,22 @@ def app_checks() -> None:
         record("every app page runs on both datasets", False, r.stderr[-300:])
         return
     s = json.loads(r.stdout.strip().splitlines()[-1])
-    bad = [f"{p['dataset']}/{p['page']}" for p in s["pages"] if p["exceptions"] or not p["titles"]]
-    record("every app page runs on both datasets without an exception", not bad,
+    bad = [f"{p['dataset']}/{p['view']}/{p['page']}" for p in s["pages"] if p["exceptions"] or not p["titles"]]
+    record("every app page runs in both views on both datasets without an exception", not bad,
            f"{len(s['pages'])} page runs; slowest {max(p['seconds'] for p in s['pages'])}s" + (f"; failing {bad}" if bad else ""))
-    record("app runtime on the committed samples under 2 GB (all pages, both datasets, one process)",
+    exe = [p for p in s["pages"] if p["view"] == "executive"]
+    badges = [f"{p['dataset']}/{p['page']}" for p in exe if any('class="vt"' in t for t in p["text"])]
+    tech = sorted({f"{p['page']}: {lab}" for p in exe if p["page"] in DECISION_PAGES[:4]
+                   for lab in TECHNICAL_LABELS for t in p["text"] if lab in t})
+    gated = [f"{p['dataset']}/{p['page']}" for p in exe if p["page"] not in DECISION_PAGES
+             and not any("Analyst view" in i for i in p["infos"])]
+    record("executive view: no value-type badges, no technical labels on the decision pages, analyst-only pages "
+           "gated", not badges and not tech and not gated,
+           f"badges {badges or 'none'}; technical labels {tech or 'none'}; ungated {gated or 'none'}")
+    ana = [p for p in s["pages"] if p["view"] == "analyst"]
+    record("analyst view: every page shows its full content (no analyst-only gate)",
+           not any(p["infos"] and any("Analyst view" in i for i in p["infos"]) for p in ana))
+    record("app runtime on the committed samples under 2 GB (all pages, both views, both datasets, one process)",
            s["peak_gb"] < 2.0, f"peak {s['peak_gb']} GB")
 
 

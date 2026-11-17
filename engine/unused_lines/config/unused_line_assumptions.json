@@ -307,6 +307,13 @@
     ],
     "go_no_go_multiplier": 1.5
   },
+  "presentation": {
+    "_note": "Revision C: thresholds for the app's traffic-light status tiles (presentation only; no calculation uses them).",
+    "calibration_status": {
+      "green_min_share": 0.8,
+      "amber_min_share": 0.5
+    }
+  },
   "scenarios": [
     "conservative",
     "base",

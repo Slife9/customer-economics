@@ -51,6 +51,15 @@ and proposes an action per customer with the notices it would need.
 - **The stress book** is synthetic stress data tuned toward the workbook's population; the **5k
   demo** is the standard illustrative bank.
 
+### Reading the app
+The app opens in the **Executive view**: five pages, each answering one question - *Executive
+summary*, *Where the cost sits*, *Actions and value*, *Risks and checks*, *Customer evidence* - in
+plain language (for example "Accounts losing money with large unused lines" for screened accounts,
+"Unused cards" for the Dormant segment). The three actions executives see are **Trim unused
+limits**, **Wake up or close dormant cards** and **Stop automatic increases**. The **Analyst view**
+(sidebar) adds the formulas, value types, full tables, the reconciliation to the main engine's card
+profit, the workbook-reproduction panel and the What-if settings.
+
 ### What to be careful about
 - Customer responses (attrition, spend loss, campaign response) are the workbook's illustrative
   estimates, not measured on this portfolio.
@@ -77,7 +86,7 @@ and proposes an action per customer with the notices it would need.
 | `treatment.py` | Recommendations, reason codes, notices, review-together, pilot, fairness, timing |
 | `generator/unused_line_additions.py` | Table29 score history, Table30 card activation (additive, own random stream) |
 | `generator/synth/unused_line_stress.py` | The `unused_line_stress` profile (synthetic stress data) |
-| `unused_lines_app/` | Streamlit app on precomputed samples (`build_sample.py`) |
+| `unused_lines_app/` | Streamlit app on precomputed samples (`build_sample.py`); executive and analyst views; `lib/results.py` holds the decision numbers and status tiles |
 | `audit/audit_unused_line_module.py` | The acceptance suite (brief s.7) |
 
 ### Per account (exposure.py)

@@ -9,8 +9,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from unused_lines_app.lib import state as S, style as Y  # noqa: E402
 from engine.unused_lines.assumptions import SCENARIOS, WORKBOOK_SEGMENTS, AssumptionsError  # noqa: E402
 
-S.header("🎚️ Levers & assumptions")
-st.warning("**Exploration only.** Changes apply to this browser session and are never saved to the configuration.")
+S.header("🎚️ What-if: levers & assumptions")
+S.analyst_only()
+st.warning("**Exploration only.** Changes apply to this browser session and are never saved to the configuration. "
+           "Every page shows a warning while settings differ from the agreed defaults.")
 cfg = S.cfg()
 new = copy.deepcopy(cfg)
 if st.button("Reset to the agreed defaults", disabled=not S.cfg_edited()):
@@ -31,9 +33,34 @@ new["levers"]["scope_mode"] = c3.radio("B7 - scope", cfg["levers"]["scope_mode_o
                                        index=cfg["levers"]["scope_mode_options"].index(cfg["levers"]["scope_mode"]),
                                        format_func={"workbook_unprofitable_low_use": "Workbook scope (default)",
                                                     "full_line_management": "Full line management"}.get)
-S.cap("B8: the ML credit-limit model is not used in this module. B4: capital ratio and cost of equity below.")
+S.cap("B8 decided: the ML credit-limit model is not used in this module. B4: capital ratio and cost of equity below.")
 new["screen"]["include_expected_drawdown_loss"] = st.toggle(
     "Screen including expected drawdown loss (sensitivity; default off)", value=cfg["screen"]["include_expected_drawdown_loss"])
+
+# ---------------------------------------------------- calculation settings (revision B)
+Y.band("Calculation settings")
+d1, d2, d3 = st.columns(3)
+dr, co = cfg["drawdown_risk"], cfg["costs"]
+new["drawdown_risk"]["leq_source"] = d1.radio(
+    "LEQ source (B2)", dr["leq_source_options"], index=dr["leq_source_options"].index(dr["leq_source"]),
+    format_func={"measured_account": "Account Behavioral CCF (default)", "workbook_segment": "Workbook segment LEQ"}.get)
+new["costs"]["fixed_cost_basis"] = d2.radio(
+    "Fixed cost per account (B5)", co["fixed_cost_basis_options"],
+    index=co["fixed_cost_basis_options"].index(co["fixed_cost_basis"]),
+    format_func={"engine_allocated": "Engine allocation (default)", "workbook_segment": "Workbook, by segment"}.get)
+new["treatment"]["fairness"]["min_selected_per_group"] = d3.number_input(
+    "Fairness: minimum selected accounts per metro", 1, 500, cfg["treatment"]["fairness"]["min_selected_per_group"])
+
+Y.band("Bank profile")
+bp = cfg["bank_profile"]
+b1, b2 = st.columns(2)
+new["bank_profile"]["apply_to"] = b1.radio(
+    "Apply the conservative LCR assumption to", bp["apply_to_options"],
+    index=bp["apply_to_options"].index(bp["apply_to"]),
+    format_func={"category_I_III": "Category I-III banks (default)", "all_banks": "All banks"}.get)
+new["bank_profile"]["bank_category"] = b2.radio(
+    "This bank is", bp["bank_category_options"], index=bp["bank_category_options"].index(bp["bank_category"]),
+    format_func={"category_I_III": "Category I-III (default)", "category_IV_or_other": "Category IV or other"}.get)
 
 # ---------------------------------------------------- parameters
 Y.band("Regulatory and business parameters")

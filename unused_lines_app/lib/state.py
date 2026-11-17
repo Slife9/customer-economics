@@ -6,6 +6,10 @@ results, and formatting helpers.
 Adapted from rewards_app/lib/state.py on feature/l1-rewards-system (495b0ec):
 the page-link registry, the session-config pattern and the formatters are
 copied; loading reads this module's samples. Not merged; self-contained.
+
+The view (revision C): "executive" (default) shows plain labels, no
+formulas, value-type badges, technical column names or wide tables;
+"analyst" shows everything, plus the Explore & reference pages.
 """
 from __future__ import annotations
 import copy
@@ -22,6 +26,7 @@ if str(ROOT) not in sys.path:
 
 from engine.unused_lines import assumptions as A, data as D, segments as SG  # noqa: E402
 from engine.unused_lines import levers as L, treatment as T, exposure as X  # noqa: E402
+from unused_lines_app.lib import guide as G  # noqa: E402
 
 SAMPLE_DIR = ROOT / "samples" / "unused_lines"
 DATASETS = {"stress": SAMPLE_DIR / "stress", "demo": SAMPLE_DIR / "demo"}
@@ -29,6 +34,8 @@ DEFAULT_DATASET = "stress"
 LABEL = ("Assumes the March 2026 Basel III endgame proposal is adopted as proposed; LCR outflow applied "
          "conservatively to all unused card lines. Capital ratio, cost of equity and carry are illustrative.")
 PAGES: dict = {}  # url_path -> st.Page, registered by Home.py on every run
+VIEWS = {"executive": "Executive view", "analyst": "Analyst view"}
+DEFAULT_VIEW = "executive"
 
 
 # ------------------------------------------------------------------ data
@@ -67,6 +74,33 @@ def info() -> dict:
     return data()[2]
 
 
+# ------------------------------------------------------------------ view
+def view() -> str:
+    return st.session_state.get("view", DEFAULT_VIEW)
+
+
+def analyst() -> bool:
+    return view() == "analyst"
+
+
+def analyst_only() -> None:
+    """Explore & reference pages: the analyst view only."""
+    if not analyst():
+        st.info("This page is part of the **Analyst view**. Switch the view in the sidebar to see it.")
+        st.stop()
+
+
+def term(key: str) -> str:
+    """The label for a figure in the current view (guide.TERMS)."""
+    tech, plain, _ = G.TERMS[key]
+    return tech if analyst() else plain
+
+
+def define(key: str) -> str:
+    """One-line definition, shown on hover."""
+    return G.TERMS[key][2]
+
+
 # ------------------------------------------------------------- assumptions
 def cfg() -> dict:
     if "cfg" not in st.session_state:
@@ -98,14 +132,18 @@ def _cfg_json() -> str:
 
 
 # ----------------------------------------------------------------- results
-@st.cache_resource(show_spinner="Segmenting the accounts…", max_entries=3)
-def _frame(name: str, cfg_json: str) -> pd.DataFrame:
+def _build(name: str, c: dict) -> pd.DataFrame:
     acc, meta, _, ev = _load(name)
     acc = acc.copy()
     prot = ev.set_index("Masked Customer Number")
     acc["protected"] = acc["customer"].map(prot["protected"]).fillna(False).astype(bool)
     acc["suppression_reason"] = acc["customer"].map(prot["suppression_reason"]).fillna("")
-    return SG.build(acc, meta, json.loads(cfg_json))
+    return SG.build(acc, meta, c)
+
+
+@st.cache_resource(show_spinner="Segmenting the accounts…", max_entries=3)
+def _frame(name: str, cfg_json: str) -> pd.DataFrame:
+    return _build(name, json.loads(cfg_json))
 
 
 def frame() -> pd.DataFrame:
@@ -130,6 +168,32 @@ def _run(name: str, cfg_json: str, scn: str, multiplier: float) -> dict:
 
 def run(scn: str | None = None, multiplier: float = 1.0) -> dict:
     return _run(dataset(), _cfg_json(), scn or scenario(), float(multiplier))
+
+
+@st.cache_resource(show_spinner="Valuing the alternative setting…", max_entries=6)
+def _alt(name: str, cfg_json: str, overrides_json: str) -> dict:
+    """Base-scenario headline under an alternative setting (e.g. the fixed
+    cost basis). Only the small summary is kept, not the frame."""
+    c = A.with_overrides(json.loads(cfg_json), json.loads(overrides_json))
+    f = _build(name, c)
+    s = L.summary(L.run(f, c, "base"), c, f)
+    return {"summary": s, "screened": int(f["screened"].sum()),
+            "card_profit": float(f.loc[f["screened"], "card_profit"].sum())}
+
+
+def alt(overrides: dict) -> dict:
+    return _alt(dataset(), _cfg_json(), json.dumps(overrides, sort_keys=True))
+
+
+@st.cache_resource(show_spinner=False, max_entries=2)
+def _calibration(name: str) -> pd.DataFrame | None:
+    p = ROOT / "specs" / "unused_line_management" / (
+        "CALIBRATION_unused_line_stress.csv" if name == "stress" else "CALIBRATION_demo.csv")
+    return pd.read_csv(p) if p.exists() else None
+
+
+def calibration() -> pd.DataFrame | None:
+    return _calibration(dataset())
 
 
 @st.cache_resource(show_spinner="Running the stress test…", max_entries=3)
@@ -183,12 +247,12 @@ def page_link(url_path: str, label: str, icon: str, where=st, **kw) -> None:
 
 def header(title: str) -> None:
     """Page title, and a warning when assumptions are edited in this
-    session. The dataset name and the assumption label sit in the sidebar
-    (Home.py); the value-type key is on the Lever guide page."""
+    session. The dataset name, the view switch and the assumption label sit
+    in the sidebar (Home.py); the value-type key is on the Technical page."""
     st.title(title)
     if cfg_edited():
         st.warning("Assumptions edited in this session (exploration only) - figures differ from the agreed "
-                   "defaults. Reset on **Levers & assumptions**.")
+                   "defaults. Reset on **What-if**.")
 
 
 def md(text: str, where=st, **kw) -> None:
@@ -209,6 +273,9 @@ def caveat() -> None:
 
 
 def seg_label(key: str) -> str:
+    """Segment name: plain in the executive view, technical in the analyst view."""
+    if not analyst():
+        return G.PLAIN_SEGMENTS.get(key, key)
     return cfg()["segments"]["labels"].get(key, key)
 
 

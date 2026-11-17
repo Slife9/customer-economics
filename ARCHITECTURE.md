@@ -584,6 +584,10 @@ checks that by git diff against `main`.
   (system mode, account level) and proposes an action per account with its reason code and notice.
 - **Two modes:** system mode (default, account data, corrected rules) and workbook-reproduction mode
   (`workbook.py`, the workbook's Calc sheets on its own inputs, exact to the cent).
+- **Revision (17 Nov 2026):** ML model removed (B8); missing PD imputed from the segment; LEQ per
+  account (switch); specific reason codes with notice rules; reconciliation to the main engine's card
+  profit; fixed-cost basis setting; executive / analyst views. Reports
+  `specs/unused_line_management/REVISION_{A,B,C}_REPORT.md`.
 - **Config only:** every rate and threshold is in `config/unused_line_assumptions.json` and
   `config/workbook_model.json` (extracted from the workbook, sha256 recorded); the open decisions
   (B4–B7) are flags.
@@ -592,8 +596,13 @@ checks that by git diff against `main`.
   `unused_line_stress` (synthetic stress data). Every existing profile stays byte-identical
   (`audit/audit_unused_line_data_additions.py`, baseline `specs/unused_line_management/baseline_hashes.json`).
 - **App:** `streamlit run unused_lines_app/Home.py`; loads only `samples/unused_lines/`
-  (stress book 10k and the 5k demo, built offline by `unused_lines_app/build_sample.py`); runtime
-  peak 0.42 GB.
+  (stress book 100k and the 5k demo, built offline by `unused_lines_app/build_sample.py`); runtime
+  peak about 0.85 GB. Two views: Executive (default; five decision pages - Executive summary, Where
+  the cost sits, Actions and value, Risks and checks, Customer evidence - in plain language, one
+  standard template) and Analyst (the same pages with formulas, value types and full tables, plus
+  What-if, Lever guide, Data & calibration, Technical). `lib/results.py` computes the five decision
+  numbers, the plain actions and the status tiles from the cached results; each figure has one home
+  page.
 - **Docs:** `docs/UNUSED_LINE_METHODOLOGY.md` (plain-language and technical),
   `specs/unused_line_management/` (brief, decisions, stage reports, issues, evaluation guide).
 
