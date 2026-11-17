@@ -3,8 +3,9 @@
 Order of work, per account:
 1. The segment rules run on every account (they do not depend on profit),
    first match wins, in the workbook's priority order.
-2. LEQ comes from that segment (Unassigned: the measured portfolio
-   Behavioral CCF), then the s.2 costs (exposure.account_costs).
+2. LEQ: the account's measured Behavioral CCF, or the workbook LEQ of that
+   segment (config drawdown_risk.leq_source; Unassigned: the measured
+   portfolio Behavioral CCF), then the s.2 costs (exposure.account_costs).
 3. The screen keeps unprofitable low-use accounts; a screened account's
    segment is its rule segment, anyone else has none.
 
@@ -132,10 +133,8 @@ def build(acc: pd.DataFrame, meta: dict, cfg: dict) -> pd.DataFrame:
     trace = rule_trace(acc, cfg)
     out = acc.copy()
     out["rule_segment"] = rule_segment(trace, cfg, acc.index)
-    leq = cfg["drawdown_risk"]["leq_by_segment"]
-    out["leq"] = out["rule_segment"].map(leq).fillna(meta["leq_unassigned_measured"]).astype(float)
-    out["leq_source"] = np.where(out["rule_segment"].isin(list(leq)), "workbook segment LEQ",
-                                 "measured portfolio Behavioral CCF (assumption-based)")
+    for k, v in X.leq_columns(out, cfg, meta["leq_unassigned_measured"]).items():
+        out[k] = v
     out = X.account_costs(out, cfg)
     for k, v in trace.items():
         out[f"met:{k}"] = v[2]

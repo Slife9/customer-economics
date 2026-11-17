@@ -155,7 +155,7 @@ def _state(f, cfg, cut, bal_add, pd_mult, spend_loss):
     ucl = (f["ucl"] - cut - bal_add).clip(lower=0)
     nonq = f["rw_basis"] == "non_qualifying_retail"
     rw = np.where((bal_add > 0) & ~nonq, np.maximum(f["rw"], cfg["capital"]["risk_weight_non_transactor"]), f["rw"])
-    pd12 = f["pd_12m"].fillna(0.0)
+    pd12 = f["pd_used"]
     lgd = f["lgd"].fillna(cfg["workbook"]["portfolio"]["lgd"])
     core = X._core(bal, ucl, rw, pd12 * pd_mult, lgd, f["leq"], cfg)
     cost_now = f["capital_cost"] + f["liquidity_cost"]
@@ -225,7 +225,7 @@ def extra_levers(f: pd.DataFrame, cfg: dict, scope: pd.Series, closed: pd.Series
     rate = A.annual_capital_cost_rate(cfg)
     outflow = cfg["liquidity"]["lcr_outflow_unused_card_lines"] if A.liquidity_applies(cfg) else 0.0
     lgd = f["lgd"].fillna(cfg["workbook"]["portfolio"]["lgd"])
-    pd12 = f["pd_12m"].fillna(0.0)
+    pd12 = f["pd_used"]
     per_ucl_carry = cfg["capital"]["ccf_unused_card_lines"] * f["rw"] * rate + outflow * cfg["liquidity"]["negative_carry"]
     per_ucl_el = pd12 * lgd * f["leq"]
     out = {}
@@ -376,4 +376,21 @@ def stress(frame: pd.DataFrame, cfg: dict, scenario: str = "base") -> pd.DataFra
     df.attrs["go_no_go"] = {"multiplier": go, "headline_value": float(df.loc[go, "wb_headline_value"]),
                             "card_profit_change": float(df.loc[go, "wb_card_profit_change"]),
                             "go": bool(df.loc[go, "wb_headline_value"] > 0)}
+    df.attrs["go_no_go"]["statement"] = robustness_statement(df)
     return df
+
+
+def robustness_statement(stv: pd.DataFrame) -> str:
+    """B6: the go / no-go result with its basis stated, from the results:
+    the headline basis (card profit + reduced drawdown loss) and where card
+    profit alone turns negative."""
+    go = stv.attrs["go_no_go"]
+    m = go["multiplier"]
+    neg = stv.index[stv["wb_card_profit_change"] < 0]
+    out = f"{'Passes' if go['go'] else 'Fails'} at {m:g}x on value including reduced risk"
+    if not len(neg):
+        return out + "; card profit alone stays positive at every multiplier tested"
+    first = float(neg.min())
+    if first <= float(stv.index.min()):
+        return out + f"; card profit alone is negative already at {first:g}x"
+    return out + f"; card profit alone turns negative at {first:g}x"

@@ -61,8 +61,20 @@ def validate(cfg: dict) -> None:
     missing = [s for s in WORKBOOK_SEGMENTS if s not in leq]
     if missing:
         raise AssumptionsError(f"drawdown_risk.leq_by_segment missing {missing}")
-    if cfg["drawdown_risk"]["pd_basis"] != "annual":
+    dr = cfg["drawdown_risk"]
+    if dr["pd_basis"] != "annual":
         raise AssumptionsError("drawdown loss uses annual PD only (brief s.2.4)")
+    if dr["missing_pd"] != "segment_average":
+        raise AssumptionsError("a missing PD is imputed from the segment average; it never means zero risk")
+    if dr["leq_source"] not in dr["leq_source_options"]:
+        raise AssumptionsError(f"drawdown_risk.leq_source {dr['leq_source']!r} not in {dr['leq_source_options']}")
+    co = cfg["costs"]
+    if co["fixed_cost_basis"] not in co["fixed_cost_basis_options"]:
+        raise AssumptionsError(f"costs.fixed_cost_basis {co['fixed_cost_basis']!r} not in {co['fixed_cost_basis_options']}")
+    rc = cfg["treatment"]["reason_codes"]
+    unknown = sorted(set(cfg["treatment"]["reason_by_lever"].values()) - set(rc))
+    if unknown:
+        raise AssumptionsError(f"treatment.reason_by_lever uses codes without a notice rule: {unknown}")
     if cfg["segments"]["order"] != SEGMENTS:
         raise AssumptionsError(f"segments.order must be {SEGMENTS}")
     wb = cfg["workbook"]

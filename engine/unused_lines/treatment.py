@@ -1,7 +1,9 @@
 """Treatment designer, compliance checks, fairness and timing (Stage 6).
 
 Per account in scope, from the Base scenario's selection (levers.run):
-    recommended lever(s), a mandatory reason code, the notice it triggers,
+    recommended lever(s), a mandatory reason code (one per lever, each with
+    its notice rule and compliance flag in config treatment.reason_codes;
+    OTHER only for an action no code covers), the notice it triggers,
     the 45-day fee / penalty-rate restriction after a decrease, "review
     together" flags for the system's L1 / L3 / L5 worklists, and a pilot cell
     (seeded, stratified holdout).
@@ -85,10 +87,15 @@ def design(f: pd.DataFrame, cfg: dict, res: dict, worklists: dict | None = None)
     primary = [r[0] if r else "" for r in levers]
     t["reason_code"] = [rb.get(p, "") for p in primary]
     t["all_reason_codes"] = ["; ".join(dict.fromkeys(rb[x] for x in r)) for r in levers]
-    t["notice"] = t["reason_code"].map(tc["notices"]).fillna("")
-    t["adverse_action_notice"] = t["line_action"].ne("none") & t["reason_code"].isin(
-        ["CREDIT_DETERIORATION", "IDLE_LINE_RIGHTSIZING"])
-    t["fcra_score_disclosure_check"] = t["adverse_action_notice"] & t["reason_code"].eq("CREDIT_DETERIORATION")
+    rule = lambda key: {k: v[key] for k, v in tc["reason_codes"].items()}  # noqa: E731
+    t["notice"] = t["reason_code"].map(rule("notice")).fillna("")
+    t["adverse_action_notice"] = t["line_action"].ne("none") & t["reason_code"].map(
+        rule("adverse_action_notice")).fillna(False).astype(bool)
+    t["fcra_score_disclosure_check"] = t["adverse_action_notice"] & t["reason_code"].map(
+        rule("fcra_check")).fillna(False).astype(bool)
+    flags = rule("compliance_flag")
+    t["compliance_flags"] = ["; ".join(x for x in dict.fromkeys(flags.get(c, "") for c in codes.split("; ")) if x)
+                             for codes in t["all_reason_codes"]]
     t["fee_restriction_45_days"] = t["line_action"].eq("decrease")
     t["ability_to_pay_check"] = False                       # no increases in this module
     t["new_line"] = np.where(dec, sel.loc[t.index, "new_line"], np.where(clo, 0.0, f.loc[t.index, "limit_current"]))

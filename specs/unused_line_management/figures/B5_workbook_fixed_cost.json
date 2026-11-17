@@ -1,0 +1,62 @@
+{
+  "stress": {
+    "screened_accounts": 54204,
+    "card_profit": -4656995.078682075,
+    "carrying_cost": 939533.49420735,
+    "drawdown_loss": 1921040.4037439763,
+    "base_annual_value": 152404.59823577752,
+    "base_card_profit_change": -13434.232537553471,
+    "pending_b6_value": 529822.9855453097,
+    "extra_levers_value": 263128.7286774367,
+    "stress_1_5x_value": 133760.60130887997,
+    "stress_1_5x_card_profit_change": -24176.45658816915,
+    "capital_released": 171787.1226925875,
+    "accounts_with_action": 40095,
+    "primary_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 16921,
+      "INACTIVITY": 11226,
+      "ENGAGEMENT_CAMPAIGN": 8492,
+      "IDLE_LINE_RIGHTSIZING": 2233,
+      "CREDIT_DETERIORATION": 1026,
+      "INACTIVITY_NON_REISSUE": 197
+    },
+    "all_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 29450,
+      "ENGAGEMENT_CAMPAIGN": 13976,
+      "INACTIVITY": 11226,
+      "INACTIVITY_NON_REISSUE": 2958,
+      "IDLE_LINE_RIGHTSIZING": 2233,
+      "CREDIT_DETERIORATION": 1026
+    }
+  },
+  "demo": {
+    "screened_accounts": 1011,
+    "card_profit": -78574.42982866544,
+    "carrying_cost": 12326.121757199999,
+    "drawdown_loss": 15250.553993019596,
+    "base_annual_value": 597.0723735169952,
+    "base_card_profit_change": -245.66612053595833,
+    "pending_b6_value": 4490.584916147354,
+    "extra_levers_value": 3292.8488908440004,
+    "stress_1_5x_value": 418.38318763882705,
+    "stress_1_5x_card_profit_change": -418.7268178824379,
+    "capital_released": 1401.35969150625,
+    "accounts_with_action": 691,
+    "primary_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 386,
+      "ENGAGEMENT_CAMPAIGN": 143,
+      "INACTIVITY": 117,
+      "IDLE_LINE_RIGHTSIZING": 35,
+      "CREDIT_DETERIORATION": 8,
+      "INACTIVITY_NON_REISSUE": 2
+    },
+    "all_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 564,
+      "ENGAGEMENT_CAMPAIGN": 200,
+      "INACTIVITY": 117,
+      "INACTIVITY_NON_REISSUE": 35,
+      "IDLE_LINE_RIGHTSIZING": 35,
+      "CREDIT_DETERIORATION": 8
+    }
+  }
+}

@@ -37,8 +37,13 @@ and proposes an action per customer with the notices it would need.
    with its reason code, notice and a pilot cell. The ML credit-limit model plays no part (decision B8).
 
 ### Reading the results
-- **Annual value** = change in card profit + reduction in expected drawdown loss. Both parts are
-  always shown; the second is usually the larger.
+- **Annual value** = change in card profit + reduction in expected drawdown loss. This is the one
+  figure executives see; card profit alone and the relationship-adjusted value are in the analyst
+  view. The reduction in drawdown loss is usually the larger part.
+- **Card profit** in this module is *card profit under the assumed capital rules*: the main
+  engine's card profit with today's capital charge replaced by the March 2026 proposal's and the
+  liquidity buffer cost subtracted. It differs from the main engine's card profit for the same
+  customer; the analyst view reconciles the two step by step.
 - **Capital released** is a one-time amount of capital freed up. It is never added to the annual
   value.
 - **Pending approval** (dormant right-sizing, closures, non-reissue) and **extra levers**
@@ -76,8 +81,12 @@ and proposes an action per customer with the notices it would need.
 | `audit/audit_unused_line_module.py` | The acceptance suite (brief s.7) |
 
 ### Per account (exposure.py)
-- `UCL = max(limit − balance, 0)`: 12-month average for cost, reporting date for actions. Balance is
-  Table4 `Ending Balance` (after the cycle's payment, the reporting-date balance).
+- `UCL = max(limit − balance, 0)`: 12-month average for cost, reporting date for actions.
+- **Balances (B7):** Table4 `Ending Balance`, measured **after** the month's payment (the
+  reporting-date balance). This is appropriate for regulatory exposure, which is measured at the
+  reporting date; it slightly overstates the unused line of a pay-in-full customer, whose balance
+  between payments is higher than the month-end figure. Statement balance (ending balance +
+  payment) is used for the segment rules and the transactor test.
 - **Risk weight** (answer 5): 45% only if, over the last 12 cycles, every cycle was paid in full or
   had a $0 statement, not all 12 were $0, and there was no installment, promotional or BT balance,
   with at least 12 months of history; 100% if the customer's aggregate retail exposure (card
@@ -86,12 +95,29 @@ and proposes an action per customer with the notices it would need.
   `= capital × 12%`.
 - HQLA `= UCL × 5%` when liquidity applies (Category I–III by default, or `all_banks`); liquidity cost
   `= HQLA × 0.75%`.
-- Drawdown loss `= PD 12 Month × LGD × LEQ × UCL`; LEQ by segment (workbook), Unassigned = mean
-  Behavioral CCF (measured, assumption-based).
+- Drawdown loss `= PD × LGD × LEQ × UCL`, annual PD only:
+  - **PD (B1):** Table8 `PD 12 Month` at the reporting date. A missing PD takes the average PD of
+    the account's rule segment (accounts with a PD), then the portfolio average, flagged
+    `pd_imputed`; a missing PD never means zero risk. Segment rules use the measured PD only. On
+    the committed samples only closed or charged-off accounts lack a PD (none is screened).
+  - **LEQ (B2):** `drawdown_risk.leq_source`. `measured_account` (default): the account's Table9
+    Behavioral CCF at the reporting date (EAD = balance + CCF × unused line: the same definition as
+    LEQ, the share of the unused line drawn before default), the workbook segment LEQ when it is
+    missing. `workbook_segment`: the workbook's LEQ per segment (Unassigned: the measured portfolio
+    mean). On the synthetic data the Behavioral CCF has two values (0.42; 0.798 after a
+    risk-deterioration limit event), so the default sets LEQ near 0.42 for every segment
+    (`ISSUES_FOUND.md` #16).
 - **Carrying cost** = capital cost on the unused part + liquidity cost; **total unused-line cost** =
   carrying cost + drawdown loss.
-- **Card profit** = engine `card_net` + the old capital charge − the new capital cost − liquidity cost
-  (the old charge is replaced, never added to); measured credit cost kept; drawdown loss beside it.
+- **Card profit under the assumed capital rules (B4)** = engine `card_net` + the old capital charge −
+  the new capital cost − liquidity cost (the old charge is replaced, never added to); measured credit
+  cost kept; drawdown loss beside it. `exposure.reconciliation()` shows each step from the main
+  engine's card profit and checks it to the cent.
+- **Fixed cost (B5):** `costs.fixed_cost_basis`. `engine_allocated` (default): the engine's
+  `cost_to_serve_fixed_allocated` over 12 cycles. `workbook_segment`: the workbook's fixed cost per
+  account by segment ($30–60; Unassigned: the segments' average weighted by their account counts),
+  which lowers card profit by the difference. Fixed cost stays when an account leaves, so lever
+  values change only through the screened population.
 
 ### Screen and segments (segments.py)
 Rules run on every account (first match wins), LEQ follows the rule's segment, then costs, then the
@@ -117,10 +143,19 @@ The Calc sheets on the workbook's own inputs; the multiplier scales attrition an
 Reproduces the Dashboard to the cent (Base +$1,329,136.92, 8,470 accounts lost).
 
 ### Treatment (treatment.py)
-Reason codes `INACTIVITY` / `CREDIT_DETERIORATION` / `IDLE_LINE_RIGHTSIZING` / `CUSTOMER_REQUEST` /
-`OTHER`; notices by reason (credit and idle-line: Reg B adverse action, FCRA check for credit;
-inactivity: Reg B exception); 45-day fee / penalty-rate restriction after a decrease; no inactivity
-fee. The ML credit-limit model is not used (decision B8). Four-fifths by metro on the module's own
+Reason codes (B3), one per lever, each with its notice rule in `treatment.reason_codes`:
+
+| Action | Reason code | Notice |
+|---|---|---|
+| Idle-line decrease | `IDLE_LINE_RIGHTSIZING` | Adverse-action notice unless an exception applies; flagged for compliance |
+| Risk-based decrease | `CREDIT_DETERIORATION` | Adverse-action notice; FCRA score check |
+| Dormant right-sizing / closure | `INACTIVITY` | No adverse-action notice (Reg B inactivity exception) |
+| Non-reissue of a dormant card | `INACTIVITY_NON_REISSUE` | As INACTIVITY; flagged for compliance confirmation |
+| Reactivation / engagement campaign | `ENGAGEMENT_CAMPAIGN` | None (no change to terms) |
+| Suppressing automatic increases | `SUPPRESS_AUTO_INCREASE` | None expected; flagged for compliance confirmation |
+
+`OTHER` remains only for an action no code covers (target below 1% of actions; none today).
+45-day fee / penalty-rate restriction after a decrease; no inactivity fee. The ML credit-limit model is not used (decision B8). Four-fifths by metro on the module's own
 actions only: decreases and closures (and increases, if the module ever produces any; it produces
 none today). A metro with fewer than `treatment.fairness.min_selected_per_group` (30) selected
 accounts shows "insufficient sample" instead of pass / fail. Review-together flags from the L1 / L3 /
@@ -137,11 +172,13 @@ are approximated (deposits + Segment).
 |---|---|---|
 | Screened accounts | 40,530 | 890 |
 | Card profit | −$2,579,382 | −$61,296 |
-| Carrying cost / drawdown loss | $693,984 / $1,633,129 | $10,630 / $9,926 |
-| Base annual value (headline) | +$175,389 | +$817 |
+| Carrying cost / drawdown loss | $693,984 / $1,473,986 | $10,630 / $13,485 |
+| Base annual value (headline) | +$120,339 | +$639 |
 | Capital released, one-time (Base) | $113,865 | $1,307 |
-| Pending approval / extra levers | +$519,808 / +$191,794 | +$4,376 / +$2,568 |
-| 1.5× stress | +$155,257 (go) | +$635 (go) |
+| Pending approval / extra levers | +$529,424 / +$199,599 | +$4,429 / +$2,906 |
+| 1.5× stress | +$107,385 (go; card profit alone −$15,752) | +$508 (go; card profit alone −$248) |
+| Base with `leq_source = workbook_segment` | +$175,389 | +$817 |
+| Base with `fixed_cost_basis = workbook_segment` | +$152,405 (54,204 screened) | +$597 (1,011 screened) |
 
 Reconciliation, calibration, issues and decisions: `specs/unused_line_management/` (STAGE1–8
 reports, `ISSUES_FOUND.md`, `DECISIONS.md`, `EVALUATION_GUIDE.md`).

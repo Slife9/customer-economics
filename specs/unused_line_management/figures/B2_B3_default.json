@@ -1,0 +1,62 @@
+{
+  "stress": {
+    "screened_accounts": 40530,
+    "card_profit": -2579382.2629450914,
+    "carrying_cost": 693984.35050985,
+    "drawdown_loss": 1473985.5675784394,
+    "base_annual_value": 120338.76877414445,
+    "base_card_profit_change": -9608.85366596284,
+    "pending_b6_value": 529423.998911706,
+    "extra_levers_value": 199598.56537434057,
+    "stress_1_5x_value": 107384.51921891855,
+    "stress_1_5x_card_profit_change": -15752.16971884559,
+    "capital_released": 113864.77819854375,
+    "accounts_with_action": 31459,
+    "primary_reason_codes": {
+      "INACTIVITY": 11208,
+      "SUPPRESS_AUTO_INCREASE": 11147,
+      "ENGAGEMENT_CAMPAIGN": 6402,
+      "IDLE_LINE_RIGHTSIZING": 1790,
+      "CREDIT_DETERIORATION": 716,
+      "INACTIVITY_NON_REISSUE": 196
+    },
+    "all_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 22237,
+      "ENGAGEMENT_CAMPAIGN": 11677,
+      "INACTIVITY": 11208,
+      "INACTIVITY_NON_REISSUE": 2954,
+      "IDLE_LINE_RIGHTSIZING": 1790,
+      "CREDIT_DETERIORATION": 716
+    }
+  },
+  "demo": {
+    "screened_accounts": 890,
+    "card_profit": -61296.02994760548,
+    "carrying_cost": 10630.4392768,
+    "drawdown_loss": 13484.927505690237,
+    "base_annual_value": 638.9312449876497,
+    "base_card_profit_change": -132.299818017887,
+    "pending_b6_value": 4428.735579209515,
+    "extra_levers_value": 2906.3319659520002,
+    "stress_1_5x_value": 507.61775089335674,
+    "stress_1_5x_card_profit_change": -248.36828303466888,
+    "capital_released": 1307.286731821875,
+    "accounts_with_action": 614,
+    "primary_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 330,
+      "ENGAGEMENT_CAMPAIGN": 125,
+      "INACTIVITY": 119,
+      "IDLE_LINE_RIGHTSIZING": 30,
+      "CREDIT_DETERIORATION": 8,
+      "INACTIVITY_NON_REISSUE": 2
+    },
+    "all_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 498,
+      "ENGAGEMENT_CAMPAIGN": 179,
+      "INACTIVITY": 119,
+      "INACTIVITY_NON_REISSUE": 35,
+      "IDLE_LINE_RIGHTSIZING": 30,
+      "CREDIT_DETERIORATION": 8
+    }
+  }
+}

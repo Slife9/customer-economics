@@ -46,6 +46,15 @@ Stage 6 (treatment designer, compliance, fairness, timing):
     together flags; the four-fifths test on the module's own actions with
     "insufficient sample" below the configured count; year-1 timing.
 
+Revision B (calculation corrections), on the same portfolios:
+13. B1 missing PD -> segment average PD (never zero), flagged; B2 LEQ source
+    switch (account Behavioral CCF / workbook segment) changes drawdown loss
+    only; B3 a specific reason code and notice rule per lever, OTHER below 1%
+    of actions; B4 reconciliation from the main engine's card profit, to the
+    cent; B5 fixed-cost basis switch changes fixed cost and card profit only,
+    variable contribution unchanged; B6 the robustness statement states its
+    basis.
+
 Stage 8 runs everything above as one suite, plus:
 12. Guardrails: no change since main to the code the module must not touch;
     generator/run.py additions only; with --regression, the byte-identity
@@ -184,9 +193,11 @@ def invariants(costs: pd.DataFrame, cfg: dict, label: str) -> None:
            and np.allclose(c["total_unused_line_cost"], c["carrying_cost"] + c["drawdown_el"]))
     record(f"{label}: carrying cost = capital (unused part) + liquidity; drawdown loss separate; total = both",
            bool(sep))
-    el = c["pd_12m"].fillna(0) * c["lgd"].fillna(cfg["workbook"]["portfolio"]["lgd"]) * c["leq"] * c["ucl"]
-    record(f"{label}: drawdown loss = annual PD (Table8 PD 12 Month) x LGD x LEQ x unused line",
-           bool(np.allclose(c["drawdown_el"], el)), f"{int(c['pd_missing'].sum())} accounts without a PD")
+    el = c["pd_used"] * c["lgd"].fillna(cfg["workbook"]["portfolio"]["lgd"]) * c["leq"] * c["ucl"]
+    measured = c["pd_12m"].notna()
+    record(f"{label}: drawdown loss = annual PD (Table8 PD 12 Month; imputed where missing) x LGD x LEQ x unused line",
+           bool(np.allclose(c["drawdown_el"], el) and np.allclose(c.loc[measured, "pd_used"], c.loc[measured, "pd_12m"])),
+           f"{int(c['pd_imputed'].sum())} accounts without a PD (imputed)")
     swap = np.allclose(c["card_profit"] - c["card_net"], c["old_capital_cost"] - c["capital_cost"] - c["liquidity_cost"])
     record(f"{label}: card profit = card_net with the old capital charge replaced and liquidity subtracted",
            bool(swap), f"old capital ${c['old_capital_cost'].sum():,.0f} replaced by ${c['capital_cost'].sum():,.0f}")
@@ -282,6 +293,46 @@ def segment_checks(acc: pd.DataFrame, meta: dict, cfg: dict, label: str) -> pd.D
     record(f"{label}: Unassigned shows its economics", bool(un["accounts"] == 0 or un["card_profit"] != 0),
            f"{int(un['accounts']):,} accounts, card profit ${un['card_profit']:,.0f}")
     return f
+
+
+# ------------------------------------------------------------- Revision B
+def correction_checks(acc: pd.DataFrame, meta: dict, f: pd.DataFrame, cfg: dict, label: str) -> None:
+    print(f"\n13. Calculation corrections (revision B) - {label}", flush=True)
+    miss = f["pd_12m"].isna()
+    seg_avg = f.loc[~miss].groupby("rule_segment")["pd_12m"].mean()
+    want = f.loc[miss, "rule_segment"].map(seg_avg).fillna(f["pd_12m"].mean())
+    record(f"{label}: B1 a missing PD takes its segment's average PD (accounts with a PD), never zero; flagged",
+           bool(np.allclose(f.loc[miss, "pd_used"], want) and (f.loc[miss, "pd_used"] > 0).all()
+                and (f["pd_imputed"] == miss).all() and np.allclose(f.loc[~miss, "pd_used"], f.loc[~miss, "pd_12m"])),
+           f"{int(miss.sum()):,} imputed ({int((miss & f['screened']).sum()):,} screened); "
+           f"{f.loc[miss].assign(o=f['open_at_reporting_date'] & ~f['charged_off'])['o'].sum():,} of them open")
+    wbl = A.with_overrides(cfg, {"drawdown_risk": {"leq_source": "workbook_segment"}})
+    fw = SG.build(acc, meta, wbl)
+    has = f["behavioural_ccf"].notna()
+    seg_leq = f["rule_segment"].map(cfg["drawdown_risk"]["leq_by_segment"]).fillna(meta["leq_unassigned_measured"])
+    ok = (np.allclose(f.loc[has, "leq"], f.loc[has, "behavioural_ccf"]) and np.allclose(f.loc[~has, "leq"], seg_leq[~has])
+          and np.allclose(fw["leq"], seg_leq) and (fw["screened"] == f["screened"]).all()
+          and np.allclose(fw["card_profit"], f["card_profit"]) and np.allclose(fw["carrying_cost"], f["carrying_cost"]))
+    sc = f["screened"]
+    record(f"{label}: B2 LEQ = the account's Behavioral CCF (workbook segment LEQ when missing); the switch changes "
+           "drawdown loss only", bool(ok),
+           f"screened drawdown loss ${f.loc[sc, 'drawdown_el'].sum():,.0f} (account) vs "
+           f"${fw.loc[sc, 'drawdown_el'].sum():,.0f} (workbook segment); {int((~has).sum()):,} accounts on the fallback")
+    rec = X.reconciliation(f, sc)
+    record(f"{label}: B4 main engine card profit + old capital - new capital - liquidity = module card profit, to the cent",
+           abs(float(rec["usd"].iloc[-1])) < 0.005,
+           f"card_net ${rec['usd'].iloc[0]:,.0f} -> module ${rec['usd'].iloc[-2]:,.0f} on {int(sc.sum()):,} screened accounts")
+    wfc = A.with_overrides(cfg, {"costs": {"fixed_cost_basis": "workbook_segment"}})
+    ff = SG.build(acc, meta, wfc)
+    var_same = np.allclose(ff["card_profit"] + ff["fixed_cost"], f["card_profit"] + f["fixed_cost"])
+    wb_fc = {k: v["fixed_cost"] for k, v in cfg["workbook"]["segments"].items()}
+    seg_ok = all(np.allclose(ff.loc[ff["rule_segment"] == k, "fixed_cost"], v) for k, v in wb_fc.items())
+    rec2 = X.reconciliation(ff, ff["screened"])
+    record(f"{label}: B5 fixed-cost basis switch changes fixed cost and card profit only (variable contribution "
+           "unchanged); reconciles", bool(var_same and seg_ok and np.allclose(ff["drawdown_el"], f["drawdown_el"])
+                                         and abs(float(rec2["usd"].iloc[-1])) < 0.005),
+           f"engine fixed cost ${f.loc[sc, 'fixed_cost'].mean():,.2f} per screened account; workbook basis screens "
+           f"{int(ff['screened'].sum()):,} accounts (default {int(sc.sum()):,})")
 
 
 # ------------------------------------------------------------- Stage 5
@@ -388,6 +439,10 @@ def lever_checks(f: pd.DataFrame, cfg: dict, label: str) -> None:
     record(f"{label}: stress test 1x-2x; go/no-go (Base improves at {g['multiplier']}x)", g["go"],
            "; ".join(f"{m}x {v:+,.0f}" for m, v in stv["wb_headline_value"].items())
            + f"; at {g['multiplier']}x card profit alone {g['card_profit_change']:+,.0f}")
+    neg = stv.index[stv["wb_card_profit_change"] < 0]
+    want = ("stays positive" if not len(neg) else f"{float(neg.min()):g}x")
+    record(f"{label}: B6 the robustness statement states its basis and where card profit alone turns negative",
+           "including reduced risk" in g["statement"] and want in g["statement"], g["statement"])
 
 
 # ------------------------------------------------------------- Stage 6
@@ -404,7 +459,8 @@ def treatment_checks(f: pd.DataFrame, cfg: dict, data_dir: Path, label: str) -> 
            bool(not t.index.isin(f.index[f["protected"]]).any() and not res["selection"].loc[f["protected"], ["decrease", "campaign", "closure"]].any().any()),
            f"{int(prot_screened.sum()):,} screened accounts protected by the system's suppression")
     acted = t[t["recommended_levers"] != "none"]
-    codes = set(cfg["treatment"]["reason_codes"])
+    rcfg = cfg["treatment"]["reason_codes"]
+    codes = set(rcfg)
     all_codes = acted["all_reason_codes"].str.split("; ").explode()
     record(f"{label}: every recommended action carries a reason code from the list",
            bool(acted["reason_code"].isin(codes).all() and all_codes.isin(codes).all()),
@@ -417,6 +473,20 @@ def treatment_checks(f: pd.DataFrame, cfg: dict, data_dir: Path, label: str) -> 
                 and line.loc[credit, "fcra_score_disclosure_check"].all()),
            f"{int(inact.sum()):,} inactivity, {int(credit.sum()):,} credit, "
            f"{int(line['reason_code'].eq('IDLE_LINE_RIGHTSIZING').sum()):,} idle-line right-sizing (notice: adverse action)")
+    other = (all_codes == "OTHER").mean() if len(all_codes) else 0.0
+    by_code = acted["reason_code"].value_counts()
+    rule_ok = all(rcfg[c]["notice"] and (rcfg[c]["adverse_action_notice"] == (c in ("IDLE_LINE_RIGHTSIZING", "CREDIT_DETERIORATION")))
+                  for c in ["IDLE_LINE_RIGHTSIZING", "CREDIT_DETERIORATION", "INACTIVITY", "INACTIVITY_NON_REISSUE",
+                            "ENGAGEMENT_CAMPAIGN", "SUPPRESS_AUTO_INCREASE"])
+    flags_ok = all(bool(rcfg[c]["compliance_flag"]) for c in ["IDLE_LINE_RIGHTSIZING", "INACTIVITY_NON_REISSUE",
+                                                             "SUPPRESS_AUTO_INCREASE"])
+    flagged = acted["all_reason_codes"].str.contains("IDLE_LINE_RIGHTSIZING|INACTIVITY_NON_REISSUE|SUPPRESS_AUTO_INCREASE")
+    record(f"{label}: B3 one specific reason code per lever with its notice rule; OTHER below "
+           f"{cfg['treatment']['other_max_share_of_actions']:.0%} of actions; compliance flags set",
+           bool(other < cfg["treatment"]["other_max_share_of_actions"] and rule_ok and flags_ok
+                and (acted.loc[flagged, "compliance_flags"] != "").all()
+                and (acted["notice"] != "").all()),
+           f"OTHER {other:.2%} of {len(all_codes):,} codes; primary: {by_code.to_dict()}")
     dec = acted["line_action"].eq("decrease")
     record(f"{label}: every decrease carries the 45-day over-limit fee / penalty-rate restriction",
            bool(acted.loc[dec, "fee_restriction_45_days"].all() and not acted.loc[~dec, "fee_restriction_45_days"].any()),
@@ -665,6 +735,7 @@ def main() -> int:
             invariants(costs, cfg, label)
             toggles(acc, cfg, leq, label)
             f = segment_checks(acc, meta, cfg, label)
+            correction_checks(acc, meta, f, cfg, label)
             lever_checks(f, cfg, label)
             treatment_checks(f, cfg, d, label)
         cross_check(Path(a.bundle_100k) if a.bundle_100k else None,

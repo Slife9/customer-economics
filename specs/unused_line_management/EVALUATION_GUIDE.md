@@ -61,29 +61,33 @@ Machine: Windows Server 10.0.26200, 4 CPUs, 34.4 GB RAM, Python 3.13.12.
 | Every page | Assumption label at the top; value-type legend; "synthetic stress data" note | Present |
 | Overview | Screened accounts | **40,530** of 88,232 open |
 | | Card profit; unused lines | **−$2,579,382**; **$573.4M** |
-| | Carrying cost; expected drawdown loss (beside profit) | **$693,984**; **$1,633,129** |
-| | Base annual value = card profit change + avoided drawdown loss | **+$175,389** (−$9,609 + $184,998) |
+| | Carrying cost; expected drawdown loss (beside profit; account LEQ, B2) | **$693,984**; **$1,473,986** |
+| | Base annual value = card profit change + avoided drawdown loss | **+$120,339** (−$9,609 + $129,948) |
 | | Capital released, one-time, never in the annual value | **$113,865** |
-| | 1.5× stress | **+$155,257, go** |
-| | Pending approval (B6); extra levers | **+$519,808**; **+$191,794**, both apart from the headline |
-| Scenario dashboard | Conservative ≤ Base ≤ Aggressive | +$125,670 ≤ +$175,389 ≤ +$210,933 |
+| | 1.5× stress | **+$107,385, go** (card profit alone −$15,752) |
+| | Pending approval (B6); extra levers | **+$529,424**; **+$199,599**, both apart from the headline |
+| Scenario dashboard | Conservative ≤ Base ≤ Aggressive | +$72,553 ≤ +$120,339 ≤ +$156,682 |
 | | Year 1 vs full, by lever; workbook / extra / pending subtotals | Shown side by side |
 | | Workbook-reproduction panel | Base +$1,329,137, 8,470 accounts lost, exactly the workbook's Dashboard |
 | Segments | Counts | Deteriorating 1,460; Relationship 5,513; Dormant 15,076; Sock-Drawer 6,139; Transactors 6,337; Unassigned 6,005 |
-| | Drawdown toggle sensitivity | +7,328 accounts, $637,348 more loss after drawdown |
+| | Drawdown toggle sensitivity | +8,174 accounts, $390,728 more loss after drawdown |
 | Regulatory settings | Worked examples | $13.20 (dormant), $10.56 (revolver), $7.54 (transactor) a year |
 | | "Category IV or other" with default scope | Liquidity cost goes to $0; capital unchanged |
 | | Current US rules view | RWA from unused lines $0; no liquidity cost; SLR shown |
 | | Fairness | Four-fifths by metro on the module's own decreases and closures; failures flagged in red; metros with fewer than 30 selected accounts show "insufficient sample" |
 | Levers & assumptions | Any edit | "Exploration only" warning on every page; Reset restores the defaults |
-| | B6 on | Pending levers move into the headline (Base becomes about +$500,700) |
+| | B6 on | Pending levers move into the headline (Base becomes +$452,064) |
 | Lever guide | Every lever | Status, reason code, compliance column, timing column |
 | Customer drill-down | Formula trace | Every number with its formula; values tagged by type |
 | | Transactor test | 12 cycles, each pass / fail with the reason |
 | | Review notes | Download labelled "review notes, not an approval record" |
 
 5k demo (default settings): 890 screened (Relationship 555); card profit −$61,296; carrying cost
-$10,630; drawdown loss $9,926; Base +$817; capital released $1,307; 1.5× +$635 (go).
+$10,630; drawdown loss $13,485; Base +$639; capital released $1,307; 1.5× +$508 (go).
+
+Figures after revision B (17 Nov 2026): B1 changes nothing on the samples (only closed or charged-off
+accounts lack a PD); B2 (account LEQ) lowers the stress book's drawdown loss and Base value; B3
+changes only the reason codes; B5's default (engine allocation) changes nothing.
 
 ### Example customers (stress book, Customer drill-down)
 
@@ -107,7 +111,10 @@ together).
   never recommended.
 - Fairness failures (`ISSUES_FOUND.md` #10): a fair-lending review is needed before any pilot.
 - The go / no-go passes on the headline (incl. avoided drawdown loss); card profit alone is negative
-  at 1.5×.
+  already at 1×.
+- LEQ: the account Behavioral CCF is a generator parameter (0.42 / 0.798), so the default B2 setting
+  flattens LEQ to about 0.42 (`ISSUES_FOUND.md` #16); `drawdown_risk.leq_source = workbook_segment`
+  restores the workbook LEQ (stress book Base +$175,389).
 - §2.7: the module's own carrying cost is +6.1% against the brief because of the agreed transactor
   test; with the plan / promotional rule off it is within 3.5% (tested).
 

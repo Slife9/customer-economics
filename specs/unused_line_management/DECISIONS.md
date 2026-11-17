@@ -3,6 +3,18 @@
 Decisions received after the Stage 1 audit, newest first. Open decisions with the boss
 (B4–B7) are in `OPEN_DECISIONS.md` and stay behind config flags.
 
+## 17 Nov 2026: calculation corrections (revision B)
+
+| # | Decision | Where it lives |
+|---|---|---|
+| B1 | A missing PD takes the segment's average PD (accounts with a PD), then the portfolio average; flagged `pd_imputed` | `drawdown_risk.missing_pd`, `exposure.pd_used` |
+| B2 | LEQ per account = Table9 Behavioral CCF (same definition as LEQ; see `ISSUES_FOUND.md` #16), workbook segment LEQ as fallback; switch `measured_account` (default) / `workbook_segment` | `drawdown_risk.leq_source`, `exposure.leq_columns` |
+| B3 | Specific reason codes with their notice rules: `IDLE_LINE_RIGHTSIZING`, `CREDIT_DETERIORATION`, `INACTIVITY`, `INACTIVITY_NON_REISSUE`, `ENGAGEMENT_CAMPAIGN`, `SUPPRESS_AUTO_INCREASE`; `OTHER` below 1% of actions | `treatment.reason_codes`, `treatment.reason_by_lever` |
+| B4 | The module's card profit is labelled "card profit under the assumed capital rules", with a reconciliation from the main engine's card profit | `exposure.reconciliation` |
+| B5 | Fixed cost basis: `engine_allocated` (default) or `workbook_segment` | `costs.fixed_cost_basis`, `exposure.fixed_costs` |
+| B6 | Executives see one figure: annual value = change in card profit + reduction in expected drawdown loss; card profit alone and relationship-adjusted values in the analyst view; the robustness statement states its basis | `levers.robustness_statement`; app |
+| B7 | Balances are measured after the month's payment (reporting-date balance) | Methodology |
+
 ## 17 Nov 2026: B8 final - the ML model plays no role in this module
 
 | Decision | Where it lives |

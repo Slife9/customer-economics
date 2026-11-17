@@ -19,7 +19,8 @@
       "capital.capital_ratio",
       "capital.cost_of_equity",
       "liquidity.negative_carry",
-      "bank_profile.bank_category"
+      "bank_profile.bank_category",
+      "costs.fixed_cost_basis"
     ],
     "workbook_estimate": [
       "drawdown_risk.leq_by_segment",
@@ -27,7 +28,8 @@
       "screen"
     ],
     "measured": [
-      "drawdown_risk.leq_unassigned"
+      "drawdown_risk.leq_unassigned",
+      "drawdown_risk.leq_source"
     ]
   },
   "mode": "system",
@@ -83,6 +85,8 @@
   "drawdown_risk": {
     "pd_basis": "annual",
     "pd_source": "Table8 PD 12 Month at the reporting date",
+    "missing_pd": "segment_average",
+    "_missing_pd_note": "Revision B1: an account without a PD at the reporting date gets the average PD of its rule segment (accounts with a PD), falling back to the portfolio average; flagged pd_imputed. A missing PD never means zero risk. The segment rules themselves use the measured PD only.",
     "lgd_source": "system",
     "leq_by_segment": {
       "dormant": 0.4,
@@ -91,9 +95,23 @@
       "deteriorating": 0.7,
       "relationship": 0.15
     },
+    "leq_source": "measured_account",
+    "leq_source_options": [
+      "measured_account",
+      "workbook_segment"
+    ],
+    "_leq_source_note": "Revision B2: measured_account (default) = the account's Behavioral CCF from Table9 at the reporting date (EAD = balance + CCF x unused line, the same definition as LEQ); when it is missing, the workbook segment LEQ. workbook_segment = one workbook LEQ per segment (Unassigned: the measured portfolio mean). On the synthetic data the Behavioral CCF is a generator parameter with two values (0.42, or 0.798 after a risk-deterioration limit event): see ISSUES_FOUND.md.",
     "leq_unassigned": "portfolio_average_behavioural_ccf",
     "_leq_unassigned_note": "Answer 7: assumption-based; not in the reference workbook. Measured as the mean Behavioral CCF (Table9) over open card accounts at the reporting date.",
     "cecl_allowance_on_unused_cancellable_lines": 0.0
+  },
+  "costs": {
+    "fixed_cost_basis": "engine_allocated",
+    "fixed_cost_basis_options": [
+      "engine_allocated",
+      "workbook_segment"
+    ],
+    "_note": "Revision B5: engine_allocated (default) = the engine's cost_to_serve_fixed_allocated over 12 cycles; workbook_segment = the workbook's fixed cost per account by segment (Unassigned: the workbook segments' fixed cost weighted by their account counts). Fixed cost stays when an account leaves, so lever values change only through the screened population. The engine's low allocation is logged in ISSUES_FOUND.md."
   },
   "current_rules_comparison": {
     "ccf_unconditionally_cancellable": 0.0,
@@ -297,29 +315,74 @@
   "treatment": {
     "_note": "Stage 6. Recommendations come from the Base scenario's selection. Compliance references are a summary for discussion; to be confirmed by compliance.",
     "scenario_for_recommendations": "base",
-    "reason_codes": [
-      "INACTIVITY",
-      "CREDIT_DETERIORATION",
-      "IDLE_LINE_RIGHTSIZING",
-      "CUSTOMER_REQUEST",
-      "OTHER"
-    ],
+    "reason_codes": {
+      "IDLE_LINE_RIGHTSIZING": {
+        "action": "Idle-line decrease",
+        "notice": "Reg B adverse action notice within 30 days unless an exception applies: a reduction not made in connection with inactivity, default or delinquency (12 CFR 1002.2(c), 1002.9)",
+        "adverse_action_notice": true,
+        "fcra_check": false,
+        "compliance_flag": "Adverse-action notice unless an exception applies - confirm with compliance"
+      },
+      "CREDIT_DETERIORATION": {
+        "action": "Risk-based decrease",
+        "notice": "Reg B adverse action notice within 30 days, with specific reasons or the right to request them (12 CFR 1002.9); FCRA score disclosure check",
+        "adverse_action_notice": true,
+        "fcra_check": true,
+        "compliance_flag": ""
+      },
+      "INACTIVITY": {
+        "action": "Dormant right-sizing or closure",
+        "notice": "No adverse action notice (Reg B inactivity exception, 12 CFR 1002.2(c)(2)(ii)); reason code recorded; notice per the account terms",
+        "adverse_action_notice": false,
+        "fcra_check": false,
+        "compliance_flag": ""
+      },
+      "INACTIVITY_NON_REISSUE": {
+        "action": "Non-reissue of a dormant card",
+        "notice": "As INACTIVITY: no adverse action notice (Reg B inactivity exception); notice per the account terms",
+        "adverse_action_notice": false,
+        "fcra_check": false,
+        "compliance_flag": "Confirm non-reissue falls under the inactivity exception"
+      },
+      "ENGAGEMENT_CAMPAIGN": {
+        "action": "Reactivation / engagement campaign",
+        "notice": "None (no change to terms); offer terms reviewed for UDAAP",
+        "adverse_action_notice": false,
+        "fcra_check": false,
+        "compliance_flag": ""
+      },
+      "SUPPRESS_AUTO_INCREASE": {
+        "action": "Suppressing automatic increases",
+        "notice": "None expected (no change to the current terms)",
+        "adverse_action_notice": false,
+        "fcra_check": false,
+        "compliance_flag": "Confirm no notice is needed when an automatic increase is withheld"
+      },
+      "CUSTOMER_REQUEST": {
+        "action": "Change at the customer's request",
+        "notice": "No adverse action notice (customer request)",
+        "adverse_action_notice": false,
+        "fcra_check": false,
+        "compliance_flag": ""
+      },
+      "OTHER": {
+        "action": "Anything not covered above",
+        "notice": "Review the notice requirement case by case",
+        "adverse_action_notice": false,
+        "fcra_check": false,
+        "compliance_flag": "Unclassified action - review"
+      }
+    },
+    "other_max_share_of_actions": 0.01,
     "reason_by_lever": {
       "risk_based_decrease": "CREDIT_DETERIORATION",
       "line_decrease": "IDLE_LINE_RIGHTSIZING",
       "transactor_rightsizing": "IDLE_LINE_RIGHTSIZING",
       "dormant_rightsizing": "INACTIVITY",
       "dormant_closure": "INACTIVITY",
-      "non_reissue_expired_dormant": "INACTIVITY",
-      "engagement_campaign": "OTHER",
-      "suppress_automatic_increases": "OTHER"
-    },
-    "notices": {
-      "CREDIT_DETERIORATION": "Reg B adverse action notice within 30 days, with specific reasons or the right to request them (12 CFR 1002.9)",
-      "IDLE_LINE_RIGHTSIZING": "Reg B adverse action notice within 30 days: a reduction not made in connection with inactivity, default or delinquency (12 CFR 1002.2(c), 1002.9); confirm with compliance",
-      "INACTIVITY": "No adverse action notice (Reg B inactivity exception, 12 CFR 1002.2(c)(2)(ii)); reason code recorded",
-      "OTHER": "No notice; offer terms reviewed for UDAAP",
-      "CUSTOMER_REQUEST": "No adverse action notice (customer request)"
+      "non_reissue_expired_dormant": "INACTIVITY_NON_REISSUE",
+      "engagement_campaign": "ENGAGEMENT_CAMPAIGN",
+      "suppress_automatic_increases": "SUPPRESS_AUTO_INCREASE"
     },
     "fee_restriction_days_after_decrease": 45,
     "fee_restriction_text": "No over-limit fee or penalty rate based on the lower limit until 45 days after notice (Reg Z 1026.9(c)(2)(vi), (g)(4))",
