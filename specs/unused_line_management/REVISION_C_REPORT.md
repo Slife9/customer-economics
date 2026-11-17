@@ -129,6 +129,11 @@ No information was removed: it was reorganised into five decision pages and an a
 
 ## Before / after headline figures (Part B, unchanged by Part C)
 
+> **Update:** with the workbook LEQ as the B2 default (decided after this report), the "after"
+> figures equal the "before" ones except the reason codes: stress book drawdown loss $1,633,129,
+> Base +$175,389, pending +$519,808, 1.5× +$155,257; demo $9,926, +$817, +$4,376, +$635. The
+> table below is the account-LEQ setting. Screenshots were retaken with the new default.
+
 | | Stress book before | Stress book after | Demo before | Demo after |
 |---|---|---|---|---|
 | Screened accounts | 40,530 | 40,530 | 890 | 890 |

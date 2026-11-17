@@ -68,22 +68,22 @@ shows them together and links to it.
 
 | Page | Check | Expected |
 |---|---|---|
-| **Executive summary** | Headline sentence | "40,530 card accounts lose money while holding large unused lines. Approved actions are worth +$120k a year; dormant-card actions worth +$529k more await your decision." |
-| | Four cards (annual value larger) | Accounts losing money with large unused lines **40,530**; Cost of unused lines **$2.17M** ($694k holding + $1.47M expected losses); Annual value **+$120k**; Awaiting your decision **+$529k** |
-| | Chart: annual value by the three plain actions | Trim unused limits +$138k (approved); Wake up or close dormant cards −$38k approved + $529k awaiting; Stop automatic increases +$200k (extra) |
+| **Executive summary** | Headline sentence | "40,530 card accounts lose money while holding large unused lines. Approved actions are worth +$175k a year; dormant-card actions worth +$520k more await your decision." |
+| | Four cards (annual value larger) | Accounts losing money with large unused lines **40,530**; Cost of unused lines **$2.33M** ($694k holding + $1.63M expected losses); Annual value **+$175k**; Awaiting your decision **+$520k** |
+| | Chart: annual value by the three plain actions | Trim unused limits +$199k (approved); Wake up or close dormant cards −$38k approved + $520k awaiting; Stop automatic increases +$192k (extra) |
 | | Status tiles | Robustness: watch, still pays off at 1.5x; Fairness: act, 2 metros fail; Data calibration: watch, 25 of 43; Rules assumed: watch, proposal not law; Decisions pending: 4 open |
-| | Decisions box | Dormant-card actions (B6) +$529k; fair-lending review (Albuquerque, Birmingham); pilot with a 10% holdout |
+| | Decisions box | Dormant-card actions (B6) +$520k; fair-lending review (Albuquerque, Birmingham); pilot with a 10% holdout |
 | | One-time capital freed | $113,865, not annual |
-| **Where the cost sits** (home of the problem and the cost) | Cards | 40,530 accounts (45.9% of 88,232 open; $573.36M unused); annual loss −$2.58M; holding $694k; expected losses $1.47M |
+| **Where the cost sits** (home of the problem and the cost) | Cards | 40,530 accounts (45.9% of 88,232 open; $573.36M unused); annual loss −$2.58M; holding $694k; expected losses $1.63M |
 | | Six group cards (plain names) | Customers at rising risk 1,460; Valuable relationship customers 5,513; Unused cards 15,076; Occasional users 6,139; Pay-in-full customers 6,337; Other 6,005 |
-| | Chart | Holding cost vs expected losses by group (rising-risk customers $19k vs $481k) |
-| | Details | Full table; rules and thresholds; screen sensitivity (+8,174 accounts, $390,728 more loss); analyst: LEQ account vs workbook by group (B2) |
-| **Actions and value** (home of approved value and value awaiting decision) | Cards | Annual value **+$120k**; year 1 +$94k; awaiting your decision +$529k; customers leaving 214 |
-| | Chart and 5-column table | Annual value with year 1 by action: Trim unused limits 2,506 customers, +$137,895, +$117,211, 138 leaving |
-| | Scenarios | Conservative +$72,553 ≤ Base +$120,339 ≤ Aggressive +$156,682 |
-| | Details (analyst) | By lever, by segment, how the value is built (card profit alone −$9,609; reduction in drawdown loss +$129,948; relationship-adjusted −$68,862), fixed-cost setting (B5: engine +$120,339 vs workbook +$152,405, 54,204 screened), timing |
+| | Headline and chart | Customers at rising risk carry the largest share ($817k of $2.33M); holding cost vs expected losses by group (rising-risk customers $19k vs $798k) |
+| | Details | Full table; rules and thresholds; screen sensitivity (+7,328 accounts, $637,348 more loss); analyst: LEQ account vs workbook by group (B2) |
+| **Actions and value** (home of approved value and value awaiting decision) | Cards | Annual value **+$175k**; year 1 +$146k; awaiting your decision +$520k; customers leaving 214 |
+| | Chart and 5-column table | Annual value with year 1 by action: Trim unused limits 2,506 customers, +$199,016, +$169,164, 138 leaving |
+| | Scenarios | Conservative +$125,670 ≤ Base +$175,389 ≤ Aggressive +$210,933 |
+| | Details (analyst) | By lever, by segment, how the value is built (card profit alone −$9,609; reduction in drawdown loss +$184,998; relationship-adjusted −$68,862), fixed-cost setting (B5: engine +$175,389 vs workbook +$217,245, 54,204 screened), timing |
 | **Risks and checks** (home of the red flags) | Tiles | Robustness, Fairness (2 fail, 68 pass, 6 too few to test), Rules assumed, Notices required (2,506 adverse-action notices; 26,981 actions flagged for compliance) |
-| | Chart | Annual value at 1x-2x: +$120k, +$113k, +$107k, +$103k, +$100k; analyst view adds card profit alone |
+| | Chart | Annual value at 1x-2x: +$175k, +$164k, +$155k, +$148k, +$141k; analyst view adds card profit alone |
 | | Worked example | A $10,000 unused card costs $13.20 a year to hold ($9.45 capital + $3.75 liquidity) |
 | | Details | Notices by reason code; fairness by metro ("insufficient sample" below 30 selected); parameters; current US rules comparison |
 | **Customer evidence** | Recommendation card | e.g. ACC0070665 (limit cut example): "Reduce limit from $52,000 to $39,000. Reason: rising credit risk. Adverse-action notice: required." |
@@ -91,8 +91,8 @@ shows them together and links to it.
 | | Review | Agree / Disagree / Need more information, with a note; downloads labelled "review notes, not an approval record" (this account, or every account reviewed in the session) |
 | | Details | Calculation trace (both LEQ values, PD imputed flag), transactor test month by month, rules met / not met, other worklists |
 | **What-if** (analyst) | Any edit | "Exploration only"; a warning on every page; Reset restores the defaults |
-| | B6 on | Pending levers move into the annual value (Base +$452,064) |
-| | LEQ source / fixed-cost basis | workbook_segment LEQ: Base +$175,389; workbook fixed cost: Base +$152,405 |
+| | B6 on | Pending levers move into the annual value (Base +$500,730) |
+| | LEQ source / fixed-cost basis | account Behavioral CCF (measured_account): Base +$120,339; workbook fixed cost: Base +$217,245 |
 | | "Category IV or other" | Liquidity cost goes to $0; capital unchanged |
 | **Lever guide** (analyst) | Every lever | Plain action, status, reason code, adverse-action notice, compliance, timing; reason-code notice rules |
 | **Technical** (analyst) | Reconciliation (B4) | card_net −$2,000,170 + old capital $124,981 − new capital $489,183 − liquidity $215,011 = −$2,579,382 (screened); check $0.00 |
@@ -103,12 +103,13 @@ the suite). Analyst labels: Screened accounts, Carrying cost, Drawdown loss, Hea
 Go/no-go, Pending approval (B6), Capital released.
 
 5k demo (default settings): 890 screened (Valuable relationship customers 555); card profit
-−$61,296; holding cost $10,630; expected losses $13,485; Base +$639; capital released $1,307; 1.5×
-+$508 (go); fairness: every metro "insufficient sample".
+−$61,296; holding cost $10,630; expected losses $9,926; Base +$817; capital released $1,307; 1.5×
++$635 (go); fairness: every metro "insufficient sample".
 
 Figures after revision B (17 Nov 2026): B1 changes nothing on the samples (only closed or charged-off
-accounts lack a PD); B2 (account LEQ) lowers the stress book's drawdown loss and Base value; B3
-changes only the reason codes; B5's default (engine allocation) changes nothing.
+accounts lack a PD); B2's default is the workbook segment LEQ (decided 17 Nov 2026), so the
+headline figures equal those before the revision; B3 changes only the reason codes; B5's default
+(engine allocation) changes nothing.
 
 ### Example customers (stress book, Customer evidence)
 
@@ -134,10 +135,10 @@ together).
 - The go / no-go passes on the headline (incl. avoided drawdown loss); card profit alone is negative
   already at 1×.
 - Fixed cost: the engine allocates $2.91 per screened account on the stress book (workbook $30–60);
-  the workbook basis (B5) screens 54,204 accounts and gives Base +$152,405.
-- LEQ: the account Behavioral CCF is a generator parameter (0.42 / 0.798), so the default B2 setting
-  flattens LEQ to about 0.42 (`ISSUES_FOUND.md` #16); `drawdown_risk.leq_source = workbook_segment`
-  restores the workbook LEQ (stress book Base +$175,389).
+  the workbook basis (B5) screens 54,204 accounts and gives Base +$217,245.
+- LEQ: the default is the workbook segment LEQ. The account Behavioral CCF (setting
+  `measured_account`) is a generator parameter (0.42 / 0.798) that flattens LEQ to about 0.42
+  (`ISSUES_FOUND.md` #16): stress book Base +$120,339.
 - §2.7: the module's own carrying cost is +6.1% against the brief because of the agreed transactor
   test; with the plan / promotional rule off it is within 3.5% (tested).
 

@@ -3,12 +3,20 @@
 Decisions received after the Stage 1 audit, newest first. Open decisions with the boss
 (B4–B7) are in `OPEN_DECISIONS.md` and stay behind config flags.
 
+## 17 Nov 2026: B2 default - the workbook LEQ
+
+The workbook segment LEQ is the default (`drawdown_risk.leq_source = "workbook_segment"`) until the
+bank has a measured LEQ: the synthetic Behavioral CCF is a two-value generator parameter
+(`ISSUES_FOUND.md` #16). The account-level setting stays available on What-if. Headline figures
+return to their values before revision B (stress book Base +$175,389). Suite after the change: 122/122
+(`REVISION_D_AUDIT.txt`).
+
 ## 17 Nov 2026: calculation corrections (revision B)
 
 | # | Decision | Where it lives |
 |---|---|---|
 | B1 | A missing PD takes the segment's average PD (accounts with a PD), then the portfolio average; flagged `pd_imputed` | `drawdown_risk.missing_pd`, `exposure.pd_used` |
-| B2 | LEQ per account = Table9 Behavioral CCF (same definition as LEQ; see `ISSUES_FOUND.md` #16), workbook segment LEQ as fallback; switch `measured_account` (default) / `workbook_segment` | `drawdown_risk.leq_source`, `exposure.leq_columns` |
+| B2 | LEQ per account = Table9 Behavioral CCF (same definition as LEQ; see `ISSUES_FOUND.md` #16), workbook segment LEQ as fallback; switch `measured_account` / `workbook_segment` (default since the decision above) | `drawdown_risk.leq_source`, `exposure.leq_columns` |
 | B3 | Specific reason codes with their notice rules: `IDLE_LINE_RIGHTSIZING`, `CREDIT_DETERIORATION`, `INACTIVITY`, `INACTIVITY_NON_REISSUE`, `ENGAGEMENT_CAMPAIGN`, `SUPPRESS_AUTO_INCREASE`; `OTHER` below 1% of actions | `treatment.reason_codes`, `treatment.reason_by_lever` |
 | B4 | The module's card profit is labelled "card profit under the assumed capital rules", with a reconciliation from the main engine's card profit | `exposure.reconciliation` |
 | B5 | Fixed cost basis: `engine_allocated` (default) or `workbook_segment` | `costs.fixed_cost_basis`, `exposure.fixed_costs` |

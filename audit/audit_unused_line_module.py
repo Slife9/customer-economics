@@ -308,18 +308,20 @@ def correction_checks(acc: pd.DataFrame, meta: dict, f: pd.DataFrame, cfg: dict,
                 and (f["pd_imputed"] == miss).all() and np.allclose(f.loc[~miss, "pd_used"], f.loc[~miss, "pd_12m"])),
            f"{int(miss.sum()):,} imputed ({int((miss & f['screened']).sum()):,} screened); "
            f"{f.loc[miss].assign(o=f['open_at_reporting_date'] & ~f['charged_off'])['o'].sum():,} of them open")
-    wbl = A.with_overrides(cfg, {"drawdown_risk": {"leq_source": "workbook_segment"}})
-    fw = SG.build(acc, meta, wbl)
+    fa = SG.build(acc, meta, A.with_overrides(cfg, {"drawdown_risk": {"leq_source": "measured_account"}}))
+    fw = SG.build(acc, meta, A.with_overrides(cfg, {"drawdown_risk": {"leq_source": "workbook_segment"}}))
     has = f["behavioural_ccf"].notna()
     seg_leq = f["rule_segment"].map(cfg["drawdown_risk"]["leq_by_segment"]).fillna(meta["leq_unassigned_measured"])
-    ok = (np.allclose(f.loc[has, "leq"], f.loc[has, "behavioural_ccf"]) and np.allclose(f.loc[~has, "leq"], seg_leq[~has])
-          and np.allclose(fw["leq"], seg_leq) and (fw["screened"] == f["screened"]).all()
-          and np.allclose(fw["card_profit"], f["card_profit"]) and np.allclose(fw["carrying_cost"], f["carrying_cost"]))
+    default = fw if cfg["drawdown_risk"]["leq_source"] == "workbook_segment" else fa
+    ok = (np.allclose(fa.loc[has, "leq"], fa.loc[has, "behavioural_ccf"]) and np.allclose(fa.loc[~has, "leq"], seg_leq[~has])
+          and np.allclose(fw["leq"], seg_leq) and (fw["screened"] == fa["screened"]).all()
+          and np.allclose(fw["card_profit"], fa["card_profit"]) and np.allclose(fw["carrying_cost"], fa["carrying_cost"])
+          and np.allclose(f["drawdown_el"], default["drawdown_el"]))
     sc = f["screened"]
-    record(f"{label}: B2 LEQ = the account's Behavioral CCF (workbook segment LEQ when missing); the switch changes "
-           "drawdown loss only", bool(ok),
-           f"screened drawdown loss ${f.loc[sc, 'drawdown_el'].sum():,.0f} (account) vs "
-           f"${fw.loc[sc, 'drawdown_el'].sum():,.0f} (workbook segment); {int((~has).sum()):,} accounts on the fallback")
+    record(f"{label}: B2 LEQ switch: workbook segment LEQ, or the account's Behavioral CCF (workbook LEQ when "
+           f"missing); it changes drawdown loss only (default: {cfg['drawdown_risk']['leq_source']})", bool(ok),
+           f"screened drawdown loss ${fw.loc[sc, 'drawdown_el'].sum():,.0f} (workbook segment) vs "
+           f"${fa.loc[sc, 'drawdown_el'].sum():,.0f} (account); {int((~has).sum()):,} accounts on the fallback")
     rec = X.reconciliation(f, sc)
     record(f"{label}: B4 main engine card profit + old capital - new capital - liquidity = module card profit, to the cent",
            abs(float(rec["usd"].iloc[-1])) < 0.005,

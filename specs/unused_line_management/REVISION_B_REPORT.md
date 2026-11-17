@@ -2,6 +2,13 @@
 
 17 Nov 2026, branch `feature/unused-line-management` (not pushed, merged or deployed).
 
+> **Update after this report (17 Nov 2026):** the B2 default is now the **workbook segment LEQ**
+> (`drawdown_risk.leq_source = "workbook_segment"`), as recommended below. With it the headline
+> figures equal the "B1" column (stress book Base +$175,389, 1.5× +$155,257, pending +$519,808;
+> demo Base +$817). The "+ B2" column is now the alternative setting `measured_account`. With the
+> workbook LEQ, the B5 alternative (workbook fixed cost) gives Base +$217,245 (stress book, 54,204
+> screened) and +$731 (demo). Figures: `figures/D_*.json`.
+
 Every new setting is in `engine/unused_lines/config/unused_line_assumptions.json` with its default;
 nothing outside the module changed. Figures below are from `audit/unused_line_headline_figures.py`
 on the committed app samples (JSON in `figures/`). Each column adds one correction to the one

@@ -43,7 +43,7 @@ d1, d2, d3 = st.columns(3)
 dr, co = cfg["drawdown_risk"], cfg["costs"]
 new["drawdown_risk"]["leq_source"] = d1.radio(
     "LEQ source (B2)", dr["leq_source_options"], index=dr["leq_source_options"].index(dr["leq_source"]),
-    format_func={"measured_account": "Account Behavioral CCF (default)", "workbook_segment": "Workbook segment LEQ"}.get)
+    format_func={"measured_account": "Account Behavioral CCF", "workbook_segment": "Workbook segment LEQ (default)"}.get)
 new["costs"]["fixed_cost_basis"] = d2.radio(
     "Fixed cost per account (B5)", co["fixed_cost_basis_options"],
     index=co["fixed_cost_basis_options"].index(co["fixed_cost_basis"]),

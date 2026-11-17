@@ -95,12 +95,12 @@
       "deteriorating": 0.7,
       "relationship": 0.15
     },
-    "leq_source": "measured_account",
+    "leq_source": "workbook_segment",
     "leq_source_options": [
       "measured_account",
       "workbook_segment"
     ],
-    "_leq_source_note": "Revision B2: measured_account (default) = the account's Behavioral CCF from Table9 at the reporting date (EAD = balance + CCF x unused line, the same definition as LEQ); when it is missing, the workbook segment LEQ. workbook_segment = one workbook LEQ per segment (Unassigned: the measured portfolio mean). On the synthetic data the Behavioral CCF is a generator parameter with two values (0.42, or 0.798 after a risk-deterioration limit event): see ISSUES_FOUND.md.",
+    "_leq_source_note": "Revision B2: workbook_segment (default, decided 17 Nov 2026 until the bank has a measured LEQ) = one workbook LEQ per segment (Unassigned: the measured portfolio mean). measured_account = the account's Behavioral CCF from Table9 at the reporting date (EAD = balance + CCF x unused line, the same definition as LEQ); when it is missing, the workbook segment LEQ. On the synthetic data the Behavioral CCF is a generator parameter with two values (0.42, or 0.798 after a risk-deterioration limit event): see ISSUES_FOUND.md.",
     "leq_unassigned": "portfolio_average_behavioural_ccf",
     "_leq_unassigned_note": "Answer 7: assumption-based; not in the reference workbook. Measured as the mean Behavioral CCF (Table9) over open card accounts at the reporting date.",
     "cecl_allowance_on_unused_cancellable_lines": 0.0

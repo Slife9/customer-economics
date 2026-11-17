@@ -109,13 +109,13 @@ profit, the workbook-reproduction panel and the What-if settings.
     the account's rule segment (accounts with a PD), then the portfolio average, flagged
     `pd_imputed`; a missing PD never means zero risk. Segment rules use the measured PD only. On
     the committed samples only closed or charged-off accounts lack a PD (none is screened).
-  - **LEQ (B2):** `drawdown_risk.leq_source`. `measured_account` (default): the account's Table9
-    Behavioral CCF at the reporting date (EAD = balance + CCF × unused line: the same definition as
-    LEQ, the share of the unused line drawn before default), the workbook segment LEQ when it is
-    missing. `workbook_segment`: the workbook's LEQ per segment (Unassigned: the measured portfolio
-    mean). On the synthetic data the Behavioral CCF has two values (0.42; 0.798 after a
-    risk-deterioration limit event), so the default sets LEQ near 0.42 for every segment
-    (`ISSUES_FOUND.md` #16).
+  - **LEQ (B2):** `drawdown_risk.leq_source`. `workbook_segment` (default, until the bank has a
+    measured LEQ): the workbook's LEQ per segment (Unassigned: the measured portfolio mean).
+    `measured_account`: the account's Table9 Behavioral CCF at the reporting date (EAD = balance +
+    CCF × unused line: the same definition as LEQ, the share of the unused line drawn before
+    default), the workbook segment LEQ when it is missing. On the synthetic data the Behavioral CCF
+    has two values (0.42; 0.798 after a risk-deterioration limit event), so `measured_account` sets
+    LEQ near 0.42 for every segment (`ISSUES_FOUND.md` #16).
 - **Carrying cost** = capital cost on the unused part + liquidity cost; **total unused-line cost** =
   carrying cost + drawdown loss.
 - **Card profit under the assumed capital rules (B4)** = engine `card_net` + the old capital charge −
@@ -181,13 +181,13 @@ are approximated (deposits + Segment).
 |---|---|---|
 | Screened accounts | 40,530 | 890 |
 | Card profit | −$2,579,382 | −$61,296 |
-| Carrying cost / drawdown loss | $693,984 / $1,473,986 | $10,630 / $13,485 |
-| Base annual value (headline) | +$120,339 | +$639 |
+| Carrying cost / drawdown loss | $693,984 / $1,633,129 | $10,630 / $9,926 |
+| Base annual value (headline) | +$175,389 | +$817 |
 | Capital released, one-time (Base) | $113,865 | $1,307 |
-| Pending approval / extra levers | +$529,424 / +$199,599 | +$4,429 / +$2,906 |
-| 1.5× stress | +$107,385 (go; card profit alone −$15,752) | +$508 (go; card profit alone −$248) |
-| Base with `leq_source = workbook_segment` | +$175,389 | +$817 |
-| Base with `fixed_cost_basis = workbook_segment` | +$152,405 (54,204 screened) | +$597 (1,011 screened) |
+| Pending approval / extra levers | +$519,808 / +$191,794 | +$4,376 / +$2,568 |
+| 1.5× stress | +$155,257 (go; card profit alone −$15,752) | +$635 (go; card profit alone −$248) |
+| Base with `leq_source = measured_account` | +$120,339 | +$639 |
+| Base with `fixed_cost_basis = workbook_segment` | +$217,245 (54,204 screened) | +$731 (1,011 screened) |
 
 Reconciliation, calibration, issues and decisions: `specs/unused_line_management/` (STAGE1–8
 reports, `ISSUES_FOUND.md`, `DECISIONS.md`, `EVALUATION_GUIDE.md`).
