@@ -113,6 +113,24 @@
     ],
     "_note": "Revision B5: engine_allocated (default) = the engine's cost_to_serve_fixed_allocated over 12 cycles; workbook_segment = the workbook's fixed cost per account by segment (Unassigned: the workbook segments' fixed cost weighted by their account counts). Fixed cost stays when an account leaves, so lever values change only through the screened population. The engine's low allocation is logged in ISSUES_FOUND.md."
   },
+  "balance_basis": {
+    "_note": "Revision E (1b). Table4 Ending Balance is after the month's payment; Statement Balance (Ending Balance + Payment Made) is before it. screen: the 'uses under 30% of the limit' test (statement_date, default; after_payment = before revision E). cost: the drawn balance behind the unused line, capital, liquidity and drawdown loss (midpoint = (statement + after payment) / 2, the proxy for the balance outstanding during the month, default; after_payment = before revision E). lever_values: the unused line that forward-looking costs and savings are valued on (current = today's line and balance on the cost basis, default; average_12m = the 12-month average, before revision E). The 12-month average always explains past profit. The $5,000 unused test and the line sizing floors keep the reporting-date balance.",
+    "screen": "statement_date",
+    "screen_options": [
+      "statement_date",
+      "after_payment"
+    ],
+    "cost": "midpoint",
+    "cost_options": [
+      "midpoint",
+      "after_payment"
+    ],
+    "lever_values": "current",
+    "lever_values_options": [
+      "current",
+      "average_12m"
+    ]
+  },
   "current_rules_comparison": {
     "ccf_unconditionally_cancellable": 0.0,
     "risk_weight_drawn_card_balances": 1.0,
@@ -281,9 +299,88 @@
       },
       "_stress_note": "System mode: the multiplier raises attrition, spend loss and PD uplift and divides the response rate. Workbook-reproduction mode scales attrition and spend loss only.",
       "transactor_rightsizing_in_recommendations": false,
+      "transactor_rightsizing_in_approved_value": false,
+      "_transactor_rightsizing_note": "Revision E (1c): pay-in-full right-sizing is excluded by policy (low risk, a marginal saving, and the risk of upsetting good customers), not because it loses money: in Base it shows a small gain, partly because the engine's fixed-cost allocation is low. It is valued and shown to analysts only. transactor_rightsizing_in_approved_value = true is the setting before revision E (valued inside the approved total although never recommended).",
       "headline_value": "change_in_card_profit_plus_avoided_drawdown_loss",
       "_headline_note": "Headline annual value = change in card profit + reduction in expected drawdown loss (drawdown loss is beside profit in the baseline; its change is the main benefit of a line cut). Both parts are shown."
     }
+  },
+  "strategies": {
+    "_note": "Revision E (Stage 2): the four strategies executives see, each built from the levers underneath (project report, 'The four strategies'). Status values: approved, approved_test_only, awaiting_decision, proposed. A step whose levers are B6 levers follows the B6 flags: awaiting_decision while they are off, approved when they are on.",
+    "order": [
+      "right_size",
+      "re_engage",
+      "use_it_or_lose_it",
+      "stop_auto_increases"
+    ],
+    "definitions": {
+      "right_size": {
+        "number": 1,
+        "name": "Right-size unused limits",
+        "status": "approved",
+        "steps": [
+          {"key": "rising_risk", "name": "Customers at rising risk", "levers": ["risk_based_decrease"], "segments": ["deteriorating"]},
+          {"key": "occasional", "name": "Occasional users", "levers": ["line_decrease"], "segments": ["sock_drawer"]},
+          {"key": "relationship", "name": "Relationship customers", "levers": ["line_decrease"], "segments": ["relationship"]}
+        ]
+      },
+      "re_engage": {
+        "number": 2,
+        "name": "Re-engage active low-use customers",
+        "status": "approved_test_only",
+        "steps": [
+          {"key": "campaign", "name": "Engagement campaign", "levers": ["engagement_campaign"], "segments": ["sock_drawer", "transactors", "relationship"]}
+        ]
+      },
+      "use_it_or_lose_it": {
+        "number": 3,
+        "name": "\"Use it or lose it\" for dormant cards",
+        "status": "awaiting_decision",
+        "steps": [
+          {"key": "invite", "name": "Invite (reactivation offer)", "levers": ["engagement_campaign"], "segments": ["dormant"], "status": "approved"},
+          {"key": "rightsize", "name": "Right-size after the warning", "levers": ["dormant_rightsizing"], "segments": ["dormant"], "warning": true},
+          {"key": "close", "name": "Close after the warning (24+ months unused)", "levers": ["dormant_closure"], "segments": ["dormant"], "warning": true},
+          {"key": "non_reissue", "name": "Don't reissue at expiry", "levers": ["non_reissue_expired_dormant"], "segments": ["dormant"], "warning": true}
+        ]
+      },
+      "stop_auto_increases": {
+        "number": 4,
+        "name": "Stop automatic limit increases",
+        "status": "proposed",
+        "steps": [
+          {"key": "suppress", "name": "Suppress automatic increases", "levers": ["suppress_automatic_increases"], "segments": null}
+        ]
+      }
+    },
+    "status_options": [
+      "approved",
+      "approved_test_only",
+      "awaiting_decision",
+      "proposed"
+    ],
+    "not_done": [
+      "Cut pay-in-full customers' limits: low risk, the saving is marginal, and it risks upsetting good customers",
+      "Act on the \"Other\" group: their losses are not caused by unused credit",
+      "Touch protected customers: hardship and SCRA customers are excluded from every action"
+    ]
+  },
+  "warning": {
+    "_label": "assumption; to be tested in the pilot",
+    "_note": "Revision E (2b): the 90-day 'use it or lose it' warning before any Strategy 3 action (right-size, close, don't reissue). Every unused card selected for one of those actions is warned. Responses: resume use (the card stays open and earns active-card economics: the workbook's reactivation-responder spend and balance, without offer costs), accept a lower limit (the right-sizing cut, with no attrition, spend loss or risk uplift: the customer chose it), close voluntarily (the whole line removed); the rest proceed to the planned action. A customer who responds to the Invite is never warned. The warning is never a fee: inactivity penalty fees are prohibited (Reg Z 1026.52(b)).",
+    "enabled": true,
+    "notice_days": 90,
+    "response_shares": {
+      "resume_use": 0.1,
+      "accept_lower_limit": 0.2,
+      "close_voluntarily": 0.1
+    },
+    "min_use_to_reset": "min_spend",
+    "min_use_to_reset_options": [
+      "one_transaction",
+      "min_spend"
+    ],
+    "min_spend_to_reset_usd": 100,
+    "letter_cost_usd": 1.0
   },
   "workbook_reproduction": {
     "_note": "Answer 4: a separate mode that uses the workbook's modelled loss throughout, for the +/-1% test.",

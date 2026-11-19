@@ -61,7 +61,7 @@ LEVER_PLAIN = {
     "line_decrease": "Trim idle limits",
     "risk_based_decrease": "Trim limits of customers at rising risk",
     "dormant_rightsizing": "Right-size unused cards",
-    "transactor_rightsizing": "Right-size pay-in-full customers (never recommended)",
+    "transactor_rightsizing": "Right-size pay-in-full customers (not recommended, by policy)",
     "dormant_closure": "Close unused cards after a failed wake-up campaign",
     "engagement_campaign": "Wake-up (reactivation) campaign",
     "suppress_automatic_increases": "Stop automatic limit increases",
@@ -118,7 +118,7 @@ SEGMENT_ACTIONS = {
         "why": "Pays in full, low peak utilisation, meaningful spend: profitable behaviour on an oversized line.",
         "actions": ["Leave the line alone: stop automatic increases rather than cut.",
                     "Revolve / installment offers only if they fit the customer (they move the account to 75%)."],
-        "watch": "Most sensitive to cuts (top of wallet, bureau utilisation); right-sizing is shown only to demonstrate it.",
+        "watch": "Not cut, by policy: low risk, a marginal saving, and the risk of upsetting good customers.",
         "plain_action": "Leave limits alone; stop automatic increases",
     },
     "unassigned": {
@@ -142,7 +142,9 @@ LEVERS = {
     "dormant_rightsizing": ("Dormant right-sizing (pending approval, B6).",
                             "$8,000 dormant line cut by 25% at the next review.",
                             "Inactivity: no adverse action notice (Reg B 1002.2(c)(2)(ii)); reason code recorded."),
-    "transactor_rightsizing": ("Transactor right-sizing - shown to demonstrate its effect; never recommended.",
+    "transactor_rightsizing": ("Pay-in-full right-sizing - valued for analysts; not recommended, by policy (low "
+                               "risk, a marginal saving, risk of upsetting good customers). In Base it shows a small "
+                               "gain, partly because the engine's fixed-cost allocation is low.",
                                "Peak plus headroom, at least $5,000.",
                                "Adverse action notice; most sensitive customers."),
     "dormant_closure": ("Dormant closure after failed reactivation (pending approval, B6).",

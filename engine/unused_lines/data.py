@@ -39,6 +39,37 @@ C = "Masked Customer Number"
 ZERO = 0.005  # a statement balance at or below half a cent is $0
 
 
+def balance_basis_columns(c12: pd.DataFrame, last: str) -> pd.DataFrame:
+    """Revision E (1b): per account, the balances on the three bases.
+    `c12`: one row per account and cycle (the trailing 12) with Credit Limit,
+    Ending Balance (after the month's payment) and Statement Balance (before
+    it). The midpoint, (statement + after payment) / 2, stands in for the
+    balance outstanding during the month."""
+    lim = c12["Credit Limit"]
+    mid = (c12["Statement Balance"] + c12["Ending Balance"]) / 2
+    x = pd.DataFrame({K: c12[K], "cycle": c12["Cycle Month"],
+                      "stmt_util": c12["Statement Balance"] / lim.where(lim > 0),
+                      "mid": mid, "ucl_mid": (lim - mid).clip(lower=0), "stmt": c12["Statement Balance"]})
+    g = x.groupby(K)
+    now = x[x["cycle"] == last].set_index(K)
+    return pd.DataFrame({
+        "statement_utilisation_avg_12m": g["stmt_util"].mean(),
+        "balance_midpoint_avg_12m": g["mid"].mean(),
+        "ucl_midpoint_avg_12m": g["ucl_mid"].mean(),
+        "statement_balance_current": now["stmt"],
+        "balance_midpoint_current": now["mid"],
+        "ucl_midpoint_current": now["ucl_mid"],
+    })
+
+
+def add_balance_basis(t: pd.DataFrame, monthly: pd.DataFrame, last: str) -> pd.DataFrame:
+    """The balance-basis columns added to an existing per-account file from
+    its 12 monthly cycles (as shipped with the app samples)."""
+    cols = balance_basis_columns(monthly, last)
+    out = t.drop(columns=[c for c in cols if c in t])
+    return out.join(cols.reindex(out.index))
+
+
 def _opt(data_dir: Path, name: str, **kw) -> pd.DataFrame | None:
     p = data_dir / name
     return pd.read_csv(p, **kw) if p.exists() else None
@@ -96,6 +127,7 @@ def account_frame(data_dir: Path | str) -> tuple[pd.DataFrame, dict]:
     t["balance_current"] = latest["Ending Balance"].reindex(t.index)
     t["ucl_current"] = (t["limit_current"] - t["balance_current"]).clip(lower=0)
     t["apr"] = latest["Charged Purchase APR"].reindex(t.index) / 100.0
+    t = t.join(balance_basis_columns(c12.rename(columns={"stmt": "Statement Balance"}), last))
 
     plan = _opt(data_dir, "Table5b_Installment_Plan_Cycle.csv",
                 usecols=[K, "Cycle Month", "Remaining Principal"])

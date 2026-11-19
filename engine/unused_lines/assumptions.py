@@ -71,6 +71,29 @@ def validate(cfg: dict) -> None:
     co = cfg["costs"]
     if co["fixed_cost_basis"] not in co["fixed_cost_basis_options"]:
         raise AssumptionsError(f"costs.fixed_cost_basis {co['fixed_cost_basis']!r} not in {co['fixed_cost_basis_options']}")
+    bb = cfg["balance_basis"]
+    for k in ["screen", "cost", "lever_values"]:
+        if bb[k] not in bb[f"{k}_options"]:
+            raise AssumptionsError(f"balance_basis.{k} {bb[k]!r} not in {bb[f'{k}_options']}")
+    wn = cfg["warning"]
+    sh = wn["response_shares"]
+    if any(v < 0 for v in sh.values()) or sum(sh.values()) > 1:
+        raise AssumptionsError(f"warning.response_shares must be >= 0 and add up to at most 1: {sh}")
+    if wn["min_use_to_reset"] not in wn["min_use_to_reset_options"]:
+        raise AssumptionsError(f"warning.min_use_to_reset {wn['min_use_to_reset']!r} not recognised")
+    if any("fee" in k.lower() for k in wn):
+        raise AssumptionsError("the warning step can never carry a fee (inactivity fees are prohibited, Reg Z 1026.52(b))")
+    st = cfg["strategies"]
+    known = set(cfg["levers"]["system_mode"]["lever_by_segment"].values()) | {
+        "dormant_closure", "engagement_campaign", "suppress_automatic_increases", "non_reissue_expired_dormant"}
+    for key in st["order"]:
+        d = st["definitions"][key]
+        for s in [d] + d["steps"]:
+            if s.get("status", d["status"]) not in st["status_options"]:
+                raise AssumptionsError(f"strategies.{key}: status {s.get('status')!r} not in {st['status_options']}")
+        for s in d["steps"]:
+            if set(s["levers"]) - known or set(s["segments"] or []) - set(SEGMENTS):
+                raise AssumptionsError(f"strategies.{key}.{s['key']}: unknown lever or segment")
     rc = cfg["treatment"]["reason_codes"]
     unknown = sorted(set(cfg["treatment"]["reason_by_lever"].values()) - set(rc))
     if unknown:

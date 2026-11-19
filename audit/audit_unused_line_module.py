@@ -89,7 +89,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from engine.unused_lines import assumptions as A, data as D, exposure as X, segments as SG  # noqa: E402
-from engine.unused_lines import levers as L, workbook as W, treatment as T  # noqa: E402
+from engine.unused_lines import levers as L, workbook as W, treatment as T, strategies as ST  # noqa: E402
 
 PROFILES = ["demo", "unused_line_stress"]
 BRIEF_27 = {"ucl": 2.69e9, "rwa_unused": 165.8e6, "capital_cost_unused": 2.09e6, "hqla": 134.5e6,
@@ -231,8 +231,11 @@ def toggles(acc: pd.DataFrame, cfg: dict, leq: float, label: str) -> None:
            f"RWA ${base['rwa'].sum():,.0f} (s.2) vs ${cur['rwa_current_rules'].sum():,.0f} (current); "
            f"SLR capital ${cur['slr_capital_required'].sum():,.0f} vs risk-based ${base['capital_required'].sum():,.0f}")
     now = X.account_costs(acc, cfg, basis="current", leq_unassigned=leq)
-    record(f"{label}: 'current' basis uses the reporting-date line and balance",
-           bool(np.allclose(now["ucl"], acc["ucl_current"].fillna(0)) and np.allclose(base["ucl"], acc["ucl_avg_12m"].fillna(0))))
+    cur_col = X.BALANCE_COLUMNS[(cfg["balance_basis"]["cost"], "current")][1]
+    avg_col = X.BALANCE_COLUMNS[(cfg["balance_basis"]["cost"], "average")][1]
+    record(f"{label}: 'current' basis uses the reporting-date line and balance (cost basis "
+           f"{cfg['balance_basis']['cost']})",
+           bool(np.allclose(now["ucl"], acc[cur_col].fillna(0)) and np.allclose(base["ucl"], acc[avg_col].fillna(0))))
 
 
 # ------------------------------------------------------------- Stage 4
@@ -339,6 +342,124 @@ def correction_checks(acc: pd.DataFrame, meta: dict, f: pd.DataFrame, cfg: dict,
            f"{int(ff['screened'].sum()):,} accounts (default {int(sc.sum()):,})")
 
 
+# ------------------------------------------------------------- Revision E
+OLD_SETTINGS = {"balance_basis": {"screen": "after_payment", "cost": "after_payment", "lever_values": "average_12m"},
+                "levers": {"system_mode": {"transactor_rightsizing_in_approved_value": True}},
+                "warning": {"enabled": False}}
+
+
+def balance_basis_checks(acc: pd.DataFrame, meta: dict, f: pd.DataFrame, cfg: dict, label: str) -> None:
+    print(f"\n14. Balance basis and pay-in-full policy (revision E, Stage 1) - {label}", flush=True)
+    mid_ok = np.allclose(acc["balance_midpoint_avg_12m"],
+                         (acc["statement_balance_avg_12m"] + acc["balance_avg_12m"]) / 2, equal_nan=True)
+    stmt_ok = bool((acc["statement_balance_avg_12m"] >= acc["balance_avg_12m"] - 1e-6).all())
+    record(f"{label}: 1b the midpoint balance is (statement + after-payment) / 2 in every cycle; statement >= after "
+           "payment", bool(mid_ok and stmt_ok),
+           f"12-month average balance: after payment ${acc['balance_avg_12m'].mean():,.0f}, midpoint "
+           f"${acc['balance_midpoint_avg_12m'].mean():,.0f}, statement ${acc['statement_balance_avg_12m'].mean():,.0f}")
+    after = A.with_overrides(cfg, {"balance_basis": {"screen": "after_payment"}})
+    fa = SG.build(acc, meta, after)
+    left = fa["screened"] & ~f["screened"]
+    joined = f["screened"] & ~fa["screened"]
+    record(f"{label}: 1b the statement-date screen only removes cards that use 30%+ of the limit at statement date",
+           bool(not joined.any() and (acc.loc[left, "statement_utilisation_avg_12m"]
+                                      >= cfg["screen"]["max_utilisation"]).all()),
+           f"{int(left.sum()):,} cards leave the selection ({int(fa['screened'].sum()):,} -> {int(f['screened'].sum()):,})")
+    fw = L.forward_frame(f, cfg)
+    col = X.BALANCE_COLUMNS[(cfg["balance_basis"]["cost"], "current")][1]
+    record(f"{label}: 1b lever values use today's unused line; past profit keeps the 12-month average",
+           bool(np.allclose(fw["ucl"], acc[col].reindex(f.index).fillna(0))
+                and np.allclose(f["ucl"], acc[X.BALANCE_COLUMNS[(cfg['balance_basis']['cost'], 'average')][1]]
+                                .reindex(f.index).fillna(0))),
+           f"selected cards: today ${fw.loc[f['screened'], 'ucl'].sum() / 1e6:,.1f}M vs 12-month "
+           f"${f.loc[f['screened'], 'ucl'].sum() / 1e6:,.1f}M unused")
+    res = L.run(f, cfg, "base")
+    lt = L.lever_table(res, cfg, f)
+    tr_lab = L.LEVER_LABELS["transactor_rightsizing"]
+    s3 = res["selection"]["decrease"] & (f["rule_segment"] == "transactors")
+    record(f"{label}: 1c pay-in-full right-sizing is valued for analysts but outside the approved value and the "
+           "recommendations, by policy", bool(lt.loc[tr_lab, "status"] == "excluded by policy"
+                                               and not (res["combined"].loc[s3, "unused_removed"].abs() > 0).any()
+                                               and "loses money" not in tr_lab),
+           f"stand-alone value {float(lt.loc[tr_lab, 'headline_value']):+,.0f} (Base); {int(s3.sum()):,} cards it would cut")
+
+
+def strategy_checks(f: pd.DataFrame, cfg: dict, label: str) -> None:
+    print(f"\n16. Four strategies and the 90-day warning (revision E, Stage 2) - {label}", flush=True)
+    res = L.run(f, cfg, "base")
+    sr = ST.run(res, cfg)
+    s = ST.summary(sr, cfg)
+    tb = s["table"]
+    adds = all(np.isclose(v["headline_value"], sum(v["components"].values())) for v in s["strategies"].values())
+    ident = all(np.allclose(v["effect"]["headline_value"], v["effect"]["card_profit_change"] - v["effect"]["drawdown_change"])
+                for v in sr["steps"].values())
+    record(f"{label}: each strategy's value is the sum of its components; every value = change in card profit + "
+           "reduction in drawdown loss", bool(adds and ident),
+           "; ".join(f"{v['number']}: {v['headline_value']:+,.0f}" for v in s["strategies"].values()))
+    record(f"{label}: capital freed is one-time, never inside an annual value; total potential = approved + "
+           "proposed + awaiting decision", bool(
+               "capital_released" not in ST.ANNUAL and np.isclose(
+                   s["total_potential"], s["approved_combined"]["headline_value"] + s["proposed"] + s["awaiting_decision"])),
+           f"approved {s['approved_combined']['headline_value']:+,.0f} + proposed {s['proposed']:+,.0f} + awaiting "
+           f"{s['awaiting_decision']:+,.0f} = {s['total_potential']:+,.0f}; capital freed "
+           f"${s['approved_combined']['capital_released']:,.0f} (one-time)")
+    lv = res["combined"][res["scope"]]["headline_value"].sum()
+    camp = res["per_lever"]["engagement_campaign"][res["scope"]]["headline_value"].sum()
+    split = tb.loc[tb["step"].isin(["campaign", "invite"]), "headline_value"].sum()
+    record(f"{label}: 2a the campaign splits exactly into Strategy 2 and Strategy 3's Invite; the combined approved "
+           "value equals the levers' combined headline", bool(np.isclose(split, camp)
+                                                              and np.isclose(s["approved_combined"]["headline_value"], lv)),
+           f"campaign {camp:+,.0f} = Strategy 2 {tb.loc[tb['step'] == 'campaign', 'headline_value'].sum():+,.0f} + Invite "
+           f"{tb.loc[tb['step'] == 'invite', 'headline_value'].sum():+,.0f}")
+    zero = A.with_overrides(cfg, {"warning": {"response_shares": {"resume_use": 0, "accept_lower_limit": 0,
+                                                                  "close_voluntarily": 0}, "letter_cost_usd": 0}})
+    sz = ST.run(res, zero)
+    g, P, sel = res["frame"], res["params"], res["selection"]
+    reach = 1 - P["response"].where(sel["campaign"] & (g["rule_segment"] == "dormant"), 0.0)
+    same = all(np.allclose(sz["steps"][("use_it_or_lose_it", k)]["effect"]["headline_value"],
+                           res["per_lever"][lv_]["headline_value"].where(sz["steps"][("use_it_or_lose_it", k)]["targeted"], 0)
+                           * reach)
+               for k, lv_ in [("rightsize", "dormant_rightsizing"), ("close", "dormant_closure"),
+                              ("non_reissue", "non_reissue_expired_dormant")])
+    letters = tb["letters"].sum()
+    no_cost = ST.summary(ST.run(res, A.with_overrides(cfg, {"warning": {"letter_cost_usd": 0}})), cfg)
+    cost_ok = np.isclose(no_cost["awaiting_decision"] - s["awaiting_decision"], letters * cfg["warning"]["letter_cost_usd"])
+    try:
+        A.validate({**cfg, "warning": {**cfg["warning"], "inactivity_fee_usd": 5}})
+        fee_refused = False
+    except A.AssumptionsError:
+        fee_refused = True
+    record(f"{label}: 2b the warning: with no responses it equals the planned action for every card not won back by "
+           "the Invite; each letter costs its configured amount; a fee in the warning settings is refused",
+           bool(same and cost_ok and fee_refused),
+           f"{letters:,.0f} letters; shares {cfg['warning']['response_shares']}; Strategy 3 actions "
+           f"{s['awaiting_decision']:+,.0f} with the warning")
+    t = T.design(f, cfg, res)
+    acted = t[t["recommended_levers"] != "none"]
+    s3 = acted["recommended_levers"].str.contains("|".join(T.WARNING_LEVERS))
+    record(f"{label}: every recommended action belongs to a strategy; every Strategy 3 action needs the 90-day warning",
+           bool((acted["strategy"] > 0).all() and acted.loc[s3, "warning_required"].all()
+                and not acted.loc[~s3, "warning_required"].any()),
+           f"by primary strategy {acted['strategy'].value_counts().sort_index().to_dict()}; "
+           f"{int(acted['warning_required'].sum()):,} need the warning")
+
+
+def sample_checks(cfg: dict) -> None:
+    """On the committed app samples: the old settings reproduce the figures
+    before revision E exactly (figures/D_workbook_leq_default.json)."""
+    print("\n15. Committed samples: settings switched back reproduce the earlier figures", flush=True)
+    sys.path.insert(0, str(ROOT / "audit"))
+    import unused_line_headline_figures as H
+    ref = json.loads((ROOT / "specs/unused_line_management/figures/D_workbook_leq_default.json").read_text())
+    old = A.with_overrides(cfg, OLD_SETTINGS)
+    for ds in ["stress", "demo"]:
+        got = H.figures(ds, old)
+        diff = {k: (v, got[k]) for k, v in ref[ds].items() if got[k] != v}
+        record(f"{ds}: every revision-E setting at its old value reproduces the Stage 0 figures exactly",
+               not diff, f"{len(ref[ds])} figures compared; base {got['base_annual_value']:+,.2f}; "
+                         f"screened {got['screened_accounts']:,}" + (f"; differ: {diff}" if diff else ""))
+
+
 # ------------------------------------------------------------- Stage 5
 def workbook_scenarios(cfg: dict) -> None:
     print("\n8. Workbook-reproduction scenarios", flush=True)
@@ -422,8 +543,9 @@ def lever_checks(f: pd.DataFrame, cfg: dict, label: str) -> None:
     record(f"{label}: a campaign / installment balance moves a transactor from 45% to 75%", flip,
            f"{int(tr.sum()):,} accounts at 45%")
     cl_only = b["per_lever"]["dormant_closure"]
+    fw = L.forward_frame(f, cfg)
     stay = np.allclose(cl_only.loc[cl, "card_profit_change"],
-                       -cl_only.loc[cl, "accounts_leaving"] * (f.loc[cl, "card_profit"] + f.loc[cl, "fixed_cost"]))
+                       -cl_only.loc[cl, "accounts_leaving"] * (fw.loc[cl, "card_profit"] + fw.loc[cl, "fixed_cost"]))
     record(f"{label}: leavers lose variable contribution; fixed cost stays", bool(stay))
     ex = summ["base"]["extra_levers"]["headline_value"]
     lt = L.lever_table(b, cfg, f)
@@ -565,6 +687,8 @@ def cross_check(bundle: Path | None, frame: Path | None, cfg: dict) -> None:
         # the trailing 12 cycles (closed and charged-off ones included).
         acc, meta = D.load_account_frame(frame)
         leq = meta["leq_unassigned_measured"]
+        # s.2.7 measured the unused line after the month's payment: compare like with like
+        cfg = A.with_overrides(cfg, {"balance_basis": {"cost": "after_payment"}})
         c = X.account_costs(acc, cfg, leq_unassigned=leq)
         t = X.totals(c)
         diffs = {k: t[k] * 5 / v - 1 for k, v in BRIEF_27.items()}
@@ -759,12 +883,15 @@ def main() -> int:
             toggles(acc, cfg, leq, label)
             f = segment_checks(acc, meta, cfg, label)
             correction_checks(acc, meta, f, cfg, label)
+            balance_basis_checks(acc, meta, f, cfg, label)
             lever_checks(f, cfg, label)
+            strategy_checks(f, cfg, label)
             treatment_checks(f, cfg, d, label)
         cross_check(Path(a.bundle_100k) if a.bundle_100k else None,
                     Path(a.frame_100k) if a.frame_100k else None, cfg)
         performance(Path(a.frame_100k) if a.frame_100k else None,
                     Path(a.frame_100k_json) if a.frame_100k_json else None)
+        sample_checks(cfg)
         app_checks()
         guardrails()
         if a.regression:

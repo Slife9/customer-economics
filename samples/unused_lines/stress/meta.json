@@ -17,7 +17,7 @@
     "ram_gb": 34.4
   },
   "files_mb": {
-    "accounts.parquet": 9.98,
+    "accounts.parquet": 13.21,
     "engine_view.parquet": 0.24,
     "monthly.parquet": 12.12
   }

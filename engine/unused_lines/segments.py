@@ -7,7 +7,10 @@ Order of work, per account:
    segment (config drawdown_risk.leq_source; Unassigned: the measured
    portfolio Behavioral CCF), then the s.2 costs (exposure.account_costs).
 3. The screen keeps unprofitable low-use accounts; a screened account's
-   segment is its rule segment, anyone else has none.
+   segment is its rule segment, anyone else has none. The utilisation test
+   uses the statement-date balance by default (balance_basis.screen).
+4. The same costs on today's line and balance, as now_* columns, for the
+   forward-looking lever values (levers.forward_frame).
 
 System-mode screen (answer 2): card profit < 0, where card profit is the
 module's (measured credit cost, the old capital charge replaced, the new
@@ -100,9 +103,11 @@ def screen(c: pd.DataFrame, cfg: dict, include_drawdown: bool | None = None) -> 
     sc = cfg["screen"]
     with_el = sc["include_expected_drawdown_loss"] if include_drawdown is None else include_drawdown
     profit = c["card_profit"] - (c["drawdown_el"] if with_el else 0.0)
+    util = c["statement_utilisation_avg_12m" if cfg["balance_basis"]["screen"] == "statement_date"
+             else "utilisation_avg_12m"]
     out = {
         "screen.unprofitable": (profit < 0) if sc["require_unprofitable"] else pd.Series(True, index=c.index),
-        "screen.utilisation": c["utilisation_avg_12m"] < sc["max_utilisation"],
+        "screen.utilisation": util < sc["max_utilisation"],
         "screen.unused": c["ucl_current"] >= sc["min_unused_usd"],
         "screen.history": c["account_age_months"] >= sc["min_history_months"],
         "screen.open": c["open_at_reporting_date"] & ~c["charged_off"],
@@ -136,6 +141,11 @@ def build(acc: pd.DataFrame, meta: dict, cfg: dict) -> pd.DataFrame:
     for k, v in X.leq_columns(out, cfg, meta["leq_unassigned_measured"]).items():
         out[k] = v
     out = X.account_costs(out, cfg)
+    # forward-looking values (balance_basis.lever_values = current): the same
+    # costs on today's line and balance, kept beside the 12-month figures
+    now = X.account_costs(out[[c for c in out if c not in X.BALANCE_DEPENDENT]], cfg, basis="current")
+    for k in X.BALANCE_DEPENDENT:
+        out[f"now_{k}"] = now[k]
     for k, v in trace.items():
         out[f"met:{k}"] = v[2]
     sc = screen(out, cfg)

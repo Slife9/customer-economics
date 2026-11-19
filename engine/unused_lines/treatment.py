@@ -1,7 +1,9 @@
 """Treatment designer, compliance checks, fairness and timing (Stage 6).
 
 Per account in scope, from the Base scenario's selection (levers.run):
-    recommended lever(s), a mandatory reason code (one per lever, each with
+    recommended lever(s) and the strategy each belongs to (revision E), whether
+    the 90-day warning comes first (every Strategy 3 action), a mandatory
+    reason code (one per lever, each with
     its notice rule and compliance flag in config treatment.reason_codes;
     OTHER only for an action no code covers), the notice it triggers,
     the 45-day fee / penalty-rate restriction after a decrease, "review
@@ -25,8 +27,10 @@ import numpy as np
 import pandas as pd
 
 from . import levers as L
+from . import strategies as S
 
 LINE_DECREASE_LEVERS = ["line_decrease", "risk_based_decrease", "dormant_rightsizing", "transactor_rightsizing"]
+WARNING_LEVERS = ["dormant_rightsizing", "dormant_closure", "non_reissue_expired_dormant"]
 
 def _hash_rank(keys, seed) -> np.ndarray:
     return np.array([int(hashlib.sha256(f"{seed}:{k}".encode()).hexdigest()[:12], 16) for k in keys], dtype=float)
@@ -82,6 +86,16 @@ def design(f: pd.DataFrame, cfg: dict, res: dict, worklists: dict | None = None)
             r.append("non_reissue_expired_dormant")
         levers.append(r)
     t["recommended_levers"] = ["; ".join(r) if r else "none" for r in levers]
+    # Revision E: the strategy each lever belongs to, and the 90-day warning
+    # in front of every Strategy 3 action (never a fee)
+    ls = S.lever_strategy(cfg)
+    num = {k: v["number"] for k, v in cfg["strategies"]["definitions"].items()}
+    strat = [[num[x[0]] for x in (ls.get((lv, sg)) or ls.get((lv, "*")) for lv in r) if x]
+             for r, sg in zip(levers, t["segment"])]
+    t["strategies"] = ["; ".join(str(n) for n in dict.fromkeys(s)) for s in strat]
+    t["strategy"] = [s[0] if s else 0 for s in strat]
+    warn = cfg["warning"]["enabled"]
+    t["warning_required"] = [warn and any(x in WARNING_LEVERS for x in r) for r in levers]
     t["pending_approval"] = [any(L.pending(cfg, x) for x in r) for r in levers]
     rb = tc["reason_by_lever"]
     primary = [r[0] if r else "" for r in levers]
@@ -90,9 +104,9 @@ def design(f: pd.DataFrame, cfg: dict, res: dict, worklists: dict | None = None)
     rule = lambda key: {k: v[key] for k, v in tc["reason_codes"].items()}  # noqa: E731
     t["notice"] = t["reason_code"].map(rule("notice")).fillna("")
     t["adverse_action_notice"] = t["line_action"].ne("none") & t["reason_code"].map(
-        rule("adverse_action_notice")).fillna(False).astype(bool)
+        rule("adverse_action_notice")).astype("boolean").fillna(False).astype(bool)
     t["fcra_score_disclosure_check"] = t["adverse_action_notice"] & t["reason_code"].map(
-        rule("fcra_check")).fillna(False).astype(bool)
+        rule("fcra_check")).astype("boolean").fillna(False).astype(bool)
     flags = rule("compliance_flag")
     t["compliance_flags"] = ["; ".join(x for x in dict.fromkeys(flags.get(c, "") for c in codes.split("; ")) if x)
                              for codes in t["all_reason_codes"]]

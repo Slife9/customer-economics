@@ -105,10 +105,31 @@ def build(data_dir: Path, name: str, label: str) -> dict:
     return info
 
 
+def update_balance_basis(name: str) -> dict:
+    """Revision E (1b): add the statement-date and midpoint balance columns to
+    an existing sample from its own monthly.parquet (no raw portfolio needed).
+    Every other column is unchanged."""
+    dest = OUT / name
+    acc, meta = D.load_account_frame(dest / "accounts.parquet")
+    m = pd.read_parquet(dest / "monthly.parquet")
+    D.save_account_frame(D.add_balance_basis(acc, m, meta["last"]), meta, dest / "accounts.parquet")
+    info = json.loads((dest / "meta.json").read_text())
+    info["files_mb"] = {p.name: round(p.stat().st_size / 1e6, 2) for p in dest.glob("*.parquet")}
+    (dest / "meta.json").write_text(json.dumps(info, indent=2) + "\n")
+    return info
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", required=True, help="a generated portfolio directory")
+    ap.add_argument("--data", help="a generated portfolio directory")
     ap.add_argument("--name", required=True, help="folder name under samples/unused_lines")
-    ap.add_argument("--label", required=True, help="dataset name shown in the app")
+    ap.add_argument("--label", help="dataset name shown in the app")
+    ap.add_argument("--update-balance-basis", action="store_true",
+                    help="only add the balance-basis columns to an existing sample")
     a = ap.parse_args()
-    print(json.dumps(build(Path(a.data), a.name, a.label), indent=2))
+    if a.update_balance_basis:
+        print(json.dumps(update_balance_basis(a.name), indent=2))
+    else:
+        if not (a.data and a.label):
+            ap.error("--data and --label are required for a full build")
+        print(json.dumps(build(Path(a.data), a.name, a.label), indent=2))

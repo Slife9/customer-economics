@@ -29,9 +29,11 @@ it. With costs.fixed_cost_basis = workbook_segment (B5) the engine's fixed
 cost allocation is swapped for the workbook's. reconciliation() shows each
 step from the main engine's card profit.
 
-Balances are Table4 Ending Balance: after the month's payment (the
-reporting-date balance). Right for regulatory exposure; it slightly
-overstates the unused line of a pay-in-full customer (B7).
+Balances (config balance_basis.cost, revision E 1b): Table4 Ending Balance is
+after the month's payment, so it overstates the unused line of a customer
+who pays in full (B7). The default "midpoint" basis uses (statement balance +
+after-payment balance) / 2 as the balance outstanding during the month;
+"after_payment" is the basis before revision E.
 """
 from __future__ import annotations
 import numpy as np
@@ -166,19 +168,37 @@ def _core(balance, ucl, rw, pd12, lgd, leq, cfg: dict) -> dict:
     return out
 
 
+BALANCE_COLUMNS = {  # (balance_basis.cost, basis) -> (balance, unused line)
+    ("after_payment", "average"): ("balance_avg_12m", "ucl_avg_12m"),
+    ("after_payment", "current"): ("balance_current", "ucl_current"),
+    ("midpoint", "average"): ("balance_midpoint_avg_12m", "ucl_midpoint_avg_12m"),
+    ("midpoint", "current"): ("balance_midpoint_current", "ucl_midpoint_current"),
+}
+# The columns that change with the balance (forward_frame swaps them in).
+BALANCE_DEPENDENT = ["balance", "ucl", "exposure", "exposure_unused", "rwa", "rwa_unused", "rwa_drawn",
+                     "capital_required", "capital_required_unused", "capital_cost", "capital_cost_unused",
+                     "capital_cost_drawn", "hqla", "liquidity_cost", "carrying_cost", "drawdown_el",
+                     "total_unused_line_cost", "card_profit", "relationship_adjusted_profit"]
+
+
 def account_costs(acc: pd.DataFrame, cfg: dict, basis: str = "average",
                   leq_unassigned: float | None = None) -> pd.DataFrame:
     """A copy of `acc` with the s.2 exposure, cost and profit columns.
 
     basis "average" (cost: 12-month average balance and UCL) or "current"
-    (actions: the reporting-date line and balance). LEQ comes from an `leq`
-    column when segments have set one, else leq_columns() (`leq_unassigned`:
-    the measured portfolio Behavioral CCF, answer 7)."""
+    (forward-looking values: the reporting-date line and balance), each on
+    the balance_basis.cost setting. LEQ comes from an `leq` column when
+    segments have set one, else leq_columns() (`leq_unassigned`: the measured
+    portfolio Behavioral CCF, answer 7)."""
     if basis not in ("average", "current"):
         raise ValueError(f"basis must be 'average' or 'current', not {basis!r}")
     out = acc.copy()
-    bal = out["balance_avg_12m" if basis == "average" else "balance_current"].fillna(0.0)
-    ucl = out["ucl_avg_12m" if basis == "average" else "ucl_current"].fillna(0.0)
+    bcol, ucol = BALANCE_COLUMNS[(cfg["balance_basis"]["cost"], basis)]
+    if bcol not in out:
+        raise ValueError(f"the per-account file has no {bcol!r}: rebuild it, or run "
+                         "unused_lines_app.build_sample --update-balance-basis")
+    bal = out[bcol].fillna(0.0)
+    ucl = out[ucol].fillna(0.0)
     out["balance"], out["ucl"] = bal, ucl
     out["rw"], out["rw_basis"] = risk_weights(out, cfg)
     if "leq" not in out or out["leq"].isna().all():

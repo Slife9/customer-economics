@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from engine.unused_lines import assumptions as A, data as D, segments as SG  # noqa: E402
-from engine.unused_lines import levers as L, treatment as T  # noqa: E402
+from engine.unused_lines import levers as L, strategies as ST, treatment as T  # noqa: E402
 
 SAMPLES = ROOT / "samples" / "unused_lines"
 
@@ -50,8 +50,24 @@ def figures(name: str, cfg: dict) -> dict:
     t = T.design(f, cfg, res, worklists=worklists(name))
     acted = t[t["recommended_levers"] != "none"]
     codes = acted["all_reason_codes"].str.split("; ").explode()
+    scope = res["scope"]
+    per = {k: float(v[scope]["headline_value"].sum()) for k, v in res["per_lever"].items()}
+    camp = res["per_lever"]["engagement_campaign"][scope]["headline_value"].groupby(f["rule_segment"]).sum()
+    st = ST.summary(ST.run(res, cfg), cfg)
     return {
+        "strategies": {k: {"value": v["headline_value"], "status": v["status_label"], "customers": v["customers"],
+                           "leaving": v["accounts_leaving"], "unused_removed": v["unused_removed"],
+                           "capital_freed": v["capital_released"], "components": v["components"]}
+                       for k, v in st["strategies"].items()},
+        "approved_combined": st["approved_combined"],
+        "proposed": st["proposed"], "awaiting_decision": st["awaiting_decision"],
+        "total_potential": st["total_potential"], "warning_letters": st["warning_letters"],
         "screened_accounts": int(len(sc)),
+        "unused_credit": float(sc["ucl"].sum()),
+        "per_lever_value": per,
+        "campaign_value_by_segment": {k: float(v) for k, v in camp.items()},
+        "approved_unused_removed": s["workbook_levers_headline"]["unused_removed"],
+        "approved_accounts_leaving": s["workbook_levers_headline"]["accounts_leaving"],
         "card_profit": float(sc["card_profit"].sum()),
         "carrying_cost": float(sc["carrying_cost"].sum()),
         "drawdown_loss": float(sc["drawdown_el"].sum()),

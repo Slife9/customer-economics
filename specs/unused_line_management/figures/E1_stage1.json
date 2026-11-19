@@ -1,0 +1,234 @@
+{
+  "stress": {
+    "strategies": {
+      "right_size": {
+        "value": 194979.54337401094,
+        "status": "Approved",
+        "customers": 2511,
+        "leaving": 138.09,
+        "unused_removed": 13696373.70775,
+        "capital_freed": 102370.67721712125,
+        "components": {
+          "Customers at rising risk": 147455.69504712158,
+          "Occasional users": 30434.080237888607,
+          "Relationship customers": 17089.76808900076
+        }
+      },
+      "re_engage": {
+        "value": -17281.373579426254,
+        "status": "Approved: test only",
+        "customers": 5830,
+        "leaving": 0.0,
+        "unused_removed": 269375.99999999907,
+        "capital_freed": -34056.742528620016,
+        "components": {
+          "Engagement campaign": -17281.373579426254
+        }
+      },
+      "use_it_or_lose_it": {
+        "value": 504237.13896920264,
+        "status": "Invite approved; actions awaiting decision",
+        "customers": 13146,
+        "leaving": 6839.4400000000005,
+        "unused_removed": 83193108.8125,
+        "capital_freed": 643276.2956484375,
+        "components": {
+          "Invite (reactivation offer)": -21751.748611717143,
+          "Right-size after the warning": 86197.52561513075,
+          "Close after the warning (24+ months unused)": 238920.93120825,
+          "Don't reissue at expiry": 200870.43075753903
+        }
+      },
+      "stop_auto_increases": {
+        "value": 193704.12650399999,
+        "status": "Proposed",
+        "customers": 22651,
+        "leaving": 0.0,
+        "unused_removed": 67355150.0,
+        "capital_freed": 0.0,
+        "components": {
+          "Suppress automatic increases": 193704.12650399999
+        }
+      }
+    },
+    "approved_combined": {
+      "headline_value": 156104.76036012342,
+      "card_profit_change": -24398.498634118714,
+      "drawdown_change": -180503.25899424212,
+      "relationship_adjusted_change": -82540.9264748687,
+      "accounts_leaving": 138.09,
+      "unused_removed": 14107089.70775,
+      "capital_released": 58773.51697132124,
+      "drawdown_reduction": 180503.25899424212
+    },
+    "proposed": 193704.12650399999,
+    "awaiting_decision": 525988.8875809198,
+    "total_potential": 875797.7744450432,
+    "warning_letters": 0.0,
+    "screened_accounts": 41192,
+    "unused_credit": 572837098.9791666,
+    "per_lever_value": {
+      "line_decrease": 47523.84832688937,
+      "risk_based_decrease": 147455.6950471216,
+      "dormant_rightsizing": 86197.52561513075,
+      "transactor_rightsizing": 15631.7220037632,
+      "dormant_closure": 238920.93120825,
+      "engagement_campaign": -39033.1221911434,
+      "suppress_automatic_increases": 193704.12650399999,
+      "non_reissue_expired_dormant": 200870.43075753906
+    },
+    "campaign_value_by_segment": {
+      "deteriorating": 0.0,
+      "dormant": -21751.748611717143,
+      "relationship": -3202.6354723904547,
+      "sock_drawer": -6566.781227906773,
+      "transactors": -7511.956879129024,
+      "unassigned": 0.0
+    },
+    "approved_unused_removed": 14107089.70775,
+    "approved_accounts_leaving": 138.09,
+    "card_profit": -2513593.5243479186,
+    "carrying_cost": 692639.46933919,
+    "drawdown_loss": 1625466.49855546,
+    "base_annual_value": 156104.76036012342,
+    "base_card_profit_change": -24398.498634118714,
+    "pending_b6_value": 525988.8875809198,
+    "extra_levers_value": 193704.12650399999,
+    "stress_1_5x_value": 133872.05217229106,
+    "stress_1_5x_card_profit_change": -33252.66235987445,
+    "capital_released": 58773.51697132124,
+    "accounts_with_action": 31685,
+    "primary_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 11213,
+      "INACTIVITY": 11208,
+      "ENGAGEMENT_CAMPAIGN": 6509,
+      "IDLE_LINE_RIGHTSIZING": 1793,
+      "CREDIT_DETERIORATION": 718,
+      "INACTIVITY_NON_REISSUE": 244
+    },
+    "all_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 22651,
+      "ENGAGEMENT_CAMPAIGN": 11807,
+      "INACTIVITY": 11208,
+      "INACTIVITY_NON_REISSUE": 2954,
+      "IDLE_LINE_RIGHTSIZING": 1793,
+      "CREDIT_DETERIORATION": 718
+    }
+  },
+  "demo": {
+    "strategies": {
+      "right_size": {
+        "value": 1248.0121250241232,
+        "status": "Approved",
+        "customers": 38,
+        "leaving": 4.539999999999999,
+        "unused_removed": 333460.33385,
+        "capital_freed": 2262.36117436875,
+        "components": {
+          "Customers at rising risk": 774.0675048209611,
+          "Occasional users": 18.86637467880892,
+          "Relationship customers": 455.078245524353
+        }
+      },
+      "re_engage": {
+        "value": -281.73605418412217,
+        "status": "Approved: test only",
+        "customers": 116,
+        "leaving": 0.0,
+        "unused_removed": 9031.999999999985,
+        "capital_freed": -820.1352694500002,
+        "components": {
+          "Engagement campaign": -281.73605418412217
+        }
+      },
+      "use_it_or_lose_it": {
+        "value": 4189.808381030405,
+        "status": "Invite approved; actions awaiting decision",
+        "customers": 140,
+        "leaving": 76.58,
+        "unused_removed": 910663.25,
+        "capital_freed": 6661.787343749999,
+        "components": {
+          "Invite (reactivation offer)": -255.9621846402544,
+          "Right-size after the warning": 553.0825337174,
+          "Close after the warning (24+ months unused)": 1888.42234487,
+          "Don't reissue at expiry": 2004.2656870832595
+        }
+      },
+      "stop_auto_increases": {
+        "value": 2572.9420983917744,
+        "status": "Proposed",
+        "customers": 499,
+        "leaving": 0.0,
+        "unused_removed": 1024000.0,
+        "capital_freed": 0.0,
+        "components": {
+          "Suppress automatic increases": 2572.9420983917744
+        }
+      }
+    },
+    "approved_combined": {
+      "headline_value": 714.711295336803,
+      "card_profit_change": -297.3777244624765,
+      "drawdown_change": -1012.0890197992795,
+      "relationship_adjusted_change": -4605.347447712476,
+      "accounts_leaving": 4.539999999999999,
+      "unused_removed": 343942.33385,
+      "capital_released": 1334.22525723375,
+      "drawdown_reduction": 1012.0890197992795
+    },
+    "proposed": 2572.9420983917744,
+    "awaiting_decision": 4445.770565670659,
+    "total_potential": 7733.423959399237,
+    "warning_letters": 0.0,
+    "screened_accounts": 890,
+    "unused_credit": 8588767.465416666,
+    "per_lever_value": {
+      "line_decrease": 473.9446202031619,
+      "risk_based_decrease": 774.0675048209612,
+      "dormant_rightsizing": 553.0825337174,
+      "transactor_rightsizing": 14.781238588752448,
+      "dormant_closure": 1888.42234487,
+      "engagement_campaign": -537.6982388243766,
+      "suppress_automatic_increases": 2572.942098391774,
+      "non_reissue_expired_dormant": 2004.2656870832598
+    },
+    "campaign_value_by_segment": {
+      "deteriorating": 0.0,
+      "dormant": -255.9621846402544,
+      "relationship": -262.4441906376822,
+      "sock_drawer": -11.273999597,
+      "transactors": -8.017863949439999,
+      "unassigned": 0.0
+    },
+    "approved_unused_removed": 343942.33385,
+    "approved_accounts_leaving": 4.539999999999999,
+    "card_profit": -60625.75995337471,
+    "carrying_cost": 10464.839480454999,
+    "drawdown_loss": 9754.292770968987,
+    "base_annual_value": 714.711295336803,
+    "base_card_profit_change": -297.3777244624765,
+    "pending_b6_value": 4445.770565670659,
+    "extra_levers_value": 2572.9420983917744,
+    "stress_1_5x_value": 497.70099460371017,
+    "stress_1_5x_card_profit_change": -478.31925886645627,
+    "capital_released": 1334.22525723375,
+    "accounts_with_action": 616,
+    "primary_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 329,
+      "ENGAGEMENT_CAMPAIGN": 128,
+      "INACTIVITY": 119,
+      "IDLE_LINE_RIGHTSIZING": 30,
+      "CREDIT_DETERIORATION": 8,
+      "INACTIVITY_NON_REISSUE": 2
+    },
+    "all_reason_codes": {
+      "SUPPRESS_AUTO_INCREASE": 499,
+      "ENGAGEMENT_CAMPAIGN": 179,
+      "INACTIVITY": 119,
+      "INACTIVITY_NON_REISSUE": 35,
+      "IDLE_LINE_RIGHTSIZING": 30,
+      "CREDIT_DETERIORATION": 8
+    }
+  }
+}

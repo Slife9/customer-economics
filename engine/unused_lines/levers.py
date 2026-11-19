@@ -31,6 +31,11 @@ extra levers (assumption-based; not in the reference workbook)
 Stress: attrition, spend loss and PD uplift x multiplier, response rate /
 multiplier (configurable). Capital released = -change in RWA x capital ratio,
 a one-time stock reported apart from every annual value.
+
+Forward-looking values use today's unused line (balance_basis.lever_values =
+current, revision E 1b: forward_frame); the 12-month average explains past
+profit. Pay-in-full (transactor) right-sizing is valued but left out of the
+approved total by policy (transactor_rightsizing_in_approved_value, 1c).
 """
 from __future__ import annotations
 import hashlib
@@ -48,7 +53,7 @@ LEVER_LABELS = {
     "line_decrease": "Line decrease with floor",
     "risk_based_decrease": "Risk-based decrease (credit-deteriorating)",
     "dormant_rightsizing": "Dormant right-sizing",
-    "transactor_rightsizing": "Transactor right-sizing (shown to demonstrate it loses money)",
+    "transactor_rightsizing": "Pay-in-full right-sizing (not recommended, by policy)",
     "dormant_closure": "Dormant closure after failed reactivation",
     "engagement_campaign": "Reactivation / engagement campaign",
     "suppress_automatic_increases": "Suppress automatic line increases (assumption-based)",
@@ -65,6 +70,24 @@ OUT_COLS = ["accounts_leaving", "unused_removed", "rwa_change", "capital_release
 def pending(cfg: dict, lever: str) -> bool:
     """A B6 lever whose flag is off: valued, but outside the headline."""
     return lever in B6_FLAG and not cfg["levers"][B6_FLAG[lever]]
+
+
+def excluded(cfg: dict, lever: str) -> bool:
+    """A lever valued for analysts but outside the approved total by policy."""
+    return (lever == "transactor_rightsizing"
+            and not cfg["levers"]["system_mode"]["transactor_rightsizing_in_approved_value"])
+
+
+def forward_frame(f: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """The frame the lever values run on: today's unused line and balance
+    (the now_* columns from segments.build) under balance_basis.lever_values
+    = current, else the 12-month figures unchanged."""
+    if cfg["balance_basis"]["lever_values"] != "current":
+        return f
+    g = f.copy(deep=False)
+    for k in X.BALANCE_DEPENDENT:
+        g[k] = f[f"now_{k}"]
+    return g
 
 
 def _order(index: pd.Index, seed: int) -> pd.Series:
@@ -165,9 +188,12 @@ def _state(f, cfg, cut, bal_add, pd_mult, spend_loss):
             "rwa": core["rwa"], "carrying": core["carrying_cost"], "ucl": ucl}
 
 
-def value(f: pd.DataFrame, cfg: dict, sel: pd.DataFrame, P: pd.DataFrame, use: dict) -> pd.DataFrame:
+def value(f: pd.DataFrame, cfg: dict, sel: pd.DataFrame, P: pd.DataFrame, use: dict,
+          offer_costs: bool = True) -> pd.DataFrame:
     """Expected annual effect per account of the levers switched on in `use`
-    ({"decrease", "closure", "campaign"}: bool), on the selection `sel`."""
+    ({"decrease", "closure", "campaign"}: bool), on the selection `sel`.
+    offer_costs = False values renewed use without a campaign (no contact
+    cost, incentive or promotional give-up): the warning step's 'resume use'."""
     wb = cfg["workbook"]["portfolio"]
     d = sel["decrease"] & use.get("decrease", False)
     c = sel["closure"] & use.get("closure", False)
@@ -183,8 +209,8 @@ def value(f: pd.DataFrame, cfg: dict, sel: pd.DataFrame, P: pd.DataFrame, use: d
     margin = (f["interchange"] - f["reward"]).clip(lower=0)
     apr = f["apr"].fillna(0.0)
     resp_rev = P["incr_spend"] * P["spend_margin_rate"] + P["incr_rev"] * (apr - wb["cost_of_funds"])
-    camp_cost = np.where(k, P["campaign_cost"] + resp * (wb["incentive_per_responder"]
-                                                         + P["incr_rev"] * wb["promo_cost_rate"]), 0.0)
+    camp_cost = np.where(k & offer_costs, P["campaign_cost"] + resp * (wb["incentive_per_responder"]
+                                                                       + P["incr_rev"] * wb["promo_cost_rate"]), 0.0)
 
     n0 = _state(f, cfg, cut, 0.0, up, sl)                     # non-responder survivor
     n1 = _state(f, cfg, cut, P["incr_rev"], up, sl)           # responder survivor
@@ -289,6 +315,7 @@ def run(f: pd.DataFrame, cfg: dict, scenario: str = "base", multiplier: float = 
     """One scenario: per-account effects of every lever on its own, the
     combined headline (B6 levers excluded while their flag is off), and the
     pending-approval and extra-lever values."""
+    f = forward_frame(f, cfg)
     scope = scope_mask(f, cfg)
     sel = select(f, cfg, scenario, scope)
     P = _params(f, cfg, scenario, multiplier)
@@ -302,25 +329,27 @@ def run(f: pd.DataFrame, cfg: dict, scenario: str = "base", multiplier: float = 
     per["engagement_campaign"] = value(f, cfg, sel, P, {"campaign": True})
     # combined headline: every workbook lever whose flag allows it
     s3 = sel.copy()
-    if pending(cfg, "dormant_rightsizing"):
-        s3["decrease"] = s3["decrease"] & (lever_of_seg != "dormant_rightsizing")
+    for lever in ["dormant_rightsizing", "transactor_rightsizing"]:
+        if pending(cfg, lever) or excluded(cfg, lever):
+            s3["decrease"] = s3["decrease"] & (lever_of_seg != lever)
     use = {"decrease": True, "campaign": True, "closure": not pending(cfg, "dormant_closure")}
     combined = value(f, cfg, s3, P, use)
     extra = extra_levers(f, cfg, scope, sel["closure"] & use["closure"])
     per.update(extra)
     return {"scenario": scenario, "multiplier": multiplier, "selection": sel, "params": P,
-            "combined": combined, "per_lever": per, "scope": scope}
+            "combined": combined, "per_lever": per, "scope": scope, "frame": f}
 
 
 def lever_table(res: dict, cfg: dict, frame: pd.DataFrame) -> pd.DataFrame:
     """One row per lever: totals of every output, its group (workbook /
-    extra) and status (headline / pending approval / excluded)."""
+    extra) and status (headline / pending approval / excluded by policy)."""
     rows = {}
     for lever, eff in res["per_lever"].items():
         t = eff[OUT_COLS].sum()
         t["accounts_targeted"] = float(_targeted(res, lever, frame).sum())
         t["group"] = "extra (assumption-based; not in the reference workbook)" if lever in EXTRA_LEVERS else "workbook"
-        t["status"] = "pending approval" if pending(cfg, lever) else "headline"
+        t["status"] = ("pending approval" if pending(cfg, lever)
+                       else "excluded by policy" if excluded(cfg, lever) else "headline")
         rows[LEVER_LABELS[lever]] = t
     return pd.DataFrame(rows).T
 
