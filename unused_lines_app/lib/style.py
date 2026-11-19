@@ -26,8 +26,10 @@ SEGMENT_COLORS = {"deteriorating": "#b91c1c", "relationship": "#0f766e", "dorman
                   "sock_drawer": "#0891b2", "transactors": BLUE, "unassigned": GREY}
 VALUE_TYPE_COLORS = {"measured": "#15803d", "regulatory": "#7c3aed", "business": "#b45309",
                      "workbook": "#0891b2", "derived": "#334155"}
-# Annual value by status: approved (in the annual value), awaiting decision (B6), extra.
-STATUS_COLORS = {"approved": "#15803d", "awaiting": "#d97706", "extra": "#64748b"}
+# Strategy status (revision E): approved, approved but loses money today (test only),
+# awaiting decision, proposed. Always shown with the status text, never colour alone.
+STATUS_COLORS = {"approved": "#15803d", "approved_test_only": "#b91c1c", "awaiting_decision": "#d97706",
+                 "proposed": "#2563eb"}
 HOLDING, DRAWDOWN = "#2563eb", "#b91c1c"
 TILE = {"green": ("#15803d", "#f0fdf4", "✅", "OK"), "amber": ("#b45309", "#fffbeb", "⚠️", "Watch"),
         "red": ("#b91c1c", "#fef2f2", "⛔", "Act"), "grey": ("#475569", "#f8fafc", "ℹ️", "Note")}
@@ -81,6 +83,32 @@ h3 { font-size: 1.35rem !important; }
 .segcard table { width: 100%; border-collapse: collapse; font-size: .92rem; }
 .segcard td { padding: 2px 0; border: none; } .segcard td.v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .segcard .a { margin-top: 6px; font-size: .9rem; color: #1e3a8a; }
+.chip { display: inline-block; padding: 1px 10px; border-radius: 10px; font-size: .85rem; font-weight: 700;
+        color: var(--c); border: 1.5px solid var(--c); background: #fff; white-space: nowrap; }
+.strat { border: 1px solid #e2e8f0; border-top: 6px solid var(--c); border-radius: 10px; padding: 12px 16px;
+         background: #fff; height: 100%; }
+.strat .h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.strat .t { font-weight: 700; font-size: 1.12rem; color: #0f172a; }
+.strat .v { font-weight: 700; font-size: 1.35rem; font-variant-numeric: tabular-nums; color: #0f172a; white-space: nowrap; }
+.strat p { margin: 6px 0; font-size: .98rem; color: #334155; }
+.strat ul { margin: 4px 0 4px 18px; padding: 0; } .strat li { font-size: .95rem; margin: 2px 0; }
+.srow { display: grid; grid-template-columns: 2.2rem 1fr auto auto; gap: 10px; align-items: center;
+        padding: 9px 4px; border-bottom: 1px solid #e2e8f0; font-size: 1.05rem; }
+.srow .n { font-weight: 700; color: #64748b; } .srow .v { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.flow { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; background: #fff; }
+.flow .ft { font-weight: 700; font-size: 1.02rem; color: #0f172a; } .flow .fs { color: #64748b; font-size: .9rem; }
+.flow .steps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.flow .box { border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px 10px; background: #f8fafc; text-align: center; }
+.flow .box b { display: block; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.flow .box span { font-size: .8rem; color: #475569; }
+.flow .box.total { background: #eff6ff; border-color: #93c5fd; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: .9rem; font-weight: 700; color: #fff; }
+.journey { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.journey .s { flex: 1 1 140px; border: 1px solid #e2e8f0; border-left: 5px solid var(--c); border-radius: 8px;
+              padding: 6px 10px; background: #f8fafc; font-size: .92rem; }
+.journey .s b { display: block; font-size: .98rem; }
+.notdo { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 6px solid #64748b; border-radius: 10px; padding: 12px 20px; }
+.notdo li { font-size: 1.02rem; margin: 4px 0; }
 </style>
 """
 
@@ -158,9 +186,9 @@ def _box(css: str, title: str, points: list[str], where=st) -> None:
                    + "".join(f"<li>{html.escape(p)}</li>" for p in points) + "</ul></div>", unsafe_allow_html=True)
 
 
-def means(points: list[str], where=st) -> None:
-    """'What this means': three plain-English takeaways (at most 20 words each)."""
-    _box("takeaways", "What this means", points, where)
+def means(points: list[str], where=st, title: str = "What this means") -> None:
+    """'What this means': plain-English takeaways."""
+    _box("takeaways", title, points, where)
 
 
 def decide(points: list[str], where=st, title: str = "What to decide / do") -> None:
@@ -176,6 +204,62 @@ def segment_card(title: str, note: str, rows: list[tuple[str, str]], action: str
             f'<div class="n">{html.escape(note)}</div><table>'
             + "".join(f"<tr><td>{html.escape(k)}</td><td class='v'>{html.escape(v)}</td></tr>" for k, v in rows)
             + f'</table><div class="a">→ {html.escape(action)}</div></div>')
+
+
+def chip(status: str, text: str) -> str:
+    """A status chip: colour plus the status in words."""
+    return f'<span class="chip" style="--c:{STATUS_COLORS[status]}">{html.escape(text)}</span>'
+
+
+def strategy_list(rows: list[tuple[int, str, str, str, str]]) -> None:
+    """Compact strategy rows: (number, name, status key, status text, value text)."""
+    st.markdown("".join(f'<div class="srow"><span class="n">{n}</span><span>{html.escape(name)}</span>'
+                        f'{chip(sk, stext)}<span class="v">{html.escape(v)}</span></div>'
+                        for n, name, sk, stext, v in rows), unsafe_allow_html=True)
+
+
+def strategy_card(number: int, name: str, status: str, status_text: str, value: str, what: str,
+                  who: list[str], why: str, extra: str = "", where=st) -> None:
+    """One strategy: what, who, why, status and value. `extra` is markup built
+    by the caller (the Strategy 3 journey), never from data text."""
+    where.markdown(
+        f'<div class="strat" style="--c:{STATUS_COLORS[status]}"><div class="h"><span class="t">{number}. '
+        f'{html.escape(name)}</span><span class="v">{html.escape(value)}</span></div>'
+        f'<div>{chip(status, status_text)}</div><p><b>What:</b> {html.escape(what)}</p>'
+        f'<p><b>Who:</b></p><ul>' + "".join(f"<li>{html.escape(w)}</li>" for w in who) + "</ul>"
+        + extra + f'<p><b>Why:</b> {html.escape(why)}</p></div>', unsafe_allow_html=True)
+
+
+def journey(steps: list[tuple[str, str, str]]) -> str:
+    """Markup for a step-by-step journey: (title, text, status key)."""
+    return '<div class="journey">' + "".join(
+        f'<div class="s" style="--c:{STATUS_COLORS[s]}"><b>{html.escape(t)}</b>{html.escape(x)}</div>'
+        for t, x, s in steps) + "</div>"
+
+
+def tag(kind: str) -> str:
+    """A value-type tag for the worked example (the report's colour key)."""
+    return (f'<span class="tag" style="background:{VALUE_TYPE_COLORS[kind]}">'
+            f"{html.escape(VALUE_TYPE_LABELS[kind])}</span>")
+
+
+def flow(title: str, sub: str, items: list[tuple], where=st) -> None:
+    """One cost flow of the worked example. items: ("box", value, label) or
+    ("op", text, value-type kind) or ("total", value, label)."""
+    parts = []
+    for kind, a, b in items:
+        if kind == "op":
+            parts.append(f'<span class="tag" style="background:{VALUE_TYPE_COLORS[b]}">{html.escape(a)}</span>')
+        else:
+            parts.append(f'<div class="box{" total" if kind == "total" else ""}"><b>{html.escape(a)}</b>'
+                         f'<span>{html.escape(b)}</span></div>')
+    where.markdown(f'<div class="flow"><div class="ft">{html.escape(title)} <span class="fs">{html.escape(sub)}</span>'
+                   f'</div><div class="steps">{"".join(parts)}</div></div>', unsafe_allow_html=True)
+
+
+def not_done(points: list[str], where=st) -> None:
+    where.markdown('<div class="notdo"><b>What we deliberately don\'t do</b><ul>'
+                   + "".join(f"<li>{html.escape(p)}</li>" for p in points) + "</ul></div>", unsafe_allow_html=True)
 
 
 VALUE_TYPE_LABELS = {"measured": "Measured", "regulatory": "Assumed (regulatory)",

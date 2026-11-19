@@ -9,7 +9,9 @@ copied; loading reads this module's samples. Not merged; self-contained.
 
 The view (revision C): "executive" (default) shows plain labels, no
 formulas, value-type badges, technical column names or wide tables;
-"analyst" shows everything, plus the Explore & reference pages.
+"analyst" shows everything, plus the Explore & reference pages. Revision E:
+the executive view tells the project report's story on the stress book; the
+dataset switch is in the analyst view only.
 """
 from __future__ import annotations
 import copy
@@ -25,7 +27,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from engine.unused_lines import assumptions as A, data as D, segments as SG  # noqa: E402
-from engine.unused_lines import levers as L, treatment as T, exposure as X  # noqa: E402
+from engine.unused_lines import levers as L, treatment as T, exposure as X, strategies as ST  # noqa: E402
 from unused_lines_app.lib import guide as G  # noqa: E402
 
 SAMPLE_DIR = ROOT / "samples" / "unused_lines"
@@ -62,7 +64,9 @@ def monthly_for(name: str, account: str) -> pd.DataFrame:
 
 
 def dataset() -> str:
-    return st.session_state.get("dataset", DEFAULT_DATASET)
+    """The stress book in the executive view (the report's book); the
+    analyst view can switch to the 5k demo."""
+    return st.session_state.get("dataset", DEFAULT_DATASET) if analyst() else DEFAULT_DATASET
 
 
 def data():
@@ -158,7 +162,7 @@ def _run(name: str, cfg_json: str, scn: str, multiplier: float) -> dict:
     f = _frame(name, cfg_json)
     res = L.run(f, c, scn, multiplier)
     out = {"summary": L.summary(res, c, f), "levers": L.lever_table(res, c, f),
-           "segments": L.segment_table(res, c, f)}
+           "segments": L.segment_table(res, c, f), "strategies": ST.summary(ST.run(res, c), c)}
     # Only what the treatment designer needs is kept from the per-account run.
     out["res"] = {"scope": res["scope"],
                   "selection": res["selection"][["decrease", "campaign", "closure", "cut", "new_line"]],
@@ -176,9 +180,11 @@ def _alt(name: str, cfg_json: str, overrides_json: str) -> dict:
     cost basis). Only the small summary is kept, not the frame."""
     c = A.with_overrides(json.loads(cfg_json), json.loads(overrides_json))
     f = _build(name, c)
-    s = L.summary(L.run(f, c, "base"), c, f)
-    return {"summary": s, "screened": int(f["screened"].sum()),
-            "card_profit": float(f.loc[f["screened"], "card_profit"].sum())}
+    res = L.run(f, c, "base")
+    st_ = ST.summary(ST.run(res, c), c)
+    return {"summary": L.summary(res, c, f), "screened": int(f["screened"].sum()),
+            "card_profit": float(f.loc[f["screened"], "card_profit"].sum()),
+            "strategies": {k: v for k, v in st_.items() if k != "table"}}
 
 
 def alt(overrides: dict) -> dict:

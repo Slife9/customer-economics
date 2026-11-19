@@ -62,7 +62,20 @@ Stage 8 runs everything above as one suite, plus:
 
     python audit/audit_unused_line_module.py --regression         --bundle-100k <rebuilt 100k v2 bundle> --frame-100k <its per-account parquet>         --frame-100k-json <build timing>
 
-Stage 7 (app; revision C):
+Revision E (alignment with the project report and slides):
+14. Balance basis: the midpoint balance, the statement-date 30% test (only
+    removes cards that use 30%+ at statement date), lever values on today's
+    unused line; pay-in-full right-sizing out of the approved value and the
+    recommendations, by policy.
+15. On the committed samples: with every revision-E setting at its old value
+    the Stage 0 figures reproduce exactly.
+16. The four strategies: values add up to their components, capital freed
+    never in an annual value, the campaign split exactly between Strategy 2
+    and the Invite, the 90-day warning (no responses = the planned action; the
+    letter cost; a fee refused), every action in a strategy.
+Worked examples include the report's ACC-EXAMPLE ($186.48).
+
+Stage 7 (app; revision C, rebuilt in revision E):
 11. The committed samples, every page in both views (executive, analyst) on
     both datasets (AppTest), no value-type badge, technical label or
     analyst-only page in the executive view, and the app's peak memory in
@@ -74,6 +87,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -129,6 +143,20 @@ def worked_examples(cfg: dict) -> None:
         bad = {k: (round(got[k], 2), v) for k, v in want.items() if abs(round(got[k], 2) - v) > 0.005}
         record(f"worked example: {name}", not bad,
                ", ".join(f"{k} {round(got[k], 2):,}" for k in want) if not bad else f"mismatch {bad}")
+    # Revision E: the project report's ACC-EXAMPLE (config presentation.worked_example)
+    ex = cfg["presentation"]["worked_example"]
+    rw = cfg["capital"][f"risk_weight_{ex['risk_weight_basis']}"]
+    leq = cfg["drawdown_risk"]["leq_by_segment"][ex["segment"]]
+    got = X.worked_example(ex["limit_usd"], ex["average_balance_usd"], rw, cfg, ex["chance_of_default"],
+                           ex["loss_if_default"], leq)
+    got45 = X.worked_example(ex["limit_usd"], ex["average_balance_usd"], cfg["capital"]["risk_weight_transactor"], cfg)
+    want = {"capital_cost_unused": 13.23, "liquidity_cost": 5.25, "carrying_cost": 18.48, "drawdown_el": 168.00,
+            "total_unused_line_cost": 186.48}
+    bad = {k: (round(got[k], 2), v) for k, v in want.items() if abs(round(got[k], 2) - v) > 0.005}
+    record(f"worked example: {ex['account_id']} (project report; $186.48 a year, $7.94 capital at 45%)",
+           not bad and abs(round(got45["capital_cost_unused"], 2) - 7.94) < 0.005,
+           ", ".join(f"{k} {round(got[k], 2):,}" for k in want) + f"; capital at 45% {round(got45['capital_cost_unused'], 2)}"
+           if not bad else f"mismatch {bad}")
 
 
 def workbook(cfg: dict) -> None:
@@ -376,12 +404,18 @@ def balance_basis_checks(acc: pd.DataFrame, meta: dict, f: pd.DataFrame, cfg: di
     res = L.run(f, cfg, "base")
     lt = L.lever_table(res, cfg, f)
     tr_lab = L.LEVER_LABELS["transactor_rightsizing"]
-    s3 = res["selection"]["decrease"] & (f["rule_segment"] == "transactors")
+    sel, g = res["selection"], res["frame"]
+    s3 = sel["decrease"] & (f["rule_segment"] == "transactors")
+    keep = sel["decrease"] & ~f["rule_segment"].isin(["transactors", "dormant"])
+    without = L.value(g, cfg, sel.assign(decrease=keep, closure=False), res["params"], {"decrease": True, "campaign": True})
+    t = T.design(f, cfg, res)
     record(f"{label}: 1c pay-in-full right-sizing is valued for analysts but outside the approved value and the "
            "recommendations, by policy", bool(lt.loc[tr_lab, "status"] == "excluded by policy"
-                                               and not (res["combined"].loc[s3, "unused_removed"].abs() > 0).any()
+                                               and np.allclose(without["headline_value"], res["combined"]["headline_value"])
+                                               and not t["recommended_levers"].str.contains("transactor_rightsizing").any()
                                                and "loses money" not in tr_lab),
-           f"stand-alone value {float(lt.loc[tr_lab, 'headline_value']):+,.0f} (Base); {int(s3.sum()):,} cards it would cut")
+           f"stand-alone value {float(lt.loc[tr_lab, 'headline_value']):+,.0f} (Base); {int(s3.sum()):,} cards it would "
+           f"cut; approved value {res['combined'][res['scope']]['headline_value'].sum():+,.0f} without them")
 
 
 def strategy_checks(f: pd.DataFrame, cfg: dict, label: str) -> None:
@@ -750,9 +784,11 @@ for ds in ["stress", "demo"]:
 mi = psutil.Process().memory_info()
 print(json.dumps({"pages": out, "peak_gb": round((getattr(mi, "peak_wset", None) or mi.rss) / 1e9, 3)}))
 """
-DECISION_PAGES = ["01_Summary.py", "02_Cost.py", "03_Actions.py", "04_Risks.py", "05_Customers.py"]
-TECHNICAL_LABELS = ["Screened accounts", "Carrying cost", "Drawdown loss", "Headline value", "Go/no-go",
-                    "Pending approval (B6)", "Capital released"]
+# Revision E: the nine pages that tell the project report's story, in its order.
+DECISION_PAGES = ["01_Summary.py", "02_Problem.py", "03_Cost.py", "04_Groups.py", "05_Strategies.py", "06_Value.py",
+                  "07_Implementation.py", "08_Protection.py", "09_Evidence.py"]
+TECHNICAL_LABELS = ["Screened accounts", "Headline value", "Go/no-go", "Pending approval (B6)", "Capital released"]
+JARGON = r"\b(PD|LGD|LEQ|RWA|LCR)\b"   # never in the executive view (the report's terms instead)
 
 
 # Code the module must never change (brief s.8; read and called only).
@@ -817,13 +853,25 @@ def app_checks() -> None:
            f"{len(s['pages'])} page runs; slowest {max(p['seconds'] for p in s['pages'])}s" + (f"; failing {bad}" if bad else ""))
     exe = [p for p in s["pages"] if p["view"] == "executive"]
     badges = [f"{p['dataset']}/{p['page']}" for p in exe if any('class="vt"' in t for t in p["text"])]
-    tech = sorted({f"{p['page']}: {lab}" for p in exe if p["page"] in DECISION_PAGES[:4]
-                   for lab in TECHNICAL_LABELS for t in p["text"] if lab in t})
+    tags = sorted({p["page"] for p in exe if any('class="tag"' in t for t in p["text"])})
+    tech =sorted({f"{p['page']}: {lab}" for p in exe if p["page"] in DECISION_PAGES
+                   for lab in TECHNICAL_LABELS for t in p["text"] if lab in t}
+                  | {f"{p['page']}: {m}" for p in exe if p["page"] in DECISION_PAGES
+                     for t in p["text"] for m in re.findall(JARGON, t)})
     gated = [f"{p['dataset']}/{p['page']}" for p in exe if p["page"] not in DECISION_PAGES
              and not any("Analyst view" in i for i in p["infos"])]
-    record("executive view: no value-type badges, no technical labels on the decision pages, analyst-only pages "
-           "gated", not badges and not tech and not gated,
-           f"badges {badges or 'none'}; technical labels {tech or 'none'}; ungated {gated or 'none'}")
+    record("executive view: no PD / LGD / LEQ / RWA / LCR or technical labels on the nine report pages; value-type "
+           "tags only in the worked example; analyst-only pages gated",
+           not badges and not tech and not gated and tags == ["03_Cost.py"],
+           f"jargon or technical labels {tech or 'none'}; badges {badges or 'none'}; value-type tags on {tags}; "
+           f"ungated {gated or 'none'}")
+    story = [p for p in exe if p["page"] in DECISION_PAGES]
+    heads = {p["page"]: sum('class="headline"' in t for t in p["text"]) for p in story}
+    kpis = {p["page"]: sum(t.count('class="kpi') for t in p["text"]) for p in story}
+    order = [p["page"] for p in story if p["dataset"] == "stress"]
+    record("page rules: one headline sentence per page, at most four figure cards, the nine pages in the report's order",
+           all(v == 1 for v in heads.values()) and all(v <= 4 for v in kpis.values()) and order == DECISION_PAGES,
+           f"headlines {sorted(set(heads.values()))}; most cards on a page {max(kpis.values())}")
     ana = [p for p in s["pages"] if p["view"] == "analyst"]
     record("analyst view: every page shows its full content (no analyst-only gate)",
            not any(p["infos"] and any("Analyst view" in i for i in p["infos"]) for p in ana))

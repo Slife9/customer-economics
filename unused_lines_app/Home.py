@@ -9,8 +9,9 @@ samples only (samples/unused_lines/); the six-lever app (app/) is separate and
 unchanged. Page layout follows rewards_app/Home.py on feature/l1-rewards-system
 (495b0ec), copied, not merged.
 
-Two views (sidebar): Executive (default) - five decision pages in plain
-language; Analyst - the same pages with every detail, plus Explore & reference.
+Two views (sidebar): Executive (default) - nine pages that tell the project
+report's story in its order and words (revision E); Analyst - the same pages
+with every detail, the dataset switch, plus Explore & reference.
 """
 import sys
 from pathlib import Path
@@ -25,13 +26,17 @@ style.apply()
 
 P = Path(__file__).parent / "pages"
 groups = {
-    "Decisions": [("01_Summary.py", "Executive summary", "🏠", "summary"),
-                  ("02_Cost.py", "Where the cost sits", "🧩", "cost"),
-                  ("03_Actions.py", "Actions and value", "📊", "actions"),
-                  ("04_Risks.py", "Risks and checks", "🛡️", "risks"),
-                  ("05_Customers.py", "Customer evidence", "🔎", "customers")],
+    "Unused credit lines": [("01_Summary.py", "Executive summary", "🏠", "summary"),
+                            ("02_Problem.py", "The problem", "📉", "problem"),
+                            ("03_Cost.py", "How unused credit costs money", "🧮", "cost"),
+                            ("04_Groups.py", "Customers and where the cost sits", "🧩", "groups"),
+                            ("05_Strategies.py", "The four strategies", "🧭", "strategies"),
+                            ("06_Value.py", "What they are worth", "📊", "value"),
+                            ("07_Implementation.py", "Implementation", "🗓️", "implementation"),
+                            ("08_Protection.py", "Protecting customers and risks", "🛡️", "protection"),
+                            ("09_Evidence.py", "Customer evidence", "🔎", "evidence")],
     "Explore & reference": [("40_What_If.py", "What-if (levers & assumptions)", "🎚️", "whatif"),
-                            ("50_Lever_Guide.py", "Lever guide & regulation", "📖", "guide"),
+                            ("50_Lever_Guide.py", "Levers & lever guide", "📖", "guide"),
                             ("70_Data.py", "Data & calibration", "🧪", "data"),
                             ("80_Technical.py", "Technical", "🛠️", "technical")],
 }
@@ -44,9 +49,10 @@ st.session_state.setdefault("dataset", S.DEFAULT_DATASET)
 names = {"stress": "Stress book (synthetic stress data)", "demo": "5k demo (standard bank)"}
 with st.sidebar:
     st.radio("View", list(S.VIEWS), key="view", format_func=S.VIEWS.get, horizontal=True,
-             help="Executive: plain language, the decision figures. Analyst: every detail, formulas and the "
-                  "Explore & reference pages.")
-    st.radio("Dataset", list(names), key="dataset", format_func=names.get)
+             help="Executive: the project report's story in plain language. Analyst: every detail, the levers, "
+                  "formulas, the dataset switch and the Explore & reference pages.")
+    if S.analyst():
+        st.radio("Dataset", list(names), key="dataset", format_func=names.get)
 shown = {g: p for g, p in groups.items() if S.analyst() or g != "Explore & reference"}
 nav = st.navigation({g: [S.PAGES[u] for *_, u in pages] for g, pages in shown.items()})
 with st.sidebar:

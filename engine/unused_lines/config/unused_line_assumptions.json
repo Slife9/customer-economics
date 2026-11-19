@@ -409,7 +409,35 @@
     "calibration_status": {
       "green_min_share": 0.8,
       "amber_min_share": 0.5
+    },
+    "worked_example": {
+      "_note": "Revision E: the report's illustrative account (not a real customer), run through the same formulas as every account (exposure.worked_example). The share drawn before default and the risk weight come from the settings above for its group.",
+      "account_id": "ACC-EXAMPLE",
+      "segment": "sock_drawer",
+      "description": "An occasional user who carries a balance",
+      "limit_usd": 15000,
+      "average_balance_usd": 1000,
+      "chance_of_default": 0.03,
+      "loss_if_default": 0.8,
+      "risk_weight_basis": "non_transactor"
     }
+  },
+  "implementation": {
+    "_note": "Revision E: the plan from the project report (indicative months from approval). Every strategy follows prepare -> pilot with a random holdout -> decide -> roll out; Strategy 2 is tested, not scaled; Strategy 3's actions start only after the dormant-card decision and the 90-day warning.",
+    "months_total": 15,
+    "phases": [
+      {"name": "Prepare", "start": 1, "end": 2, "what": "Fair-lending review, compliance sign-off on reason codes, notices and the warning wording, finance confirms the capital ratio, cost of equity and carry, system corrections, ideally a run on the bank's own data"},
+      {"name": "Pilot with holdout", "start": 3, "end": 8, "what": "Random holdout in each customer group receives no action; six months of treatment with follow-up on losses"},
+      {"name": "Decide", "start": 9, "end": 9, "what": "Evaluate each strategy against its holdout"},
+      {"name": "Roll out", "start": 10, "end": 15, "what": "Roll out what worked; monitor monthly"}
+    ],
+    "by_strategy": {
+      "right_size": [{"step": "Pilot: limit cuts vs holdout", "start": 3, "end": 8}, {"step": "Roll out", "start": 10, "end": 15}],
+      "re_engage": [{"step": "Test cheaper, targeted offers", "start": 3, "end": 8}, {"step": "Scale only if it pays", "start": 10, "end": 15}],
+      "use_it_or_lose_it": [{"step": "Invite", "start": 3, "end": 5}, {"step": "Warn: 90 days", "start": 6, "end": 8}, {"step": "Act (if approved)", "start": 10, "end": 12}, {"step": "Don't reissue at expiry (if approved)", "start": 13, "end": 15}],
+      "stop_auto_increases": [{"step": "Rule change; track vs holdout", "start": 3, "end": 8}, {"step": "Roll out", "start": 10, "end": 15}]
+    },
+    "decision_month": 9
   },
   "scenarios": [
     "conservative",

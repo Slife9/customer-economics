@@ -51,6 +51,43 @@ new["costs"]["fixed_cost_basis"] = d2.radio(
 new["treatment"]["fairness"]["min_selected_per_group"] = d3.number_input(
     "Fairness: minimum selected accounts per metro", 1, 500, cfg["treatment"]["fairness"]["min_selected_per_group"])
 
+Y.band("Balance basis and pay-in-full policy (revision E; defaults as agreed)")
+bb = cfg["balance_basis"]
+e1, e2, e3, e4 = st.columns(4)
+new["balance_basis"]["screen"] = e1.radio(
+    "30% use test", bb["screen_options"], index=bb["screen_options"].index(bb["screen"]),
+    format_func={"statement_date": "Statement date (default)", "after_payment": "After payment (before E)"}.get)
+new["balance_basis"]["cost"] = e2.radio(
+    "Balance for costs", bb["cost_options"], index=bb["cost_options"].index(bb["cost"]),
+    format_func={"midpoint": "Midpoint (default)", "after_payment": "After payment (before E)"}.get)
+new["balance_basis"]["lever_values"] = e3.radio(
+    "Lever values on", bb["lever_values_options"], index=bb["lever_values_options"].index(bb["lever_values"]),
+    format_func={"current": "Today's unused line (default)", "average_12m": "12-month average (before E)"}.get)
+sm = cfg["levers"]["system_mode"]
+new["levers"]["system_mode"]["transactor_rightsizing_in_approved_value"] = e4.toggle(
+    "Count pay-in-full cuts in the approved value (before E)", value=sm["transactor_rightsizing_in_approved_value"])
+
+Y.band("The 90-day warning (Strategy 3) - assumptions, to be tested in the pilot")
+wn = cfg["warning"]
+w1, w2, w3, w4 = st.columns(4)
+new["warning"]["enabled"] = w1.toggle("Warning step on (default)", value=wn["enabled"])
+sh = wn["response_shares"]
+new["warning"]["response_shares"]["resume_use"] = w2.number_input("Resume use", 0.0, 1.0, sh["resume_use"], 0.05)
+new["warning"]["response_shares"]["accept_lower_limit"] = w3.number_input("Accept a lower limit", 0.0, 1.0,
+                                                                         sh["accept_lower_limit"], 0.05)
+new["warning"]["response_shares"]["close_voluntarily"] = w4.number_input("Close voluntarily", 0.0, 1.0,
+                                                                        sh["close_voluntarily"], 0.05)
+v1, v2, v3, v4 = st.columns(4)
+new["warning"]["min_use_to_reset"] = v1.radio(
+    "Use that resets the clock", wn["min_use_to_reset_options"],
+    index=wn["min_use_to_reset_options"].index(wn["min_use_to_reset"]),
+    format_func={"one_transaction": "One transaction", "min_spend": "Minimum spend (default)"}.get)
+new["warning"]["min_spend_to_reset_usd"] = v2.number_input("Minimum spend (USD)", 0, 5000, wn["min_spend_to_reset_usd"], 25)
+new["warning"]["letter_cost_usd"] = v3.number_input("Letter cost per customer (USD)", 0.0, 20.0, wn["letter_cost_usd"], 0.5)
+new["warning"]["notice_days"] = v4.number_input("Notice (days)", 30, 180, wn["notice_days"], 15)
+S.cap("The warning never carries a fee (inactivity fees are prohibited). The minimum-spend rule decides who counts as "
+      "resumed; the resume share is the assumption for that rule.")
+
 Y.band("Bank profile")
 bp = cfg["bank_profile"]
 b1, b2 = st.columns(2)

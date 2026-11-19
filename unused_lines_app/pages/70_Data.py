@@ -23,12 +23,14 @@ S.md(
 
 Y.band("Data used, and what is synthetic")
 st.dataframe(pd.DataFrame([
-    ("Table4 account cycles", "Line, balances, statement balance, paid in full, promotional / BT balance", "measured"),
+    ("Table4 account cycles", "Line, balances (after payment; statement balance = after payment + payment made, "
+     "used for the 30% test and, with the after-payment balance, the midpoint balance for costs), paid in full, "
+     "promotional / BT balance", "measured"),
     ("Table5 / Table5b", "Spend and activity; installment plan balances", "measured"),
     ("Table8 risk parameters", "PD 12 Month (annual) and LGD at the reporting date - never lifetime PD; a missing "
      "PD takes the segment average (B1)", "measured"),
-    ("Table9", "Behavioral CCF: each account's LEQ under the default setting (B2); a generator parameter on this "
-     "synthetic data (0.42 / 0.798)", "measured"),
+    ("Table9", "Behavioral CCF: each account's LEQ under the measured_account setting (B2; the workbook LEQ is the "
+     "default); a generator parameter on this synthetic data (0.42 / 0.798)", "measured"),
     ("Table29 score history", "Behaviour and bureau score by month (score-drop rule) - SYNTHETIC addition, partly "
      "correlated with PD by construction", "synthetic"),
     ("Table30 card activation", "Activation of every plastic (dormant confirmation) - SYNTHETIC addition", "synthetic"),
