@@ -3,7 +3,8 @@
 | # | Decision | Default to build | How to build it |
 |---|---|---|---|
 | B5 | Dormant zero-balance cards: transactor (45%) or not (75%)? | **75%** | Config `risk_weight_dormant_zero_balance`; one setting |
-| B6 | Are dormant right-sizing and dormant closures (after failed reactivation) allowed? | **Off** in the default results | Implement both levers fully behind flags `dormant_rightsizing_enabled` and `dormant_closure_enabled`; always show their value separately as "pending approval" |
+| B6 | Are dormant right-sizing and dormant closures (after failed reactivation) allowed? | **Off** in the default results | Implement both levers fully behind flags `dormant_rightsizing_enabled` and `dormant_closure_enabled`; always show their value separately as "pending approval". Revision E: these are Strategy 3's actions ("awaiting decision"), each after the 90-day warning |
+| E1 | The 90-day warning: response shares, what resets the clock, the letter wording | Resume use 10%, accept a lower limit 20%, close 10%; $100 of spend in 90 days; $1 a letter | Config `warning`; to be measured in the pilot; wording for compliance |
 | B7 | Scope: unprofitable low-use accounts only (workbook) or full line management incl. increases (L2)? | **Workbook scope** for the module | `scope_mode` toggle; L2 increase valuation stays as it is in the six-strategy view |
 | B8 | Role of the ML credit-limit model | **Decided (17 Nov 2026): the ML model is not used in this module.** No agreement flag, no ML columns, no ML fairness test | Removed: `ml_model_role` and every ML read in `engine/unused_lines/` and `unused_lines_app/`; `engine/ml/` itself is unchanged |
 | B4 | Capital ratio, cost of equity | 10.5% / 12% | Config; labelled as business assumptions |

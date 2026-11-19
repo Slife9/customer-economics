@@ -17,13 +17,22 @@ Not merged.
   decision-makers (Executive / Analyst views, five decision pages). The hosted app still runs the
   previous version until the branch is pushed and the app rebooted. Reports:
   `specs/unused_line_management/REVISION_{A,B,C}_REPORT.md`.
+- **Revision E (19 Nov 2026, committed, not pushed or deployed):** aligned with the project report
+  and the stakeholder slides. Stage 0 audit; balance basis (statement-date 30% test, midpoint balance
+  for costs, actions on today's unused line); pay-in-full cuts out of the approved value; four
+  strategies built from the levers with the 90-day warning step (Strategy 3); the app rebuilt as nine
+  executive pages in the report's order. Every new setting has its old value as an option, and the old
+  values reproduce the earlier figures exactly. Stress book now: 41,192 cards selected; approved
+  +$156k; proposed +$194k; awaiting a decision +$516k; total potential +$866k. Reports:
+  `specs/unused_line_management/REVISION_E_REPORT.md`, `FIGURES_CHANGED_SINCE_REPORT.md`.
 - **Tests:** `python audit/audit_unused_line_module.py --regression` (results in
-  `specs/unused_line_management/REVISION_C_AUDIT.txt`).
+  `specs/unused_line_management/REVISION_E_AUDIT.txt`).
 - **Build requirements (offline, recorded):** on Windows Server 10.0.26200, 4 CPUs, 34.4 GB RAM,
   Python 3.13.12: stress book (100,000 customers) generation 442 s and sample 374 s / 22.2 GB; 5k demo sample 16 s / 0.91 GB; 100k portfolio
   generation 357 s; 100k per-account file 131 s / **15.6 GB peak** (offline only; chunked
   generation is a logged future improvement). The app at runtime: about 0.85 GB (100k stress book, all pages and both views; results cached once per server and shared by all sessions).
-- **Open:** decisions B4–B7 (config only; B8 decided: the ML model is not used); fair-lending review of the four-fifths failures;
+- **Open:** decisions B4–B7 (config only; B8 decided: the ML model is not used); the 90-day warning's
+  assumed responses (E1, to be measured in the pilot); fair-lending review of the four-fifths failures;
   compliance confirmation of the regulatory summary; calibration gaps and engine cost split
   (`ISSUES_FOUND.md`); merge order for integration (`ISSUES_FOUND.md`).
 

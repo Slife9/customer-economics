@@ -3,6 +3,20 @@
 Decisions received after the Stage 1 audit, newest first. Open decisions with the boss
 (B4–B7) are in `OPEN_DECISIONS.md` and stay behind config flags.
 
+## 19 Nov 2026: revision E - align with the project report and slides
+
+The project report and the stakeholder slides are the reference for structure, wording, definitions
+and figures. Decided after the Stage 0 audit (`REVISION_E_STAGE0_AUDIT.md`), on the recommendations:
+
+| Decision | Where it lives |
+|---|---|
+| **B2 stays the workbook LEQ.** Table9's Behavioral CCF means the share of the unused line drawn before default, but on this data it is a two-value generator parameter, not measured behaviour | `drawdown_risk.leq_source = workbook_segment` (unchanged) |
+| **The 90-day warning goes to every unused card selected for a Strategy 3 action** (right-size, close, don't reissue), after the Invite; Invite responders are not warned. Response shares, the reset rule and the letter cost are assumptions to be tested in the pilot; never a fee | Config `warning`; `strategies._warned` |
+| **App content not in the report** moves to the analyst view (dataset switch, scenario switch, year-1 timing, the 1×–2× curve, calibration tile, review / download tools, per-group value of approved actions) or is removed ("increases" fairness note); "Valuable relationship customers" becomes "Relationship customers" | `unused_lines_app/` |
+| 1b balance basis: statement-date 30% test; midpoint balance for costs; actions valued on today's unused line; old settings kept as options | Config `balance_basis` |
+| 1c pay-in-full right-sizing excluded from the recommendations *and* the approved value, by policy; valued for analysts | `levers.system_mode.transactor_rightsizing_in_approved_value = false` |
+| Four strategies, each built from the levers; the campaign split between Strategy 2 and Strategy 3's Invite | Config `strategies`; `engine/unused_lines/strategies.py` |
+
 ## 17 Nov 2026: B2 default - the workbook LEQ
 
 The workbook segment LEQ is the default (`drawdown_risk.leq_source = "workbook_segment"`) until the
@@ -21,7 +35,7 @@ return to their values before revision B (stress book Base +$175,389). Suite aft
 | B4 | The module's card profit is labelled "card profit under the assumed capital rules", with a reconciliation from the main engine's card profit | `exposure.reconciliation` |
 | B5 | Fixed cost basis: `engine_allocated` (default) or `workbook_segment` | `costs.fixed_cost_basis`, `exposure.fixed_costs` |
 | B6 | Executives see one figure: annual value = change in card profit + reduction in expected drawdown loss; card profit alone and relationship-adjusted values in the analyst view; the robustness statement states its basis | `levers.robustness_statement`; app |
-| B7 | Balances are measured after the month's payment (reporting-date balance) | Methodology |
+| B7 | Balances are measured after the month's payment (reporting-date balance). **Superseded by revision E (1b):** the midpoint balance for costs and the statement date for the 30% test, by default | Methodology; config `balance_basis` |
 
 ## 17 Nov 2026: B8 final - the ML model plays no role in this module
 

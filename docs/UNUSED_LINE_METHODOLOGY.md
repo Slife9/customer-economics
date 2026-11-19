@@ -25,16 +25,20 @@ the reference workbook (*Unused Line RWA Scenario Model*), values what line mana
 and proposes an action per customer with the notices it would need.
 
 ### How it works, in five steps
-1. **Measure each account** over the last 12 months: line, balance, spend, payments, risk.
+1. **Measure each account** over the last 12 months: line, balance, spend, payments, risk. The
+   balance behind the costs is the one outstanding during the month (the average of the
+   statement-date and after-payment balances); usage for the selection is measured at statement date.
 2. **Price the unused line**: carrying cost (capital + liquidity) and expected drawdown loss, kept in
    separate columns, never mixed under one label.
-3. **Screen**: unprofitable cards (after the new capital and liquidity costs) that use under 30% of
-   the line and have at least $5,000 unused.
-4. **Segment** in the workbook's order: Credit-Deteriorating, Relationship / Premium, Dormant,
-   Sock-Drawer, Low-Utilization Transactors, Unassigned.
-5. **Value the levers** (line decreases, reactivation campaigns; dormant right-sizing and closures
-   only once approved) with the workbook's customer responses, then propose an action per account
-   with its reason code, notice and a pilot cell. The ML credit-limit model plays no part (decision B8).
+3. **Select**: cards that lose money (after the new capital and liquidity costs), use under 30% of
+   the limit at statement date and have at least $5,000 unused.
+4. **Group** in the report's order: customers at rising risk, relationship customers, unused cards,
+   occasional users, pay-in-full customers, other.
+5. **Value four strategies** built from the levers underneath: (1) right-size unused limits,
+   (2) re-engage active low-use customers, (3) "use it or lose it" for dormant cards (invite, a 90-day
+   warning with a choice, act, don't reissue), (4) stop automatic limit increases. Actions are valued
+   on today's unused line with the workbook's customer responses; each customer gets an action with
+   its strategy, reason code, notice and a pilot cell. The ML credit-limit model plays no part (B8).
 
 ### Reading the results
 - **Annual value** = change in card profit + reduction in expected drawdown loss. This is the one
@@ -46,19 +50,30 @@ and proposes an action per customer with the notices it would need.
   customer; the analyst view reconciles the two step by step.
 - **Capital released** is a one-time amount of capital freed up. It is never added to the annual
   value.
-- **Pending approval** (dormant right-sizing, closures, non-reissue) and **extra levers**
-  (suppressing automatic increases) are valued in full but shown apart from the headline.
+- **Status of each strategy**: Strategy 1 approved; Strategy 2 approved for testing only (it loses
+  money at today's offer costs); Strategy 3's Invite approved, its actions awaiting a decision (B6);
+  Strategy 4 proposed. The **approved value** values the approved steps together (customers who
+  receive two actions are counted once), so the stand-alone values do not add up to it exactly.
+  **Total potential** = approved + proposed + awaiting a decision.
+- **The 90-day warning** (Strategy 3) is modelled with assumed response shares (resume use 10%,
+  accept a lower limit 20%, close voluntarily 10%; the rest get the planned action), a $1 letter, and
+  never a fee: assumptions to be tested in the pilot.
+- **Pay-in-full right-sizing** is not recommended, by policy (low risk, a marginal saving, the risk of
+  upsetting good customers). It shows a small gain in Base, partly because the engine's fixed-cost
+  allocation is low; it is valued for analysts only.
 - **The stress book** is synthetic stress data tuned toward the workbook's population; the **5k
-  demo** is the standard illustrative bank.
+  demo** is the standard illustrative bank (analyst view).
 
 ### Reading the app
-The app opens in the **Executive view**: five pages, each answering one question - *Executive
-summary*, *Where the cost sits*, *Actions and value*, *Risks and checks*, *Customer evidence* - in
-plain language (for example "Accounts losing money with large unused lines" for screened accounts,
-"Unused cards" for the Dormant segment). The three actions executives see are **Trim unused
-limits**, **Wake up or close dormant cards** and **Stop automatic increases**. The **Analyst view**
-(sidebar) adds the formulas, value types, full tables, the reconciliation to the main engine's card
-profit, the workbook-reproduction panel and the What-if settings.
+The app follows the project report and the stakeholder slides (revision E). The **Executive view**
+has nine pages in the report's order and words: *Executive summary*, *The problem*, *How unused
+credit costs money* (the ACC-EXAMPLE worked example, $186.48 a year), *Customers and where the cost
+sits*, *The four strategies*, *What they are worth*, *Implementation*, *Protecting customers and
+risks*, *Customer evidence*. Each has one headline sentence, at most four figure cards, one main
+chart and the detail in expanders; no PD / LGD / LEQ / RWA / LCR. The **Analyst view** (sidebar)
+adds the dataset switch, the levers under each strategy, formulas, value types, full tables, the
+reconciliation to the main engine's card profit, the workbook-reproduction panel and the What-if
+settings.
 
 ### What to be careful about
 - Customer responses (attrition, spend loss, campaign response) are the workbook's illustrative
@@ -81,7 +96,8 @@ profit, the workbook-reproduction panel and the What-if settings.
 | `data.py` | The per-account file from the engine's card ledger (read only) and the published tables |
 | `exposure.py` | Transactor test, risk weights, exposure, RWA, capital, liquidity, drawdown loss, profit views, current-rules comparison, workbook baseline |
 | `segments.py` | Screen, rules, segments, rule trace, summaries, drawdown sensitivity |
-| `levers.py` | System-mode levers, response, scenarios, extra levers, stress test |
+| `levers.py` | System-mode levers, response, scenarios, extra levers, stress test, forward-looking frame |
+| `strategies.py` | The four strategies built from the levers, the 90-day warning step, approved / proposed / awaiting totals |
 | `workbook.py` | Workbook-reproduction mode (the Calc sheets) |
 | `treatment.py` | Recommendations, reason codes, notices, review-together, pilot, fairness, timing |
 | `generator/unused_line_additions.py` | Table29 score history, Table30 card activation (additive, own random stream) |
@@ -90,12 +106,22 @@ profit, the workbook-reproduction panel and the What-if settings.
 | `audit/audit_unused_line_module.py` | The acceptance suite (brief s.7) |
 
 ### Per account (exposure.py)
-- `UCL = max(limit − balance, 0)`: 12-month average for cost, reporting date for actions.
-- **Balances (B7):** Table4 `Ending Balance`, measured **after** the month's payment (the
-  reporting-date balance). This is appropriate for regulatory exposure, which is measured at the
-  reporting date; it slightly overstates the unused line of a pay-in-full customer, whose balance
-  between payments is higher than the month-end figure. Statement balance (ending balance +
-  payment) is used for the segment rules and the transactor test.
+- `UCL = max(limit − balance, 0)`: 12-month average to explain past profit and cost; today's line
+  and balance for forward-looking values (`balance_basis.lever_values = current`, revision E; the
+  setting `average_12m` is the basis before it).
+- **Balances (B7, revision E 1b):** Table4 `Ending Balance` is measured **after** the month's
+  payment; `Statement Balance` (ending balance + payment made) is before it. Config `balance_basis`:
+  - `cost = midpoint` (default): the drawn balance for costs is (statement + after-payment) / 2, the
+    proxy for the balance outstanding during the month; `after_payment` is the basis before E. The
+    after-payment balance overstates the unused line of a customer who pays in full.
+  - `screen = statement_date` (default): the 30% test uses the 12-month average of statement balance
+    / limit; `after_payment` is the basis before E.
+  - The $5,000 unused test and the line-sizing floors keep the reporting-date balance. Statement
+    balance is used for the segment rules and the transactor test, as before.
+  - On the stress book: 289 cards leave the selection on the statement-date test; the higher
+    midpoint balance raises the capital on drawn balances, so 951 near-break-even cards join it
+    (40,530 → 41,192). The committed samples carry the six columns, computed from their own monthly
+    file (`build_sample.py --update-balance-basis`).
 - **Risk weight** (answer 5): 45% only if, over the last 12 cycles, every cycle was paid in full or
   had a $0 statement, not all 12 were $0, and there was no installment, promotional or BT balance,
   with at least 12 months of history; 100% if the customer's aggregate retail exposure (card
@@ -130,7 +156,8 @@ profit, the workbook-reproduction panel and the What-if settings.
 
 ### Screen and segments (segments.py)
 Rules run on every account (first match wins), LEQ follows the rule's segment, then costs, then the
-screen: card profit < 0 (toggle: less drawdown loss), average utilisation < 30%, unused ≥ $5,000,
+screen: card profit < 0 (toggle: less drawdown loss), average utilisation < 30% (statement date by
+default, `balance_basis.screen`), unused ≥ $5,000,
 open ≥ 12 months, open and not charged off, no recent fraud-compromise event (proxy). Each rule keeps
 value, threshold and met / not met. The segmentation transactor rule (≥ 10 of 12, $0 statement
 counts as nothing due) is not the regulatory test.
@@ -145,7 +172,37 @@ fixed cost) and relationship profit, fixed cost stays; closures only if not reac
 ≥ 24 months, B6); campaign responders add spend and revolving balance and move from 45% to 75%.
 Stress: attrition, spend loss and PD uplift × multiplier, response ÷ multiplier. Value types:
 avoided loss, cost saving, revenue, lost profit. Capital released `= −ΔRWA × 10.5%`, one-time.
-Protected (suppressed) customers are outside scope.
+Protected (suppressed) customers are outside scope. Values run on `levers.forward_frame` (today's
+unused line; the `now_*` columns built by `segments.build`). Pay-in-full (transactor) right-sizing is
+valued but outside the approved total (`transactor_rightsizing_in_approved_value = false`, 1c); before
+revision E it was inside it although never recommended, and made up $14.4k of the $175,389 and most
+of the "$23.0M removed, 214 leaving, $114k capital freed".
+
+### Strategies (strategies.py, revision E)
+Config `strategies`: each strategy is a list of steps, each step levers × segments, with a status.
+
+| Strategy | Steps (levers, groups) | Status |
+|---|---|---|
+| 1 Right-size unused limits | risk-based decrease (rising risk); line decrease (occasional users; relationship) | approved |
+| 2 Re-engage active low-use | engagement campaign (occasional users, pay-in-full, relationship) | approved: test only |
+| 3 "Use it or lose it" | Invite = engagement campaign (unused cards); right-size, close, don't reissue, each after the 90-day warning | Invite approved; actions follow the B6 flags (awaiting decision) |
+| 4 Stop automatic increases | suppress automatic increases | proposed |
+
+- Per-account effects come from `levers.run` (same scenario and multiplier); a lever's effect is
+  split by group where it serves two strategies (the campaign), exactly.
+- **The warning (config `warning`):** every unused card selected for a Strategy 3 action is warned,
+  except Invite responders (the action is weighted by 1 − Invite response). Of those warned:
+  `resume_use` keeps the card and earns the reactivation responder's spend and balance with no offer
+  costs (`levers.value(..., offer_costs=False)`); `accept_lower_limit` gets the right-sizing cut with
+  no attrition, spend loss or PD uplift; `close_voluntarily` closes (the whole line removed); the
+  rest get the planned action. Each letter costs `letter_cost_usd`. `min_use_to_reset` decides who
+  counts as resumed (default: $100 of spend in the 90 days). `assumptions.validate` refuses any fee in
+  the warning settings. `warning.enabled = false` gives the stand-alone actions (before E).
+- **Reporting:** per strategy the stand-alone annual value and its components, status, customers,
+  leavers, unused removed and capital freed (one-time); the **approved combined** value (the approved
+  steps valued together by `levers.value`, plus warned steps if B6 is approved); **proposed**,
+  **awaiting decision** and **total potential**. With the defaults the approved combined value
+  equals the levers' combined headline exactly.
 
 ### Workbook-reproduction mode (workbook.py)
 The Calc sheets on the workbook's own inputs; the multiplier scales attrition and spend loss only.
@@ -169,6 +226,10 @@ actions only: decreases and closures (and increases, if the module ever produces
 none today). A metro with fewer than `treatment.fairness.min_selected_per_group` (30) selected
 accounts shows "insufficient sample" instead of pass / fail. Review-together flags from the L1 / L3 /
 L5 worklists. Pilot: 10% holdout, seeded, stratified by segment. Timing: year-1 share per lever.
+Each action records its strategy (`strategy`, `strategies`) and whether the 90-day warning comes
+first (`warning_required`: every Strategy 3 action). The four-fifths test flags an area selected
+*less* often than the comparison rate; for cuts and closures the usual concern is the opposite, so
+the fair-lending review should decide the method (`ISSUES_FOUND.md` #10).
 
 ### Data
 Table29 (score history) and Table30 (card activation) are synthetic additions: additive only, from
@@ -176,18 +237,24 @@ Table29 (score history) and Table30 (card activation) are synthetic additions: a
 PD ≥ 4% rule are partly correlated by construction (both read Table8 PD). Investments and household
 are approximated (deposits + Segment).
 
-### Results on the committed samples (default settings)
+### Results on the committed samples (default settings, revision E)
 | | Stress book (100k customers) | 5k demo |
 |---|---|---|
-| Screened accounts | 40,530 | 890 |
-| Card profit | −$2,579,382 | −$61,296 |
-| Carrying cost / drawdown loss | $693,984 / $1,633,129 | $10,630 / $9,926 |
-| Base annual value (headline) | +$175,389 | +$817 |
-| Capital released, one-time (Base) | $113,865 | $1,307 |
-| Pending approval / extra levers | +$519,808 / +$191,794 | +$4,376 / +$2,568 |
-| 1.5× stress | +$155,257 (go; card profit alone −$15,752) | +$635 (go; card profit alone −$248) |
-| Base with `leq_source = measured_account` | +$120,339 | +$639 |
-| Base with `fixed_cost_basis = workbook_segment` | +$217,245 (54,204 screened) | +$731 (1,011 screened) |
+| Cards selected | 41,192 | 890 |
+| Card profit | −$2,513,594 | −$60,626 |
+| Carrying cost / drawdown loss | $692,639 / $1,625,466 | $10,465 / $9,754 |
+| Strategy 1 / 2 / 3 / 4 (each on its own) | +$194,980 / −$17,281 / +$494,482 / +$193,704 | +$1,248 / −$282 / +$4,182 / +$2,573 |
+| Approved (combined) | +$156,105 | +$715 |
+| Proposed / awaiting a decision | +$193,704 / +$516,234 | +$2,573 / +$4,438 |
+| Total potential | +$866,043 | +$7,726 |
+| Capital freed, one-time (approved) | $58,774 | $1,334 |
+| 1.5× stress (approved) | +$133,872 (card profit alone −$33,253) | +$498 (card profit alone −$478) |
+| Approved with `leq_source = measured_account` | +$94,693 | +$514 |
+| Approved with `fixed_cost_basis = workbook_segment` | +$191,709 (54,666 selected) | +$627 (1,005 selected) |
+
+Every revision-E setting switched back to its old value reproduces the figures before E exactly
+(stress book: 40,530 selected, +$175,389). Before / after for every report figure:
+`specs/unused_line_management/FIGURES_CHANGED_SINCE_REPORT.md`.
 
 Reconciliation, calibration, issues and decisions: `specs/unused_line_management/` (STAGE1–8
 reports, `ISSUES_FOUND.md`, `DECISIONS.md`, `EVALUATION_GUIDE.md`).

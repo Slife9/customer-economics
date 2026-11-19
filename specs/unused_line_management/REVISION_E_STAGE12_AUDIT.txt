@@ -1,0 +1,342 @@
+assumptions sha256 597974156d0a
+
+1. Worked examples (brief s.7.1)
+  PASS  worked example: dormant $10,000 card  - exposure_unused 1,000.0, rwa_unused 750.0, capital_required_unused 78.75, capital_cost_unused 9.45, hqla 500.0, liquidity_cost 3.75, carrying_cost 13.2
+  PASS  worked example: $10,000 line, $2,000 balance (non-transactor)  - rwa_unused 600.0, capital_cost_unused 7.56, liquidity_cost 3.0, carrying_cost 10.56
+  PASS  worked example: $10,000 line, $2,000 balance (transactor)  - rwa_unused 360.0, capital_cost_unused 4.54, liquidity_cost 3.0, carrying_cost 7.54
+
+2. Workbook reproduction
+  PASS  baseline at the workbook's 85% / 55% weights within +/-1% of its Dashboard  - 11 items; largest difference 0.0000%; RWA $139,492,500, fully loaded $-9,044,043
+  PASS  baseline fully loaded profit by segment within +/-1%  - largest difference 0.0000%
+  PASS  RWA from undrawn lines (Dashboard regime table) within +/-1%  - $87,067,500 vs $87,067,500
+  PASS  corrected baseline (75% / 45%, segment-level) matches the brief's expectation  - RWA $117,937,500, capital cost $1,486,012, liquidity $487,688, fully loaded $-8,772,450
+
+8. Workbook-reproduction scenarios
+  PASS  Conservative / Base / Aggressive (85% / 55%): profit change, accounts lost, capital released within +/-1%  - conservative +442,665 / 3,434 lost / $527,305 released; base +1,329,137 / 8,470 lost / $1,422,889 released; aggressive +2,954,664 / 15,048 lost / $2,972,904 released; largest difference 0.0000%
+  PASS  Base by segment within +/-1%  - largest difference 0.0000%
+  PASS  corrected weights reported (Relationship at 45%, and at 75% as the per-account test suggests)  - 45%: baseline RWA $117,937,500, Base +1,307,682, capital released $1,244,094; Relationship 75%: baseline RWA $136,537,500, Base +1,309,742
+
+   demo: 3,988 accounts, per-account file 16s, Unassigned LEQ (mean Behavioral CCF) 0.424
+
+3. Invariants - demo
+  PASS  demo: no card at a 0% CCF  - CCF [0.1]
+  PASS  demo: a 0% CCF configuration is refused
+  PASS  demo: every 45% account passes the transactor test (12 cycles, all paid or $0, not all $0, no plan / promo)  - {'plan_or_promotional_balance': 1102, 'dormant_zero_balance': 812, 'not_paid_in_full': 786, 'transactor': 658, 'short_history': 630}
+  PASS  demo: installment, promotional or BT balance -> 75% (or 100% above the retail limit)  - 1,316 accounts with a plan or promotional balance
+  PASS  demo: adding a plan balance flips a transactor from 45% to 75%  - 50 accounts flipped
+  PASS  demo: carrying cost = capital (unused part) + liquidity; drawdown loss separate; total = both
+  PASS  demo: drawdown loss = annual PD (Table8 PD 12 Month; imputed where missing) x LGD x LEQ x unused line  - 426 accounts without a PD (imputed)
+  PASS  demo: card profit = card_net with the old capital charge replaced and liquidity subtracted  - old capital $223,879 replaced by $56,180
+
+4. Toggles - demo
+  PASS  demo: bank outside Categories I-III -> no liquidity cost, capital unchanged  - liquidity $10,012 -> $0
+  PASS  demo: apply_to = all_banks restores liquidity for that bank; capital unchanged
+  PASS  demo: dormant risk weight (B5) changes only dormant zero-balance accounts  - 812 dormant accounts; RWA $313,719 -> $188,231
+  PASS  demo: current-rules view: 0% CCF, 100% on drawn balances, no liquidity; main view untouched  - RWA $4,458,696 (s.2) vs $3,660,031 (current); SLR capital $189,895 vs risk-based $468,163
+  PASS  demo: 'current' basis uses the reporting-date line and balance (cost basis midpoint)
+
+7. Screen and segments - demo
+  PASS  demo: module segment rules agree with the calibration report's independent reading  - 100.00% of 3,988 accounts
+  PASS  demo: first match wins, in the workbook's priority order
+  PASS  demo: screened exactly when every screen criterion is met; segment only when screened  - 890 screened; failing: .unprofitable 2,024, .utilisation 1,255, .unused 1,938, .history 205, .open 429, .not_fraud_blocked 25
+  PASS  demo: system screen does not deduct drawdown loss; the sensitivity toggle only adds accounts made unprofitable by it  - toggle on: +51 accounts, extra loss after drawdown $4,860
+  PASS  demo: segment summary adds up; carrying cost and drawdown loss in separate columns  - Credit-Deteriorating Low-Use 16; High-Line Relationship / Premium 555; Dormant / Inactive 161; Sock-Drawer Occasional Users 7; Low-Utilization Transactors 9; Unassigned (review) 142
+  PASS  demo: thresholds come from config (PD threshold 4% -> 2% moves accounts into Credit-Deteriorating)  - 642 -> 921
+  PASS  demo: segmentation transactor rule (>= 10/12) kept apart from the regulatory test (12/12)  - 9 in the Transactors segment, 44% of them at 45%
+  PASS  demo: Unassigned shows its economics  - 142 accounts, card profit $-7,839
+
+13. Calculation corrections (revision B) - demo
+  PASS  demo: B1 a missing PD takes its segment's average PD (accounts with a PD), never zero; flagged  - 426 imputed (0 screened); 0 of them open
+  PASS  demo: B2 LEQ switch: workbook segment LEQ, or the account's Behavioral CCF (workbook LEQ when missing); it changes drawdown loss only (default: workbook_segment)  - screened drawdown loss $9,754 (workbook segment) vs $13,237 (account); 426 accounts on the fallback
+  PASS  demo: B4 main engine card profit + old capital - new capital - liquidity = module card profit, to the cent  - card_net $-50,509 -> module $-60,626 on 890 screened accounts
+  PASS  demo: B5 fixed-cost basis switch changes fixed cost and card profit only (variable contribution unchanged); reconciles  - engine fixed cost $34.70 per screened account; workbook basis screens 1,005 accounts (default 890)
+
+14. Balance basis and pay-in-full policy (revision E, Stage 1) - demo
+  PASS  demo: 1b the midpoint balance is (statement + after-payment) / 2 in every cycle; statement >= after payment  - 12-month average balance: after payment $589, midpoint $918, statement $1,247
+  PASS  demo: 1b the statement-date screen only removes cards that use 30%+ of the limit at statement date  - 15 cards leave the selection (905 -> 890)
+  PASS  demo: 1b lever values use today's unused line; past profit keeps the 12-month average  - selected cards: today $8.9M vs 12-month $8.6M unused
+  PASS  demo: 1c pay-in-full right-sizing is valued for analysts but outside the approved value and the recommendations, by policy  - stand-alone value +15 (Base); 1 cards it would cut
+
+9. Levers, response, scenarios, stress - demo
+  PASS  demo: low <= base <= high (headline annual value)  - +317 <= +696 <= +719
+  PASS  demo: capital released never inside an annual value  - Base: annual +696; capital released $1,327 (one-time, separate)
+  PASS  demo: value types reconcile to the change in card profit  - avoided_loss +766, cost_saving +288, revenue +1,373, lost_profit -1,731
+  PASS  demo: every cut <= 25% of the line, >= 15% and >= $500, new line >= max($500, balance x 1.2)  - 119 accounts cut (Base)
+  PASS  demo: closures only on dormant accounts inactive >= 24 months; closure and dormant right-sizing out of the headline while B6 is off  - 40 closures selected; pending approval +4,453
+  PASS  demo: switching B6 on moves those levers into the headline (config change only)  - headline +696 -> +3,196
+  PASS  demo: a campaign / installment balance moves a transactor from 45% to 75%  - 658 accounts at 45%
+  PASS  demo: leavers lose variable contribution; fixed cost stays
+  PASS  demo: extra levers reported apart from the workbook levers  - workbook levers +696; extra +2,599 (assumption-based; not in the reference workbook)
+  PASS  demo: scope mode (B7) changes only the population  - workbook scope 890 accounts; full line management 3,331
+  PASS  demo: stress test 1x-2x; go/no-go (Base improves at 1.5x)  - 1.0x +696; 1.25x +570; 1.5x +481; 1.75x +414; 2.0x +361; at 1.5x card profit alone -495
+  PASS  demo: B6 the robustness statement states its basis and where card profit alone turns negative  - Passes at 1.5x on value including reduced risk; card profit alone is negative already at 1x
+
+16. Four strategies and the 90-day warning (revision E, Stage 2) - demo
+  PASS  demo: each strategy's value is the sum of its components; every value = change in card profit + reduction in drawdown loss  - 1: +1,248; 2: -293; 3: +4,184; 4: +2,599
+  PASS  demo: capital freed is one-time, never inside an annual value; total potential = approved + proposed + awaiting decision  - approved +696 + proposed +2,599 + awaiting +4,447 = +7,742; capital freed $1,327 (one-time)
+  PASS  demo: 2a the campaign splits exactly into Strategy 2 and Strategy 3's Invite; the combined approved value equals the levers' combined headline  - campaign -556 = Strategy 2 -293 + Invite -263
+  PASS  demo: 2b the warning: with no responses it equals the planned action for every card not won back by the Invite; each letter costs its configured amount; a fee in the warning settings is refused  - 152 letters; shares {'resume_use': 0.1, 'accept_lower_limit': 0.2, 'close_voluntarily': 0.1}; Strategy 3 actions +4,447 with the warning
+  PASS  demo: every recommended action belongs to a strategy; every Strategy 3 action needs the 90-day warning  - by primary strategy {1: 38, 2: 111, 3: 141, 4: 335}; 127 need the warning
+
+10. Treatment designer, compliance, fairness, timing - demo
+  PASS  demo: protected (suppressed) customers receive no action, before anything else  - 10 screened accounts protected by the system's suppression
+  PASS  demo: every recommended action carries a reason code from the list  - 616 accounts with an action; {'SUPPRESS_AUTO_INCREASE': 329, 'ENGAGEMENT_CAMPAIGN': 128, 'INACTIVITY': 119, 'IDLE_LINE_RIGHTSIZING': 30, 'CREDIT_DETERIORATION': 8, 'INACTIVITY_NON_REISSUE': 2}
+  PASS  demo: inactivity actions carry no adverse-action notice; credit actions do (with the FCRA check)  - 119 inactivity, 8 credit, 30 idle-line right-sizing (notice: adverse action)
+  PASS  demo: B3 one specific reason code per lever with its notice rule; OTHER below 1% of actions; compliance flags set  - OTHER 0.00% of 870 codes; primary: {'SUPPRESS_AUTO_INCREASE': 329, 'ENGAGEMENT_CAMPAIGN': 128, 'INACTIVITY': 119, 'IDLE_LINE_RIGHTSIZING': 30, 'CREDIT_DETERIORATION': 8, 'INACTIVITY_NON_REISSUE': 2}
+  PASS  demo: every decrease carries the 45-day over-limit fee / penalty-rate restriction  - 117 decreases
+  PASS  demo: no lever proposes an inactivity fee
+  PASS  demo: transactor right-sizing is never recommended (config)
+  PASS  demo: the ML credit-limit model plays no part (B8): no ML column in the recommendations  - columns: 21; ML columns: none
+  PASS  demo: pilot holdout 10% per segment, seeded (same cells on a rerun)  - {'treatment': 554, 'holdout': 62}
+  PASS  demo: review-together flags against the L1 / L3 / L5 worklists  - 332 accounts flagged
+  PASS  demo: four-fifths by metro on the module's own actions only; fewer than 30 selected in a metro -> 'insufficient sample', never pass / fail  - module_decreases_and_closures: 0 fail, 0 pass, 76 insufficient sample of 76 metros (157 selected). The module produces no line increases, so there is no increase test.
+  PASS  demo: year-1 value = full annual value x the lever's year-1 share (every lever has timing)  - headline levers year 1 $2,025 vs full $3,283
+
+   unused_line_stress: 9,184 accounts, per-account file 15s, Unassigned LEQ (mean Behavioral CCF) 0.423
+
+3. Invariants - unused_line_stress
+  PASS  unused_line_stress: no card at a 0% CCF  - CCF [0.1]
+  PASS  unused_line_stress: a 0% CCF configuration is refused
+  PASS  unused_line_stress: every 45% account passes the transactor test (12 cycles, all paid or $0, not all $0, no plan / promo)  - {'plan_or_promotional_balance': 2866, 'dormant_zero_balance': 2211, 'transactor': 2158, 'not_paid_in_full': 1511, 'short_history': 438}
+  PASS  unused_line_stress: installment, promotional or BT balance -> 75% (or 100% above the retail limit)  - 2,987 accounts with a plan or promotional balance
+  PASS  unused_line_stress: adding a plan balance flips a transactor from 45% to 75%  - 50 accounts flipped
+  PASS  unused_line_stress: carrying cost = capital (unused part) + liquidity; drawdown loss separate; total = both
+  PASS  unused_line_stress: drawdown loss = annual PD (Table8 PD 12 Month; imputed where missing) x LGD x LEQ x unused line  - 347 accounts without a PD (imputed)
+  PASS  unused_line_stress: card profit = card_net with the old capital charge replaced and liquidity subtracted  - old capital $275,815 replaced by $158,814
+
+4. Toggles - unused_line_stress
+  PASS  unused_line_stress: bank outside Categories I-III -> no liquidity cost, capital unchanged  - liquidity $43,349 -> $0
+  PASS  unused_line_stress: apply_to = all_banks restores liquidity for that bank; capital unchanged
+  PASS  unused_line_stress: dormant risk weight (B5) changes only dormant zero-balance accounts  - 2,211 dormant accounts; RWA $1,269,401 -> $761,641
+  PASS  unused_line_stress: current-rules view: 0% CCF, 100% on drawn balances, no liquidity; main view untouched  - RWA $12,604,310 (s.2) vs $6,940,695 (current); SLR capital $555,017 vs risk-based $1,323,453
+  PASS  unused_line_stress: 'current' basis uses the reporting-date line and balance (cost basis midpoint)
+
+7. Screen and segments - unused_line_stress
+  PASS  unused_line_stress: module segment rules agree with the calibration report's independent reading  - 100.00% of 9,184 accounts
+  PASS  unused_line_stress: first match wins, in the workbook's priority order
+  PASS  unused_line_stress: screened exactly when every screen criterion is met; segment only when screened  - 4,712 screened; failing: .unprofitable 3,392, .utilisation 803, .unused 1,480, .history 93, .open 351, .not_fraud_blocked 62
+  PASS  unused_line_stress: system screen does not deduct drawdown loss; the sensitivity toggle only adds accounts made unprofitable by it  - toggle on: +592 accounts, extra loss after drawdown $61,542
+  PASS  unused_line_stress: segment summary adds up; carrying cost and drawdown loss in separate columns  - Credit-Deteriorating Low-Use 172; High-Line Relationship / Premium 597; Dormant / Inactive 1,497; Sock-Drawer Occasional Users 688; Low-Utilization Transactors 901; Unassigned (review) 857
+  PASS  unused_line_stress: thresholds come from config (PD threshold 4% -> 2% moves accounts into Credit-Deteriorating)  - 754 -> 1,366
+  PASS  unused_line_stress: segmentation transactor rule (>= 10/12) kept apart from the regulatory test (12/12)  - 901 in the Transactors segment, 56% of them at 45%
+  PASS  unused_line_stress: Unassigned shows its economics  - 857 accounts, card profit $-35,182
+
+13. Calculation corrections (revision B) - unused_line_stress
+  PASS  unused_line_stress: B1 a missing PD takes its segment's average PD (accounts with a PD), never zero; flagged  - 347 imputed (0 screened); 0 of them open
+  PASS  unused_line_stress: B2 LEQ switch: workbook segment LEQ, or the account's Behavioral CCF (workbook LEQ when missing); it changes drawdown loss only (default: workbook_segment)  - screened drawdown loss $188,178 (workbook segment) vs $169,232 (account); 347 accounts on the fallback
+  PASS  unused_line_stress: B4 main engine card profit + old capital - new capital - liquidity = module card profit, to the cent  - card_net $-248,888 -> module $-326,529 on 4,712 screened accounts
+  PASS  unused_line_stress: B5 fixed-cost basis switch changes fixed cost and card profit only (variable contribution unchanged); reconciles  - engine fixed cost $16.66 per screened account; workbook basis screens 5,542 accounts (default 4,712)
+
+14. Balance basis and pay-in-full policy (revision E, Stage 1) - unused_line_stress
+  PASS  unused_line_stress: 1b the midpoint balance is (statement + after-payment) / 2 in every cycle; statement >= after payment  - 12-month average balance: after payment $278, midpoint $756, statement $1,233
+  PASS  unused_line_stress: 1b the statement-date screen only removes cards that use 30%+ of the limit at statement date  - 41 cards leave the selection (4,753 -> 4,712)
+  PASS  unused_line_stress: 1b lever values use today's unused line; past profit keeps the 12-month average  - selected cards: today $69.3M vs 12-month $66.9M unused
+  FAIL  unused_line_stress: 1c pay-in-full right-sizing is valued for analysts but outside the approved value and the recommendations, by policy  - stand-alone value +1,940 (Base); 135 cards it would cut
+
+9. Levers, response, scenarios, stress - unused_line_stress
+  PASS  unused_line_stress: low <= base <= high (headline annual value)  - +13,802 <= +18,598 <= +22,168
+  PASS  unused_line_stress: capital released never inside an annual value  - Base: annual +18,598; capital released $6,565 (one-time, separate)
+  PASS  unused_line_stress: value types reconcile to the change in card profit  - avoided_loss +19,920, cost_saving +1,392, revenue +8,275, lost_profit -10,989
+  PASS  unused_line_stress: every cut <= 25% of the line, >= 15% and >= $500, new line >= max($500, balance x 1.2)  - 1,171 accounts cut (Base)
+  PASS  unused_line_stress: closures only on dormant accounts inactive >= 24 months; closure and dormant right-sizing out of the headline while B6 is off  - 374 closures selected; pending approval +53,540
+  PASS  unused_line_stress: switching B6 on moves those levers into the headline (config change only)  - headline +18,598 -> +50,703
+  PASS  unused_line_stress: a campaign / installment balance moves a transactor from 45% to 75%  - 2,158 accounts at 45%
+  PASS  unused_line_stress: leavers lose variable contribution; fixed cost stays
+  PASS  unused_line_stress: extra levers reported apart from the workbook levers  - workbook levers +18,598; extra +25,589 (assumption-based; not in the reference workbook)
+  PASS  unused_line_stress: scope mode (B7) changes only the population  - workbook scope 4,712 accounts; full line management 8,682
+  PASS  unused_line_stress: stress test 1x-2x; go/no-go (Base improves at 1.5x)  - 1.0x +18,598; 1.25x +17,123; 1.5x +15,906; 1.75x +14,846; 2.0x +13,896; at 1.5x card profit alone -3,871
+  PASS  unused_line_stress: B6 the robustness statement states its basis and where card profit alone turns negative  - Passes at 1.5x on value including reduced risk; card profit alone is negative already at 1x
+
+16. Four strategies and the 90-day warning (revision E, Stage 2) - unused_line_stress
+  PASS  unused_line_stress: each strategy's value is the sum of its components; every value = change in card profit + reduction in drawdown loss  - 1: +22,865; 2: -2,101; 3: +50,239; 4: +25,589
+  PASS  unused_line_stress: capital freed is one-time, never inside an annual value; total potential = approved + proposed + awaiting decision  - approved +18,598 + proposed +25,589 + awaiting +52,421 = +96,608; capital freed $6,565 (one-time)
+  PASS  unused_line_stress: 2a the campaign splits exactly into Strategy 2 and Strategy 3's Invite; the combined approved value equals the levers' combined headline  - campaign -4,283 = Strategy 2 -2,101 + Invite -2,182
+  PASS  unused_line_stress: 2b the warning: with no responses it equals the planned action for every card not won back by the Invite; each letter costs its configured amount; a fee in the warning settings is refused  - 1,417 letters; shares {'resume_use': 0.1, 'accept_lower_limit': 0.2, 'close_voluntarily': 0.1}; Strategy 3 actions +52,421 with the warning
+  PASS  unused_line_stress: every recommended action belongs to a strategy; every Strategy 3 action needs the 90-day warning  - by primary strategy {1: 288, 2: 603, 3: 1301, 4: 1395}; 1,211 need the warning
+
+10. Treatment designer, compliance, fairness, timing - unused_line_stress
+  PASS  unused_line_stress: protected (suppressed) customers receive no action, before anything else  - 35 screened accounts protected by the system's suppression
+  PASS  unused_line_stress: every recommended action carries a reason code from the list  - 3,562 accounts with an action; {'SUPPRESS_AUTO_INCREASE': 1384, 'INACTIVITY': 1117, 'ENGAGEMENT_CAMPAIGN': 750, 'IDLE_LINE_RIGHTSIZING': 200, 'CREDIT_DETERIORATION': 84, 'INACTIVITY_NON_REISSUE': 27}
+  PASS  unused_line_stress: inactivity actions carry no adverse-action notice; credit actions do (with the FCRA check)  - 1,117 inactivity, 84 credit, 200 idle-line right-sizing (notice: adverse action)
+  PASS  unused_line_stress: B3 one specific reason code per lever with its notice rule; OTHER below 1% of actions; compliance flags set  - OTHER 0.00% of 5,591 codes; primary: {'SUPPRESS_AUTO_INCREASE': 1384, 'INACTIVITY': 1117, 'ENGAGEMENT_CAMPAIGN': 750, 'IDLE_LINE_RIGHTSIZING': 200, 'CREDIT_DETERIORATION': 84, 'INACTIVITY_NON_REISSUE': 27}
+  PASS  unused_line_stress: every decrease carries the 45-day over-limit fee / penalty-rate restriction  - 1,029 decreases
+  PASS  unused_line_stress: no lever proposes an inactivity fee
+  PASS  unused_line_stress: transactor right-sizing is never recommended (config)
+  PASS  unused_line_stress: the ML credit-limit model plays no part (B8): no ML column in the recommendations  - columns: 21; ML columns: none
+  PASS  unused_line_stress: pilot holdout 10% per segment, seeded (same cells on a rerun)  - {'treatment': 3207, 'holdout': 355}
+  PASS  unused_line_stress: review-together flags against the L1 / L3 / L5 worklists  - 2,022 accounts flagged
+  PASS  unused_line_stress: four-fifths by metro on the module's own actions only; fewer than 30 selected in a metro -> 'insufficient sample', never pass / fail  - module_decreases_and_closures: 0 fail, 15 pass, 61 insufficient sample of 76 metros (1,401 selected). The module produces no line increases, so there is no increase test.
+  PASS  unused_line_stress: year-1 value = full annual value x the lever's year-1 share (every lever has timing)  - headline levers year 1 $29,472 vs full $43,890
+
+5. Portfolio cross-check (s.2.7)
+  PASS  s.2.7 reproduced from the 100k bundle by the brief's method (x5), +/-5%  - ucl $2,689.21M; rwa_unused $166.74M; capital_cost_unused $2.10M; hqla $134.46M; liquidity_cost $1.01M; carrying_cost $3.11M; largest difference 0.57%; transactor share 26.1% (brief 27%)
+  PASS  s.2.7 by L2 group (carrying cost; card profit after it) from the 100k bundle, +/-5%  - Dormant $1.163M / $-0.81M; Idle $0.473M / $-4.04M; Healthy $0.907M / $9.51M; Stretched $0.098M / $8.39M; largest difference 1.67%
+  PASS  s.2.7 from the module's own per-account file (x5): outside +/-5%, explained by the transactor test (with the plan / promotional rule off it is within +/-5%)  - ucl $2,716.04M (+1.0%); rwa_unused $180.26M (+8.7%); capital_cost_unused $2.27M (+8.7%); hqla $135.80M (+1.0%); liquidity_cost $1.02M (+0.8%); carrying_cost $3.29M (+6.1%); transactor share 16.5% (s.2.7: 26-27%); RW basis {'plan_or_promotional_balance': 0.268, 'dormant_zero_balance': 0.206, 'not_paid_in_full': 0.202, 'transactor': 0.165, 'short_history': 0.159}; plan / promo rule off: transactor share 29.6%, largest difference 3.5%
+
+6. Performance
+  PASS  100k per-account file built from the raw portfolio (offline step)  - 79,681 accounts; 199.3s; peak 15.552 GB; file 12.9 MB
+  PASS  100k per-account file loads with the cost layer in a fresh process under 2 GB  - 79,681 accounts; 0.2s; peak 0.345 GB
+
+15. Committed samples: settings switched back reproduce the earlier figures
+  PASS  stress: every revision-E setting at its old value reproduces the Stage 0 figures exactly  - 14 figures compared; base +175,388.75; screened 40,530
+  PASS  demo: every revision-E setting at its old value reproduces the Stage 0 figures exactly  - 14 figures compared; base +816.66; screened 890
+
+11. App on the committed samples
+  PASS  committed samples present (stress book, 5k demo), small files only  - demo: 3,988 accounts, 1.3 MB, built in 16.0s at peak 0.91 GB; stress: 91,818 accounts, 25.6 MB, built in 373.6s at peak 22.22 GB
+  PASS  every app page runs in both views on both datasets without an exception  - 36 page runs; slowest 7.1s
+  PASS  executive view: no value-type badges, no technical labels on the decision pages, analyst-only pages gated  - badges none; technical labels none; ungated none
+  PASS  analyst view: every page shows its full content (no analyst-only gate)
+  PASS  app runtime on the committed samples under 2 GB (all pages, both views, both datasets, one process)  - peak 0.872 GB
+
+12. Guardrails and regression
+  PASS  no change to L1-L6, L2, the ML model, NEP / CEV, suppression, routing, fairness, the six-lever app or existing generator modules since main b660bb8  - changed under protected paths: ['generator/synth/unused_line_stress.py'] (allowed: new ['generator/synth/unused_line_stress.py'])
+  PASS  generator/run.py: additions only, apart from the cherry-picked negative_control fix (966988a)  - 1 line(s) removed: ['-        RW.earn(tx_before_subset, accounts, rules, set()),']
+  PASS  B8: the module and its app never read the ML credit-limit model (engine/ml untouched)  - 27 source files scanned; reading ML: none
+  PASS  byte-identity of every existing generator profile (incl. negative_control) and the engine regression (audit_unused_line_data_additions.py)  - 74/74 PASSED; PASS  every pre-existing file byte-identical  - 197 baseline files; mismatched 0; missing 0 (121s); PASS  run_summary.json equals the engine baseline  - identical except data_dir and leverage_audit.run_timestamp_utc (27s (245s)
+
+====================================================================================================
+PASS  worked example: dormant $10,000 card
+PASS  worked example: $10,000 line, $2,000 balance (non-transactor)
+PASS  worked example: $10,000 line, $2,000 balance (transactor)
+PASS  baseline at the workbook's 85% / 55% weights within +/-1% of its Dashboard
+PASS  baseline fully loaded profit by segment within +/-1%
+PASS  RWA from undrawn lines (Dashboard regime table) within +/-1%
+PASS  corrected baseline (75% / 45%, segment-level) matches the brief's expectation
+PASS  Conservative / Base / Aggressive (85% / 55%): profit change, accounts lost, capital released within +/-1%
+PASS  Base by segment within +/-1%
+PASS  corrected weights reported (Relationship at 45%, and at 75% as the per-account test suggests)
+PASS  demo: no card at a 0% CCF
+PASS  demo: a 0% CCF configuration is refused
+PASS  demo: every 45% account passes the transactor test (12 cycles, all paid or $0, not all $0, no plan / promo)
+PASS  demo: installment, promotional or BT balance -> 75% (or 100% above the retail limit)
+PASS  demo: adding a plan balance flips a transactor from 45% to 75%
+PASS  demo: carrying cost = capital (unused part) + liquidity; drawdown loss separate; total = both
+PASS  demo: drawdown loss = annual PD (Table8 PD 12 Month; imputed where missing) x LGD x LEQ x unused line
+PASS  demo: card profit = card_net with the old capital charge replaced and liquidity subtracted
+PASS  demo: bank outside Categories I-III -> no liquidity cost, capital unchanged
+PASS  demo: apply_to = all_banks restores liquidity for that bank; capital unchanged
+PASS  demo: dormant risk weight (B5) changes only dormant zero-balance accounts
+PASS  demo: current-rules view: 0% CCF, 100% on drawn balances, no liquidity; main view untouched
+PASS  demo: 'current' basis uses the reporting-date line and balance (cost basis midpoint)
+PASS  demo: module segment rules agree with the calibration report's independent reading
+PASS  demo: first match wins, in the workbook's priority order
+PASS  demo: screened exactly when every screen criterion is met; segment only when screened
+PASS  demo: system screen does not deduct drawdown loss; the sensitivity toggle only adds accounts made unprofitable by it
+PASS  demo: segment summary adds up; carrying cost and drawdown loss in separate columns
+PASS  demo: thresholds come from config (PD threshold 4% -> 2% moves accounts into Credit-Deteriorating)
+PASS  demo: segmentation transactor rule (>= 10/12) kept apart from the regulatory test (12/12)
+PASS  demo: Unassigned shows its economics
+PASS  demo: B1 a missing PD takes its segment's average PD (accounts with a PD), never zero; flagged
+PASS  demo: B2 LEQ switch: workbook segment LEQ, or the account's Behavioral CCF (workbook LEQ when missing); it changes drawdown loss only (default: workbook_segment)
+PASS  demo: B4 main engine card profit + old capital - new capital - liquidity = module card profit, to the cent
+PASS  demo: B5 fixed-cost basis switch changes fixed cost and card profit only (variable contribution unchanged); reconciles
+PASS  demo: 1b the midpoint balance is (statement + after-payment) / 2 in every cycle; statement >= after payment
+PASS  demo: 1b the statement-date screen only removes cards that use 30%+ of the limit at statement date
+PASS  demo: 1b lever values use today's unused line; past profit keeps the 12-month average
+PASS  demo: 1c pay-in-full right-sizing is valued for analysts but outside the approved value and the recommendations, by policy
+PASS  demo: low <= base <= high (headline annual value)
+PASS  demo: capital released never inside an annual value
+PASS  demo: value types reconcile to the change in card profit
+PASS  demo: every cut <= 25% of the line, >= 15% and >= $500, new line >= max($500, balance x 1.2)
+PASS  demo: closures only on dormant accounts inactive >= 24 months; closure and dormant right-sizing out of the headline while B6 is off
+PASS  demo: switching B6 on moves those levers into the headline (config change only)
+PASS  demo: a campaign / installment balance moves a transactor from 45% to 75%
+PASS  demo: leavers lose variable contribution; fixed cost stays
+PASS  demo: extra levers reported apart from the workbook levers
+PASS  demo: scope mode (B7) changes only the population
+PASS  demo: stress test 1x-2x; go/no-go (Base improves at 1.5x)
+PASS  demo: B6 the robustness statement states its basis and where card profit alone turns negative
+PASS  demo: each strategy's value is the sum of its components; every value = change in card profit + reduction in drawdown loss
+PASS  demo: capital freed is one-time, never inside an annual value; total potential = approved + proposed + awaiting decision
+PASS  demo: 2a the campaign splits exactly into Strategy 2 and Strategy 3's Invite; the combined approved value equals the levers' combined headline
+PASS  demo: 2b the warning: with no responses it equals the planned action for every card not won back by the Invite; each letter costs its configured amount; a fee in the warning settings is refused
+PASS  demo: every recommended action belongs to a strategy; every Strategy 3 action needs the 90-day warning
+PASS  demo: protected (suppressed) customers receive no action, before anything else
+PASS  demo: every recommended action carries a reason code from the list
+PASS  demo: inactivity actions carry no adverse-action notice; credit actions do (with the FCRA check)
+PASS  demo: B3 one specific reason code per lever with its notice rule; OTHER below 1% of actions; compliance flags set
+PASS  demo: every decrease carries the 45-day over-limit fee / penalty-rate restriction
+PASS  demo: no lever proposes an inactivity fee
+PASS  demo: transactor right-sizing is never recommended (config)
+PASS  demo: the ML credit-limit model plays no part (B8): no ML column in the recommendations
+PASS  demo: pilot holdout 10% per segment, seeded (same cells on a rerun)
+PASS  demo: review-together flags against the L1 / L3 / L5 worklists
+PASS  demo: four-fifths by metro on the module's own actions only; fewer than 30 selected in a metro -> 'insufficient sample', never pass / fail
+PASS  demo: year-1 value = full annual value x the lever's year-1 share (every lever has timing)
+PASS  unused_line_stress: no card at a 0% CCF
+PASS  unused_line_stress: a 0% CCF configuration is refused
+PASS  unused_line_stress: every 45% account passes the transactor test (12 cycles, all paid or $0, not all $0, no plan / promo)
+PASS  unused_line_stress: installment, promotional or BT balance -> 75% (or 100% above the retail limit)
+PASS  unused_line_stress: adding a plan balance flips a transactor from 45% to 75%
+PASS  unused_line_stress: carrying cost = capital (unused part) + liquidity; drawdown loss separate; total = both
+PASS  unused_line_stress: drawdown loss = annual PD (Table8 PD 12 Month; imputed where missing) x LGD x LEQ x unused line
+PASS  unused_line_stress: card profit = card_net with the old capital charge replaced and liquidity subtracted
+PASS  unused_line_stress: bank outside Categories I-III -> no liquidity cost, capital unchanged
+PASS  unused_line_stress: apply_to = all_banks restores liquidity for that bank; capital unchanged
+PASS  unused_line_stress: dormant risk weight (B5) changes only dormant zero-balance accounts
+PASS  unused_line_stress: current-rules view: 0% CCF, 100% on drawn balances, no liquidity; main view untouched
+PASS  unused_line_stress: 'current' basis uses the reporting-date line and balance (cost basis midpoint)
+PASS  unused_line_stress: module segment rules agree with the calibration report's independent reading
+PASS  unused_line_stress: first match wins, in the workbook's priority order
+PASS  unused_line_stress: screened exactly when every screen criterion is met; segment only when screened
+PASS  unused_line_stress: system screen does not deduct drawdown loss; the sensitivity toggle only adds accounts made unprofitable by it
+PASS  unused_line_stress: segment summary adds up; carrying cost and drawdown loss in separate columns
+PASS  unused_line_stress: thresholds come from config (PD threshold 4% -> 2% moves accounts into Credit-Deteriorating)
+PASS  unused_line_stress: segmentation transactor rule (>= 10/12) kept apart from the regulatory test (12/12)
+PASS  unused_line_stress: Unassigned shows its economics
+PASS  unused_line_stress: B1 a missing PD takes its segment's average PD (accounts with a PD), never zero; flagged
+PASS  unused_line_stress: B2 LEQ switch: workbook segment LEQ, or the account's Behavioral CCF (workbook LEQ when missing); it changes drawdown loss only (default: workbook_segment)
+PASS  unused_line_stress: B4 main engine card profit + old capital - new capital - liquidity = module card profit, to the cent
+PASS  unused_line_stress: B5 fixed-cost basis switch changes fixed cost and card profit only (variable contribution unchanged); reconciles
+PASS  unused_line_stress: 1b the midpoint balance is (statement + after-payment) / 2 in every cycle; statement >= after payment
+PASS  unused_line_stress: 1b the statement-date screen only removes cards that use 30%+ of the limit at statement date
+PASS  unused_line_stress: 1b lever values use today's unused line; past profit keeps the 12-month average
+FAIL  unused_line_stress: 1c pay-in-full right-sizing is valued for analysts but outside the approved value and the recommendations, by policy
+PASS  unused_line_stress: low <= base <= high (headline annual value)
+PASS  unused_line_stress: capital released never inside an annual value
+PASS  unused_line_stress: value types reconcile to the change in card profit
+PASS  unused_line_stress: every cut <= 25% of the line, >= 15% and >= $500, new line >= max($500, balance x 1.2)
+PASS  unused_line_stress: closures only on dormant accounts inactive >= 24 months; closure and dormant right-sizing out of the headline while B6 is off
+PASS  unused_line_stress: switching B6 on moves those levers into the headline (config change only)
+PASS  unused_line_stress: a campaign / installment balance moves a transactor from 45% to 75%
+PASS  unused_line_stress: leavers lose variable contribution; fixed cost stays
+PASS  unused_line_stress: extra levers reported apart from the workbook levers
+PASS  unused_line_stress: scope mode (B7) changes only the population
+PASS  unused_line_stress: stress test 1x-2x; go/no-go (Base improves at 1.5x)
+PASS  unused_line_stress: B6 the robustness statement states its basis and where card profit alone turns negative
+PASS  unused_line_stress: each strategy's value is the sum of its components; every value = change in card profit + reduction in drawdown loss
+PASS  unused_line_stress: capital freed is one-time, never inside an annual value; total potential = approved + proposed + awaiting decision
+PASS  unused_line_stress: 2a the campaign splits exactly into Strategy 2 and Strategy 3's Invite; the combined approved value equals the levers' combined headline
+PASS  unused_line_stress: 2b the warning: with no responses it equals the planned action for every card not won back by the Invite; each letter costs its configured amount; a fee in the warning settings is refused
+PASS  unused_line_stress: every recommended action belongs to a strategy; every Strategy 3 action needs the 90-day warning
+PASS  unused_line_stress: protected (suppressed) customers receive no action, before anything else
+PASS  unused_line_stress: every recommended action carries a reason code from the list
+PASS  unused_line_stress: inactivity actions carry no adverse-action notice; credit actions do (with the FCRA check)
+PASS  unused_line_stress: B3 one specific reason code per lever with its notice rule; OTHER below 1% of actions; compliance flags set
+PASS  unused_line_stress: every decrease carries the 45-day over-limit fee / penalty-rate restriction
+PASS  unused_line_stress: no lever proposes an inactivity fee
+PASS  unused_line_stress: transactor right-sizing is never recommended (config)
+PASS  unused_line_stress: the ML credit-limit model plays no part (B8): no ML column in the recommendations
+PASS  unused_line_stress: pilot holdout 10% per segment, seeded (same cells on a rerun)
+PASS  unused_line_stress: review-together flags against the L1 / L3 / L5 worklists
+PASS  unused_line_stress: four-fifths by metro on the module's own actions only; fewer than 30 selected in a metro -> 'insufficient sample', never pass / fail
+PASS  unused_line_stress: year-1 value = full annual value x the lever's year-1 share (every lever has timing)
+PASS  s.2.7 reproduced from the 100k bundle by the brief's method (x5), +/-5%
+PASS  s.2.7 by L2 group (carrying cost; card profit after it) from the 100k bundle, +/-5%
+PASS  s.2.7 from the module's own per-account file (x5): outside +/-5%, explained by the transactor test (with the plan / promotional rule off it is within +/-5%)
+PASS  100k per-account file built from the raw portfolio (offline step)
+PASS  100k per-account file loads with the cost layer in a fresh process under 2 GB
+PASS  stress: every revision-E setting at its old value reproduces the Stage 0 figures exactly
+PASS  demo: every revision-E setting at its old value reproduces the Stage 0 figures exactly
+PASS  committed samples present (stress book, 5k demo), small files only
+PASS  every app page runs in both views on both datasets without an exception
+PASS  executive view: no value-type badges, no technical labels on the decision pages, analyst-only pages gated
+PASS  analyst view: every page shows its full content (no analyst-only gate)
+PASS  app runtime on the committed samples under 2 GB (all pages, both views, both datasets, one process)
+PASS  no change to L1-L6, L2, the ML model, NEP / CEV, suppression, routing, fairness, the six-lever app or existing generator modules since main b660bb8
+PASS  generator/run.py: additions only, apart from the cherry-picked negative_control fix (966988a)
+PASS  B8: the module and its app never read the ML credit-limit model (engine/ml untouched)
+PASS  byte-identity of every existing generator profile (incl. negative_control) and the engine regression (audit_unused_line_data_additions.py)
+====================================================================================================
+141/142 PASSED, 1 FAILED
+exit 1
